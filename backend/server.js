@@ -1,5 +1,5 @@
 // ============================================================
-// BlissOven Calculator — Express Server Entry Point
+// BakeFlow ERP — Express Server Entry Point
 // ============================================================
 require('dotenv').config();
 
@@ -13,16 +13,20 @@ const PORT = process.env.PORT || 3000;
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '20mb' })); // Increased for base64 image uploads
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // ── API Routes ────────────────────────────────────────────────
+app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/ingredients', require('./routes/ingredients'));
 app.use('/api/packaging',   require('./routes/packaging'));
 app.use('/api/products',    require('./routes/products'));
 app.use('/api/orders',      require('./routes/orders'));
 app.use('/api/settings',    require('./routes/settings'));
 app.use('/api/audit',       require('./routes/audit'));
+app.use('/api/customers',   require('./routes/customers'));
+app.use('/api/sales',       require('./routes/sales'));
+app.use('/api/invoice',     require('./routes/invoice'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
@@ -34,7 +38,7 @@ app.get('*', (req, res) => {
 
 // ── Bootstrap ─────────────────────────────────────────────────
 async function start() {
-  console.log('\n🥐  BlissOven Calculator — Starting...');
+  console.log('\n🎂  BakeFlow ERP — Starting...');
   console.log('🔌  Connecting to Google Sheets...');
 
   try {
@@ -42,7 +46,7 @@ async function start() {
     console.log('✅  Google Sheets connected & schema ready!\n');
     app.listen(PORT, () => {
       console.log(`🚀  Server running → http://localhost:${PORT}`);
-      console.log(`📊  Open your browser and start calculating!\n`);
+      console.log(`📊  BakeFlow ERP is ready!\n`);
     });
   } catch (err) {
     console.error('\n❌  Failed to start server:');

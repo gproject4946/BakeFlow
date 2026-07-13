@@ -7,19 +7,27 @@ const { google } = require('googleapis');
 
 // ── Sheet Schema ─────────────────────────────────────────────
 const SHEETS = {
-  Ingredients: ['id','name','cat','unit','rate','updated','deleted','deletedAt','rateHistory'],
-  Packaging:   ['id','name','type','size','rate','vendor','deleted','deletedAt','rateHistory'],
-  Products:    ['id','name','cat','emoji','cost','sell','margin','deleted','deletedAt'],
-  Orders:      ['id','name','category','date','timestamp','orderData','deleted','deletedAt'],
-  Settings:    ['key','value'],
-  AuditLog:    ['id','timestamp','date','action','details'],
+  Ingredients:   ['id','name','cat','unit','rate','updated','deleted','deletedAt','rateHistory','stockQty','minAlert'],
+  Packaging:     ['id','name','type','size','rate','vendor','deleted','deletedAt','rateHistory','stockQty','minAlert'],
+  Products:      ['id','name','cat','emoji','cost','sell','margin','deleted','deletedAt'],
+  Orders:        ['id','name','category','date','timestamp','orderData','deleted','deletedAt'],
+  Settings:      ['key','value'],
+  AuditLog:      ['id','timestamp','date','time','employeeName','employeeEmail','action','details','entityType','entityId'],
+  Customers:     ['id','name','phone','email','city','address','notes','totalOrders','totalValue','lastOrderDate','addedBy','addedByEmail','createdAt','deleted','deletedAt'],
+  SalesInvoices: ['id','invoiceNumber','customerId','customerName','customerPhone','customerCity','items','subtotal','discountAmt','gstPct','gstAmt','totalAmount','paymentMethod','notes','date','timestamp','createdBy','createdByEmail','inventoryDeducted','inventoryDeductedAt','whatsappSent','whatsappSentAt','whatsappSentBy','deleted','deletedAt'],
+  Staff:         ['id','name','password','role','email','active','createdAt'],
 };
 
 // ── JSON fields that need serialization ──────────────────────
-const JSON_FIELDS = new Set(['rateHistory', 'orderData', 'value']);
+const JSON_FIELDS = new Set(['rateHistory', 'orderData', 'value', 'items']);
 
 // ── Numeric fields ───────────────────────────────────────────
-const NUMERIC_FIELDS = new Set(['rate', 'cost', 'sell', 'margin', 'timestamp', 'deletedAt']);
+const NUMERIC_FIELDS = new Set([
+  'rate', 'cost', 'sell', 'margin', 'timestamp', 'deletedAt',
+  'stockQty', 'minAlert',
+  'totalOrders', 'totalValue',
+  'subtotal', 'discountAmt', 'gstPct', 'gstAmt', 'totalAmount',
+]);
 
 // ── Default seed data ─────────────────────────────────────────
 const DEFAULT_INGREDIENTS = [
@@ -317,13 +325,18 @@ class SheetsClient {
   }
 
   // ── Audit log helper ─────────────────────────────────────────
-  async addLog(action, details) {
+  async addLog(action, details, employeeName = '', employeeEmail = '', entityType = '', entityId = '') {
     await this.append('AuditLog', {
       id: `log-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       timestamp: Date.now(),
-      date: new Date().toLocaleString('en-IN'),
+      date: new Date().toLocaleDateString('en-IN'),
+      time: new Date().toLocaleTimeString('en-IN'),
+      employeeName,
+      employeeEmail,
       action,
       details: details || '',
+      entityType,
+      entityId,
     });
   }
 }

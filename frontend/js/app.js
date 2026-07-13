@@ -1,5 +1,5 @@
 // ============================================================
-// BlissOven Calculator — Main Application Logic
+// BakeFlow ERP — Main Application Logic
 // All data persistence is handled via API calls (api.js)
 // ============================================================
 
@@ -15,6 +15,17 @@ var catalogProducts = [];
 var ingredientsMaster = [];
 var packagingMaster = [];
 var currentEditingOrderId = null;
+
+// ── BakeFlow new state ────────────────────────────────────────
+var currentSession   = null;   // { name, email, role, picture, loginTime }
+var businessConfig   = { businessName: 'BakeFlow', businessPhone: '' };
+var customersDB      = [];
+var salesInvoices    = [];
+var currentSaleItems = [];
+var currentSaleCustomer = null;
+var currentMaterialTab  = 'ingredients';
+var _scanFile = null;
+var _scanItems = [];
 
 // ── Default fallbacks (used if server returns nothing) ────────
 var DEFAULT_LABOUR = {
@@ -111,6 +122,11 @@ async function initApp() {
     // Update saved orders count
     document.getElementById('dash-orders').textContent = savedOrders.filter(o => !o.deleted).length;
 
+    // Load customers & sales invoices
+    try {
+      [customersDB, salesInvoices] = await Promise.all([API.getCustomers(), API.getSales()]);
+    } catch(e) { console.warn('Could not load customers/sales:', e.message); }
+
     // Render initial views
     renderIngredients();
     renderDecorations();
@@ -119,6 +135,7 @@ async function initApp() {
     renderSavedOrdersList();
     recalculate();
     calcDailyOverhead();
+    loadDashboardData();
 
     hideLoading();
   } catch (err) {
@@ -190,20 +207,35 @@ function updateCalculatorOverheads(s) {
 
 // ── Navigation ────────────────────────────────────────────────
 function navigate(page) {
+  // Redirect legacy separate pages to merged materials page
+  if (page === 'ingredients' || page === 'packaging') page = 'materials';
+
+  // Admin-only page guard
+  const adminOnlyPages = ['labour', 'overheads', 'reports', 'salesreports', 'auditlog'];
+  if (adminOnlyPages.includes(page) && currentSession && currentSession.role !== 'admin') {
+    showToast('⛔ Admin access required', true);
+    return;
+  }
+
   currentPage = page;
   document.querySelectorAll('[id^="page-"]').forEach(p => p.classList.add('hidden'));
-  document.getElementById('page-' + page).classList.remove('hidden');
+  const pageEl = document.getElementById('page-' + page);
+  if (pageEl) pageEl.classList.remove('hidden');
   document.querySelectorAll('.nav-item').forEach(n => {
     n.classList.remove('active');
     if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + page + "'"))
       n.classList.add('active');
   });
   if (page === 'products')     renderProductCatalog();
-  if (page === 'ingredients')  renderIngredientsMaster();
-  if (page === 'packaging')    renderPackagingMaster();
+  if (page === 'materials')    renderMaterialsMaster();
   if (page === 'reports')      renderReports();
-  if (page === 'dashboard')    renderDashboardTable();
+  if (page === 'dashboard')    { renderDashboardTable(); loadDashboardData(); }
   if (page === 'orders')       renderSavedOrdersList();
+  if (page === 'customers')    renderCustomerList();
+  if (page === 'invoices')     renderInvoiceList();
+  if (page === 'salesreports') renderSalesReports();
+  if (page === 'auditlog')     renderAuditLog();
+  if (page === 'sales')        initSalesPage();
 }
 
 // ── Dashboard ─────────────────────────────────────────────────
@@ -264,6 +296,7 @@ function renderProductCatalog() {
 // ── Ingredient Master ─────────────────────────────────────────
 function renderIngredientsMaster() {
   var body = document.getElementById('ingredients-master-body');
+  if (!body) { if (typeof renderMaterialsMaster === 'function') renderMaterialsMaster(); return; }
   var showDeleted = document.getElementById('ing-show-deleted')?.checked;
   var list = showDeleted ? ingredientsMaster : ingredientsMaster.filter(i => !i.deleted);
   if (list.length === 0) {
@@ -332,6 +365,7 @@ function viewIngredientHistory(idx) {
 // ── Packaging Master ──────────────────────────────────────────
 function renderPackagingMaster() {
   var body = document.getElementById('packaging-master-body');
+  if (!body) { if (typeof renderMaterialsMaster === 'function') renderMaterialsMaster(); return; }
   var showDeleted = document.getElementById('pack-show-deleted')?.checked;
   var list = showDeleted ? packagingMaster : packagingMaster.filter(p => !p.deleted);
   if (list.length === 0) {
@@ -1241,4 +1275,952 @@ function showToast(msg,isError){
 }
 
 // ── Start ─────────────────────────────────────────────────────
-initApp();
+// Boot via auth flow — initAuth() calls initApp() after login
+document.addEventListener('DOMContentLoaded', initAuth);
+
+// ============================================================
+// BakeFlow ERP — New Modules (Auth, Materials, Sales, Customers)
+// ============================================================
+
+// ── Auth / Session ───────────────────────────────────────────
+
+async function initAuth() {
+  const stored = localStorage.getItem('bakeflow_session');
+  if (stored) {
+    try {
+      currentSession = JSON.parse(stored);
+      applySession();
+      return;
+    } catch(e) { localStorage.removeItem('bakeflow_session'); }
+  }
+  // Show auth overlay
+  document.getElementById('auth-overlay').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('loading-overlay').classList.add('hidden');
+  // Load config
+  try { businessConfig = await API.getConfig(); } catch(e) {}
+  initGoogleSignIn();
+}
+
+function initGoogleSignIn() {
+  if (!businessConfig.googleClientId || !window.google) return;
+  try {
+    google.accounts.id.initialize({
+      client_id: businessConfig.googleClientId,
+      callback: handleGoogleCredential,
+      auto_select: false,
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('g-signin-btn'),
+      { theme: 'outline', size: 'large', text: 'signin_with', width: 280 }
+    );
+  } catch(e) { console.warn('Google Sign-In init failed:', e.message); }
+}
+
+function handleGoogleCredential(response) {
+  try {
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    window._pendingGoogleProfile = { name: payload.name, email: payload.email, picture: payload.picture || '' };
+    showRoleModal();
+  } catch(e) { showToast('Google sign-in error', true); }
+}
+
+function handleNameLogin() {
+  const name = (document.getElementById('auth-name-input').value || '').trim();
+  if (!name) { showToast('Please enter your name', true); return; }
+  window._pendingGoogleProfile = { name, email: '', picture: '' };
+  showRoleModal();
+}
+
+async function showRoleModal() {
+  document.getElementById('auth-overlay').style.display = 'none';
+  document.getElementById('role-modal').classList.remove('hidden');
+  document.getElementById('role-modal').style.display = 'flex';
+  try {
+    const emps = await API.getEmployees();
+    const sel = document.getElementById('employee-select');
+    if (sel) sel.innerHTML = emps.map(e => `<option value="${e.index}">${e.name}</option>`).join('') || '<option value="">No employees configured</option>';
+  } catch(e) {}
+}
+
+function onRoleChange(role) {
+  const wrap = document.getElementById('employee-select-wrap');
+  if (wrap) wrap.classList.toggle('hidden', role !== 'employee');
+}
+
+function togglePassVis() {
+  const inp = document.getElementById('role-password');
+  const icon = document.getElementById('pass-eye-icon');
+  if (!inp) return;
+  if (inp.type === 'password') { inp.type = 'text'; if (icon) icon.className = 'ti ti-eye-off'; }
+  else { inp.type = 'password'; if (icon) icon.className = 'ti ti-eye'; }
+}
+
+function backToSignin() {
+  document.getElementById('role-modal').style.display = 'none';
+  document.getElementById('role-modal').classList.add('hidden');
+  document.getElementById('auth-overlay').style.display = 'flex';
+}
+
+async function submitRole() {
+  const roleInput = document.querySelector('input[name="role"]:checked');
+  if (!roleInput) { showRoleError('Please select a role (Admin or Employee)'); return; }
+  const role = roleInput.value;
+  const password = (document.getElementById('role-password').value || '').trim();
+  const empIdx = role === 'employee' ? (document.getElementById('employee-select').value || null) : null;
+  if (!password) { showRoleError('Please enter your password'); return; }
+  try {
+    const result = await API.verifyRole(role, empIdx, password);
+    const profile = window._pendingGoogleProfile || {};
+    const session = {
+      name: result.name || profile.name || 'User',
+      email: result.email || profile.email || '',
+      picture: profile.picture || '',
+      role: result.role,
+      employeeIndex: result.employeeIndex || null,
+      loginTime: Date.now(),
+    };
+    localStorage.setItem('bakeflow_session', JSON.stringify(session));
+    currentSession = session;
+    document.getElementById('role-modal').style.display = 'none';
+    document.getElementById('role-modal').classList.add('hidden');
+    applySession();
+    try { await API.log('LOGIN', 'Role: ' + session.role, 'Auth', ''); } catch(e) {}
+  } catch(err) {
+    showRoleError('Incorrect password. Please try again.');
+  }
+}
+
+function showRoleError(msg) {
+  const el = document.getElementById('role-error');
+  if (el) { el.textContent = msg; el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 3500); }
+}
+
+function applySession() {
+  // Show main app
+  document.getElementById('main-app').style.display = 'flex';
+  document.getElementById('auth-overlay').style.display = 'none';
+  const roleModal = document.getElementById('role-modal');
+  if (roleModal) { roleModal.style.display = 'none'; roleModal.classList.add('hidden'); }
+
+  // Sidebar user card
+  const suName = document.getElementById('su-name');
+  const suRole = document.getElementById('su-role');
+  const suAvatar = document.getElementById('su-avatar');
+  if (suName) suName.textContent = currentSession.name;
+  if (suRole) suRole.textContent = currentSession.role === 'admin' ? '🔑 Admin' : '👤 Employee';
+  if (suAvatar && currentSession.picture) {
+    suAvatar.innerHTML = `<img src="${currentSession.picture}" alt="">`;
+  }
+
+  // Apply admin/employee CSS class for visibility
+  const isAdmin = currentSession.role === 'admin';
+  document.body.classList.toggle('role-admin', isAdmin);
+  document.body.classList.toggle('role-employee', !isAdmin);
+
+  // Also imperatively show/hide admin-only elements (belt & suspenders)
+  document.querySelectorAll('.admin-only').forEach(el => {
+    const tag = el.tagName.toLowerCase();
+    if (isAdmin) {
+      if (tag === 'div' && el.classList.contains('stats-grid')) el.style.display = 'grid';
+      else if (tag === 'div' && el.classList.contains('nav-section')) el.style.display = 'block';
+      else el.style.display = '';
+      el.style.removeProperty('display') ; // let CSS class handle it
+    }
+  });
+
+  updateGreeting();
+  initApp();
+}
+
+function signOut() {
+  if (currentSession) {
+    try { API.log('LOGOUT', 'Session ended', 'Auth', ''); } catch(e) {}
+  }
+  localStorage.removeItem('bakeflow_session');
+  currentSession = null;
+  location.reload();
+}
+
+// ── Greeting ─────────────────────────────────────────────────
+
+function updateGreeting() {
+  const el = document.getElementById('dash-greeting');
+  if (!el || !currentSession) return;
+  const firstName = (currentSession.name || 'User').split(' ')[0];
+  const h = new Date().getHours();
+  const prefix = h >= 5 && h < 12 ? 'Good morning' :
+                 h >= 12 && h < 17 ? 'Good afternoon' :
+                 h >= 17 && h < 21 ? 'Good evening' : 'Working late';
+  el.textContent = `${prefix}, ${firstName} ✦`;
+}
+
+// ── Dashboard Enhancements ───────────────────────────────────
+
+async function loadDashboardData() {
+  updateGreeting();
+
+  // Low stock
+  const allItems = [
+    ...ingredientsMaster.filter(i => !i.deleted),
+    ...packagingMaster.filter(p => !p.deleted),
+  ];
+  const lowItems = allItems.filter(i => Number(i.minAlert) > 0 && Number(i.stockQty) <= Number(i.minAlert));
+  const dashLS = document.getElementById('dash-lowstock');
+  if (dashLS) dashLS.textContent = lowItems.length;
+
+  const lowEl = document.getElementById('dash-lowstock-list');
+  if (lowEl) {
+    if (lowItems.length === 0) {
+      lowEl.innerHTML = '<div style="color:var(--bo-success);font-size:13px;">✅ All items well stocked!</div>';
+    } else {
+      lowEl.innerHTML = lowItems.slice(0, 5).map(i => `
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(232,213,190,0.3);font-size:12.5px;">
+          <span>${i.name}</span>
+          <span style="color:${Number(i.stockQty)===0?'var(--bo-danger)':'var(--bo-gold-dark)'};font-weight:500;">${Number(i.stockQty)===0?'Out of Stock':i.stockQty+' '+(i.unit||'')}</span>
+        </div>`).join('');
+    }
+  }
+
+  // Recent invoices
+  const riEl = document.getElementById('dash-recent-invoices');
+  if (riEl && salesInvoices.length > 0) {
+    riEl.innerHTML = salesInvoices.slice(0, 5).map(inv => `
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(232,213,190,0.3);font-size:12.5px;">
+        <span style="font-weight:500;min-width:110px;">${inv.invoiceNumber}</span>
+        <span style="color:var(--bo-muted);flex:1;padding:0 8px;">${inv.customerName}</span>
+        <span style="color:var(--bo-gold-dark);font-weight:500;">₹${Number(inv.totalAmount).toFixed(0)}</span>
+      </div>`).join('');
+  } else if (riEl) {
+    riEl.innerHTML = '<div style="color:var(--bo-muted);font-size:13px;">No invoices yet.</div>';
+  }
+
+  // Admin stats
+  if (currentSession && currentSession.role === 'admin') {
+    const monthNow = new Date().getMonth();
+    const yearNow = new Date().getFullYear();
+    const monthRevenue = salesInvoices
+      .filter(i => { const d = new Date(i.timestamp); return d.getMonth() === monthNow && d.getFullYear() === yearNow; })
+      .reduce((s, i) => s + Number(i.totalAmount), 0);
+    const revEl = document.getElementById('dash-revenue');
+    if (revEl) revEl.textContent = '₹' + monthRevenue.toLocaleString('en-IN');
+    const invEl = document.getElementById('dash-invoices');
+    if (invEl) invEl.textContent = salesInvoices.length;
+    const custEl = document.getElementById('dash-customers');
+    if (custEl) custEl.textContent = customersDB.length;
+  }
+}
+
+// ── Raw Materials Master (merged ingredients + packaging) ────
+
+function switchMaterialTab(tab) {
+  currentMaterialTab = tab;
+  document.getElementById('tab-ing').classList.toggle('active', tab === 'ingredients');
+  document.getElementById('tab-pack').classList.toggle('active', tab === 'packaging');
+  document.getElementById('mat-ingredients-section').classList.toggle('hidden', tab !== 'ingredients');
+  document.getElementById('mat-packaging-section').classList.toggle('hidden', tab === 'ingredients');
+}
+
+function renderMaterialsMaster() {
+  const showDeleted = document.getElementById('mat-show-deleted') && document.getElementById('mat-show-deleted').checked;
+  renderMaterialIngredients(showDeleted);
+  renderMaterialPackaging(showDeleted);
+  updateMaterialStats();
+}
+
+function updateMaterialStats() {
+  const activeAll = [
+    ...ingredientsMaster.filter(i => !i.deleted),
+    ...packagingMaster.filter(p => !p.deleted),
+  ];
+  const low  = activeAll.filter(i => Number(i.minAlert) > 0 && Number(i.stockQty) > 0 && Number(i.stockQty) <= Number(i.minAlert));
+  const out  = activeAll.filter(i => Number(i.stockQty) === 0);
+  const good = activeAll.filter(i => Number(i.stockQty) > Number(i.minAlert) || Number(i.minAlert) === 0);
+  const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  el('mat-total', activeAll.length);
+  el('mat-low', low.length);
+  el('mat-out', out.length);
+  el('mat-in', good.length);
+}
+
+function getStockBadge(item) {
+  const qty = Number(item.stockQty) || 0;
+  const min = Number(item.minAlert) || 0;
+  if (qty === 0) return '<span class="mat-status-badge mat-status-out">❌ Out of Stock</span>';
+  if (min > 0 && qty <= min) return `<span class="mat-status-badge mat-status-low">⚠️ Low (${qty})</span>`;
+  return `<span class="mat-status-badge mat-status-in">✅ In Stock</span>`;
+}
+
+function renderMaterialIngredients(showDeleted) {
+  const body = document.getElementById('mat-ing-body');
+  if (!body) return;
+  const list = showDeleted ? ingredientsMaster : ingredientsMaster.filter(i => !i.deleted);
+  if (list.length === 0) {
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--bo-muted);padding:24px;">No ingredients yet. Click "Add Item" to get started.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.map((item) => {
+    const idx = ingredientsMaster.indexOf(item);
+    const isDel = !!item.deleted;
+    return `
+    <tr class="${isDel ? 'soft-deleted' : ''}">
+      <td style="font-weight:500;">${item.name}${isDel ? '<span class="deleted-tag"> Deleted</span>' : ''}</td>
+      <td><span class="badge badge-info">${item.cat}</span></td>
+      <td>${item.unit}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <input type="number" id="mat-ing-rate-${idx}" value="${item.rate}" style="width:70px;padding:4px 6px;font-size:12px;" ${isDel ? 'disabled' : ''}>
+          <button class="btn btn-sm" style="padding:3px 5px;" onclick="viewIngredientHistory(${idx})" title="History"><i class="ti ti-history"></i></button>
+        </div>
+      </td>
+      <td><input type="number" id="mat-ing-stock-${idx}" value="${item.stockQty || 0}" style="width:65px;padding:4px 6px;font-size:12px;" ${isDel ? 'disabled' : ''}></td>
+      <td><input type="number" id="mat-ing-min-${idx}" value="${item.minAlert || 0}" style="width:65px;padding:4px 6px;font-size:12px;" ${isDel ? 'disabled' : ''}></td>
+      <td>${getStockBadge(item)}</td>
+      <td style="font-size:12px;color:var(--bo-muted);">${item.updated || ''}</td>
+      <td style="display:flex;gap:4px;align-items:center;">
+        ${isDel
+          ? `<button class="btn btn-sm btn-success-solid" onclick="restoreIngredient(${idx})"><i class="ti ti-restore"></i></button>
+             <button class="btn btn-sm btn-danger-solid" onclick="hardDeleteIngredient(${idx})"><i class="ti ti-trash-x"></i></button>`
+          : `<button class="btn btn-sm" onclick="updateMaterialItem('ingredient',${idx})">Update</button>
+             <button class="btn btn-sm btn-danger" onclick="softDeleteIngredient(${idx})"><i class="ti ti-trash"></i></button>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMaterialPackaging(showDeleted) {
+  const body = document.getElementById('mat-pack-body');
+  if (!body) return;
+  const list = showDeleted ? packagingMaster : packagingMaster.filter(p => !p.deleted);
+  if (list.length === 0) {
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--bo-muted);padding:24px;">No packaging items yet. Click "Add Item" to get started.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.map((item) => {
+    const idx = packagingMaster.indexOf(item);
+    const isDel = !!item.deleted;
+    return `
+    <tr class="${isDel ? 'soft-deleted' : ''}">
+      <td style="font-weight:500;">${item.name}${isDel ? '<span class="deleted-tag"> Deleted</span>' : ''}</td>
+      <td><span class="badge badge-gold">${item.type}</span></td>
+      <td>${item.size}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <input type="number" id="mat-pack-rate-${idx}" value="${item.rate}" style="width:70px;padding:4px 6px;font-size:12px;" ${isDel ? 'disabled' : ''}>
+          <button class="btn btn-sm" style="padding:3px 5px;" onclick="viewPackagingHistory(${idx})" title="History"><i class="ti ti-history"></i></button>
+        </div>
+      </td>
+      <td><input type="number" id="mat-pack-stock-${idx}" value="${item.stockQty || 0}" style="width:65px;padding:4px 6px;font-size:12px;" ${isDel ? 'disabled' : ''}></td>
+      <td><input type="number" id="mat-pack-min-${idx}" value="${item.minAlert || 0}" style="width:65px;padding:4px 6px;font-size:12px;" ${isDel ? 'disabled' : ''}></td>
+      <td>${getStockBadge(item)}</td>
+      <td style="font-size:12px;color:var(--bo-muted);">${item.vendor}</td>
+      <td style="display:flex;gap:4px;align-items:center;">
+        ${isDel
+          ? `<button class="btn btn-sm btn-success-solid" onclick="restorePackagingItem(${idx})"><i class="ti ti-restore"></i></button>
+             <button class="btn btn-sm btn-danger-solid" onclick="hardDeletePackagingItem(${idx})"><i class="ti ti-trash-x"></i></button>`
+          : `<button class="btn btn-sm" onclick="updateMaterialItem('packaging',${idx})">Update</button>
+             <button class="btn btn-sm btn-danger" onclick="softDeletePackagingItem(${idx})"><i class="ti ti-trash"></i></button>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function updateMaterialItem(type, idx) {
+  try {
+    if (type === 'ingredient') {
+      const item = ingredientsMaster[idx];
+      const newRate  = parseFloat(document.getElementById(`mat-ing-rate-${idx}`).value) || 0;
+      const newStock = parseInt(document.getElementById(`mat-ing-stock-${idx}`).value) || 0;
+      const newMin   = parseInt(document.getElementById(`mat-ing-min-${idx}`).value) || 0;
+      if (newRate !== item.rate) {
+        const oldRate = item.rate;
+        item.rate = newRate;
+        item.updated = new Date().toLocaleDateString('en-IN');
+        if (!item.rateHistory) item.rateHistory = [];
+        item.rateHistory.unshift({ date: item.updated, timestamp: Date.now(), oldRate, newRate });
+        await API.updateIngredientRate(item.id, newRate, item.rateHistory);
+      }
+      item.stockQty = newStock;
+      item.minAlert = newMin;
+      await API.updateIngredientStock(item.id, newStock, newMin);
+    } else {
+      const item = packagingMaster[idx];
+      const newRate  = parseFloat(document.getElementById(`mat-pack-rate-${idx}`).value) || 0;
+      const newStock = parseInt(document.getElementById(`mat-pack-stock-${idx}`).value) || 0;
+      const newMin   = parseInt(document.getElementById(`mat-pack-min-${idx}`).value) || 0;
+      if (newRate !== item.rate) {
+        const oldRate = item.rate;
+        item.rate = newRate;
+        if (!item.rateHistory) item.rateHistory = [];
+        item.rateHistory.unshift({ date: new Date().toLocaleDateString('en-IN'), timestamp: Date.now(), oldRate, newRate });
+        await API.updatePackagingRate(item.id, newRate, item.rateHistory);
+      }
+      item.stockQty = newStock;
+      item.minAlert = newMin;
+      await API.updatePackagingStock(item.id, newStock, newMin);
+    }
+    renderMaterialsMaster();
+    showToast('Updated successfully!');
+  } catch(err) { showToast('Update failed: ' + err.message, true); }
+}
+
+function showAddMaterialModal() {
+  if (currentMaterialTab === 'ingredients') showAddIngredient();
+  else showAddPackaging();
+}
+
+// ── AI Invoice Scanner ───────────────────────────────────────
+
+function showScanInvoice() {
+  _scanFile = null; _scanItems = [];
+  openModal(`
+    <div class="modal-header"><h3>🤖 Scan Supplier Invoice</h3><button class="btn btn-sm" onclick="closeModalBtn()"><i class="ti ti-x"></i></button></div>
+    <div class="modal-body">
+      <div id="scan-dropzone" style="border:2px dashed var(--bo-gold);border-radius:10px;padding:36px;text-align:center;cursor:pointer;" onclick="document.getElementById('scan-file-input').click()" ondragover="event.preventDefault();this.style.background='rgba(196,154,60,0.06)';" ondrop="handleScanDrop(event)">
+        <i class="ti ti-photo-scan" style="font-size:36px;color:var(--bo-gold);display:block;margin-bottom:8px;"></i>
+        <div style="font-weight:500;margin-bottom:4px;">Drop invoice image here or click to upload</div>
+        <div style="font-size:12px;color:var(--bo-muted);">Supports JPG, PNG, HEIC, WebP</div>
+      </div>
+      <input type="file" id="scan-file-input" accept="image/*" style="display:none;" onchange="handleScanFile(this.files[0])">
+      <div id="scan-preview-wrap" style="display:none;margin-top:14px;text-align:center;">
+        <img id="scan-preview" style="max-height:120px;border-radius:6px;border:1px solid var(--bo-border);max-width:100%;">
+        <div style="margin-top:10px;"><button class="btn btn-gold" onclick="runScan()"><i class="ti ti-sparkles"></i> Scan with Gemini AI</button></div>
+      </div>
+      <div id="scan-results" style="display:none;margin-top:16px;">
+        <div style="font-weight:500;margin-bottom:8px;font-size:13.5px;">Detected Items — review & confirm:</div>
+        <div id="scan-items-list"></div>
+        <div style="margin-top:8px;"><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="scan-update-stock" checked> Also update stock quantity from invoice quantities</label></div>
+        <button class="btn btn-gold" style="margin-top:12px;width:100%;justify-content:center;" onclick="confirmScanImport()"><i class="ti ti-check"></i> Import Selected Items</button>
+      </div>
+    </div>`);
+}
+
+function handleScanFile(file) {
+  if (!file) return;
+  _scanFile = file;
+  const url = URL.createObjectURL(file);
+  document.getElementById('scan-preview').src = url;
+  document.getElementById('scan-preview-wrap').style.display = 'block';
+}
+
+function handleScanDrop(e) {
+  e.preventDefault();
+  e.currentTarget.style.background = '';
+  const file = e.dataTransfer.files[0];
+  if (file) handleScanFile(file);
+}
+
+async function runScan() {
+  if (!_scanFile) { showToast('Please upload an image first', true); return; }
+  showToast('Scanning with Gemini AI…');
+  try {
+    await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const base64 = ev.target.result.split(',')[1];
+          const result = await API.scanInvoice(base64);
+          _scanItems = result.items || [];
+          renderScanResults(_scanItems);
+          resolve();
+        } catch(err) { reject(err); }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(_scanFile);
+    });
+  } catch(e) { showToast('Scan failed: ' + e.message, true); }
+}
+
+function renderScanResults(items) {
+  document.getElementById('scan-results').style.display = 'block';
+  if (items.length === 0) {
+    document.getElementById('scan-items-list').innerHTML = '<div style="color:var(--bo-muted);font-size:13px;padding:10px 0;">No items detected. Try a clearer image.</div>';
+    return;
+  }
+  document.getElementById('scan-items-list').innerHTML = items.map((item, i) => `
+    <div style="display:grid;grid-template-columns:2fr 0.5fr 0.8fr 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(232,213,190,0.3);">
+      <input type="text" id="scan-name-${i}" value="${item.name}" style="font-size:12px;padding:4px 6px;">
+      <input type="number" id="scan-qty-${i}" value="${item.quantity || 1}" style="font-size:12px;padding:4px 6px;">
+      <input type="text" id="scan-unit-${i}" value="${item.unit || ''}" style="font-size:12px;padding:4px 6px;">
+      <input type="number" id="scan-price-${i}" value="${item.unitPrice || 0}" style="font-size:12px;padding:4px 6px;">
+      <select id="scan-type-${i}" style="font-size:12px;padding:4px 6px;">
+        <option value="ingredient" ${item.type !== 'packaging' ? 'selected' : ''}>Ingredient</option>
+        <option value="packaging" ${item.type === 'packaging' ? 'selected' : ''}>Packaging</option>
+      </select>
+      <input type="checkbox" id="scan-check-${i}" checked style="width:16px;height:16px;accent-color:var(--bo-gold);">
+    </div>`).join('');
+}
+
+async function confirmScanImport() {
+  const updateStock = document.getElementById('scan-update-stock') && document.getElementById('scan-update-stock').checked;
+  let imported = 0;
+  for (let i = 0; i < _scanItems.length; i++) {
+    if (!document.getElementById(`scan-check-${i}`).checked) continue;
+    const name  = document.getElementById(`scan-name-${i}`).value.trim();
+    const qty   = parseInt(document.getElementById(`scan-qty-${i}`).value) || 1;
+    const unit  = document.getElementById(`scan-unit-${i}`).value || 'piece';
+    const price = parseFloat(document.getElementById(`scan-price-${i}`).value) || 0;
+    const type  = document.getElementById(`scan-type-${i}`).value;
+    if (!name) continue;
+    try {
+      if (type === 'ingredient') {
+        const saved = await API.addIngredient({ name, cat: 'Other', unit, rate: price });
+        if (updateStock) await API.updateIngredientStock(saved.id, qty, 0);
+        saved.stockQty = qty; saved.minAlert = 0;
+        ingredientsMaster.push(saved);
+      } else {
+        const saved = await API.addPackaging({ name, type: 'Other', size: 'Standard', rate: price, vendor: 'Supplier' });
+        if (updateStock) await API.updatePackagingStock(saved.id, qty, 0);
+        saved.stockQty = qty; saved.minAlert = 0;
+        packagingMaster.push(saved);
+      }
+      imported++;
+    } catch(e) { console.warn('Import item failed:', e.message); }
+  }
+  closeModalBtn();
+  renderMaterialsMaster();
+  showToast(`✅ Imported ${imported} item${imported !== 1 ? 's' : ''} successfully!`);
+}
+
+// ── Customer Database ────────────────────────────────────────
+
+async function loadCustomers() {
+  try { customersDB = await API.getCustomers(); } catch(e) { console.warn('Customers load failed:', e.message); }
+}
+
+function renderCustomerList() {
+  const body = document.getElementById('customers-table-body');
+  if (!body) return;
+  const q = ((document.getElementById('cust-search') && document.getElementById('cust-search').value) || '').toLowerCase();
+  const list = customersDB.filter(c => !c.deleted &&
+    (c.name.toLowerCase().includes(q) || (c.phone || '').includes(q) || (c.city || '').toLowerCase().includes(q)));
+  if (list.length === 0) {
+    body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--bo-muted);">No customers yet. Click "Add Customer" to get started.</td></tr>`;
+    return;
+  }
+  body.innerHTML = list.map(c => `
+    <tr>
+      <td style="font-weight:500;">${c.name}</td>
+      <td>${c.phone || '—'}</td>
+      <td>${c.city || '—'}</td>
+      <td>${c.totalOrders || 0}</td>
+      <td>₹${Number(c.totalValue || 0).toLocaleString('en-IN')}</td>
+      <td style="font-size:12px;color:var(--bo-muted);">${c.lastOrderDate || '—'}</td>
+      <td style="display:flex;gap:4px;">
+        <button class="btn btn-sm" onclick="navigate('sales')" title="New Invoice"><i class="ti ti-receipt"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="deleteCustomerEntry('${c.id}')" title="Delete"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`).join('');
+}
+
+function showAddCustomer() {
+  openModal(`
+    <div class="modal-header"><h3>Add Customer</h3><button class="btn btn-sm" onclick="closeModalBtn()"><i class="ti ti-x"></i></button></div>
+    <div class="modal-body">
+      <form onsubmit="saveNewCustomer(event)">
+        <div class="form-group"><label class="form-label required">Full Name</label><input type="text" id="nc-name" required placeholder="Customer full name" autofocus></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label required">Phone (WhatsApp)</label><input type="text" id="nc-phone" required placeholder="+91 XXXXX XXXXX"></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" id="nc-email" placeholder="email@example.com"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">City</label><input type="text" id="nc-city" placeholder="e.g. Mumbai"></div>
+          <div class="form-group"><label class="form-label">Notes</label><input type="text" id="nc-notes" placeholder="Preferences, allergies, etc."></div>
+        </div>
+        <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:8px;"><i class="ti ti-plus"></i> Add Customer</button>
+      </form>
+    </div>`);
+}
+
+async function saveNewCustomer(e) {
+  e.preventDefault();
+  try {
+    const data = {
+      name:  document.getElementById('nc-name').value.trim(),
+      phone: document.getElementById('nc-phone').value.trim(),
+      email: document.getElementById('nc-email').value.trim(),
+      city:  document.getElementById('nc-city').value.trim(),
+      notes: document.getElementById('nc-notes').value.trim(),
+    };
+    const saved = await API.addCustomer(data);
+    customersDB.push(saved);
+    renderCustomerList();
+    closeModalBtn();
+    showToast('Customer added!');
+  } catch(err) { showToast('Failed to add: ' + err.message, true); }
+}
+
+async function deleteCustomerEntry(id) {
+  try {
+    await API.deleteCustomer(id);
+    customersDB = customersDB.filter(c => c.id !== id);
+    renderCustomerList();
+    showToast('Customer deleted');
+  } catch(err) { showToast('Delete failed', true); }
+}
+
+// ── Sales Invoice Page ───────────────────────────────────────
+
+function initSalesPage() {
+  currentSaleItems = [];
+  currentSaleCustomer = null;
+  const selCust = document.getElementById('sale-selected-cust');
+  if (selCust) selCust.style.display = 'none';
+  const discEl = document.getElementById('sale-discount'); if (discEl) discEl.value = '0';
+  const gstEl  = document.getElementById('sale-gst'); if (gstEl) gstEl.value = '0';
+  const noteEl = document.getElementById('sale-notes'); if (noteEl) noteEl.value = '';
+  const payEl  = document.getElementById('sale-payment'); if (payEl) payEl.value = 'Cash';
+  const srch   = document.getElementById('sale-cust-search'); if (srch) srch.value = '';
+  const invNum = document.getElementById('inv-number'); if (invNum) invNum.textContent = 'New';
+  const invDate = document.getElementById('inv-date');
+  if (invDate) invDate.textContent = new Date().toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'});
+  const invBiz = document.getElementById('inv-business-name');
+  if (invBiz) invBiz.textContent = businessConfig.businessName || 'BakeFlow';
+  const invPhone = document.getElementById('inv-business-phone');
+  if (invPhone) invPhone.textContent = businessConfig.businessPhone || '';
+  const invBy = document.getElementById('inv-generated-by');
+  if (invBy) invBy.textContent = (currentSession && currentSession.name) || 'Unknown';
+  renderSaleItems();
+  updateSaleTotals();
+}
+
+function searchSaleCustomers() {
+  const q = ((document.getElementById('sale-cust-search') && document.getElementById('sale-cust-search').value) || '').toLowerCase();
+  const results = document.getElementById('sale-cust-results');
+  if (!results) return;
+  if (!q) { results.classList.add('hidden'); return; }
+  const matches = customersDB.filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').includes(q));
+  results.classList.remove('hidden');
+  results.innerHTML = matches.slice(0, 6).map(c => `
+    <div class="cust-result-item" onclick="selectSaleCustomer('${c.id}')">
+      <div><strong>${c.name}</strong> <span style="font-size:12px;color:var(--bo-muted);">— ${c.phone || ''} ${c.city ? '(' + c.city + ')' : ''}</span></div>
+      <i class="ti ti-chevron-right" style="color:var(--bo-muted);font-size:14px;"></i>
+    </div>`).join('') ||
+    `<div style="padding:10px 14px;color:var(--bo-muted);font-size:12px;">No match. <span style="cursor:pointer;color:var(--bo-gold-dark);" onclick="showAddCustomerForSale()">Add new?</span></div>`;
+}
+
+function selectSaleCustomer(id) {
+  const c = customersDB.find(x => x.id === id);
+  if (!c) return;
+  currentSaleCustomer = c;
+  const results = document.getElementById('sale-cust-results'); if (results) results.classList.add('hidden');
+  const srch = document.getElementById('sale-cust-search'); if (srch) srch.value = '';
+  const sel = document.getElementById('sale-selected-cust'); if (sel) sel.style.display = 'block';
+  const sName = document.getElementById('sale-cust-name'); if (sName) sName.textContent = c.name;
+  const sDet  = document.getElementById('sale-cust-detail'); if (sDet) sDet.textContent = [c.phone, c.city].filter(Boolean).join(' · ');
+  updateInvoicePreview();
+}
+
+function clearSaleCustomer() {
+  currentSaleCustomer = null;
+  const sel = document.getElementById('sale-selected-cust'); if (sel) sel.style.display = 'none';
+  updateInvoicePreview();
+}
+
+function showAddCustomerForSale() {
+  const results = document.getElementById('sale-cust-results'); if (results) results.classList.add('hidden');
+  showAddCustomer();
+}
+
+function showAddSaleItemFromCatalog() {
+  const active = catalogProducts.filter(p => !p.deleted);
+  openModal(`
+    <div class="modal-header"><h3>Add from Catalog</h3><button class="btn btn-sm" onclick="closeModalBtn()"><i class="ti ti-x"></i></button></div>
+    <div class="modal-body">
+      ${active.length === 0
+        ? '<div style="color:var(--bo-muted);padding:16px;text-align:center;">No products in catalog yet.</div>'
+        : active.map(p => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--bo-border);">
+            <div><span style="font-size:18px;">${p.emoji}</span> <strong>${p.name}</strong> <span style="font-size:12px;color:var(--bo-muted);">— ₹${p.sell}</span></div>
+            <button class="btn btn-sm btn-gold" onclick="addSaleItemFromProduct('${p.id}');closeModalBtn();">Add</button>
+          </div>`).join('')
+      }
+    </div>`);
+}
+
+function addSaleItemFromProduct(productId) {
+  const p = catalogProducts.find(x => x.id === productId);
+  if (!p) return;
+  currentSaleItems.push({ id: Date.now() + '', name: p.name, description: p.cat, qty: 1, unitPrice: p.sell });
+  renderSaleItems();
+  updateSaleTotals();
+}
+
+function addCustomSaleItem() {
+  currentSaleItems.push({ id: Date.now() + '', name: '', description: '', qty: 1, unitPrice: 0 });
+  renderSaleItems();
+  updateSaleTotals();
+}
+
+function renderSaleItems() {
+  const container = document.getElementById('sale-items-list');
+  const empty     = document.getElementById('sale-items-empty');
+  if (!container) return;
+  if (currentSaleItems.length === 0) {
+    container.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  container.innerHTML = currentSaleItems.map((item, i) => `
+    <div class="sale-item-row">
+      <input type="text" value="${item.name}" placeholder="Item name" oninput="updateSaleItem(${i},'name',this.value)">
+      <input type="number" value="${item.qty}" min="0.1" step="0.1" style="width:60px;" oninput="updateSaleItem(${i},'qty',this.value)">
+      <input type="number" value="${item.unitPrice}" min="0" style="width:80px;" oninput="updateSaleItem(${i},'unitPrice',this.value)">
+      <span style="font-size:13px;font-weight:500;color:var(--bo-gold-dark);white-space:nowrap;">₹${(item.qty * item.unitPrice).toFixed(2)}</span>
+      <button class="remove-btn" onclick="removeSaleItem(${i})"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+
+function updateSaleItem(idx, field, val) {
+  if (!currentSaleItems[idx]) return;
+  currentSaleItems[idx][field] = (field === 'qty' || field === 'unitPrice') ? (parseFloat(val) || 0) : val;
+  updateSaleTotals();
+}
+
+function removeSaleItem(idx) {
+  currentSaleItems.splice(idx, 1);
+  renderSaleItems();
+  updateSaleTotals();
+}
+
+function updateSaleTotals() {
+  const subtotal = currentSaleItems.reduce((s, i) => s + (i.qty * i.unitPrice), 0);
+  const discount = parseFloat((document.getElementById('sale-discount') && document.getElementById('sale-discount').value) || 0) || 0;
+  const gstPct   = parseFloat((document.getElementById('sale-gst') && document.getElementById('sale-gst').value) || 0) || 0;
+  const gstAmt   = ((subtotal - discount) * gstPct) / 100;
+  const total    = subtotal - discount + gstAmt;
+  const fmt = n => Number(n).toFixed(2);
+  const elSet = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  elSet('sale-subtotal', fmt(subtotal));
+  elSet('sale-discount-show', fmt(discount));
+  elSet('sale-gst-amt', fmt(gstAmt));
+  elSet('sale-total', fmt(total));
+  updateInvoicePreview();
+}
+
+function updateInvoicePreview() {
+  const subtotal = currentSaleItems.reduce((s, i) => s + (i.qty * i.unitPrice), 0);
+  const discount = parseFloat((document.getElementById('sale-discount') && document.getElementById('sale-discount').value) || 0) || 0;
+  const gstPct   = parseFloat((document.getElementById('sale-gst') && document.getElementById('sale-gst').value) || 0) || 0;
+  const gstAmt   = ((subtotal - discount) * gstPct) / 100;
+  const total    = subtotal - discount + gstAmt;
+  const fmt = n => Number(n).toFixed(2);
+  const elSet = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  const elStyle = (id, prop, val) => { const e = document.getElementById(id); if (e) e.style[prop] = val; };
+
+  // Customer
+  elSet('inv-cust-name',   currentSaleCustomer ? currentSaleCustomer.name : '—');
+  elSet('inv-cust-detail', currentSaleCustomer ? [currentSaleCustomer.phone, currentSaleCustomer.city].filter(Boolean).join(' · ') : 'Select a customer above');
+
+  // Items table
+  const tbody = document.getElementById('inv-items-body');
+  if (tbody) {
+    tbody.innerHTML = currentSaleItems.length === 0
+      ? '<tr><td colspan="4" style="color:var(--bo-muted);text-align:center;padding:10px;">Add items above</td></tr>'
+      : currentSaleItems.map(i => `<tr><td>${i.name||'—'}</td><td style="text-align:right;">${i.qty}</td><td style="text-align:right;">₹${Number(i.unitPrice).toFixed(2)}</td><td style="text-align:right;">₹${(i.qty*i.unitPrice).toFixed(2)}</td></tr>`).join('');
+  }
+
+  // Totals
+  elSet('inv-subtotal', fmt(subtotal));
+  elSet('inv-total', fmt(total));
+  elStyle('inv-discount-row', 'display', discount > 0 ? '' : 'none');
+  elSet('inv-discount', fmt(discount));
+  elStyle('inv-gst-row', 'display', gstPct > 0 ? '' : 'none');
+  elSet('inv-gst-pct', gstPct);
+  elSet('inv-gst-amt', fmt(gstAmt));
+
+  // Meta
+  const payment = (document.getElementById('sale-payment') && document.getElementById('sale-payment').value) || 'Cash';
+  elSet('inv-payment', payment);
+  const notes = (document.getElementById('sale-notes') && document.getElementById('sale-notes').value) || '';
+  elStyle('inv-notes-row', 'display', notes ? '' : 'none');
+  elSet('inv-notes', notes);
+}
+
+function printInvoice() {
+  updateInvoicePreview();
+  window.print();
+}
+
+async function sendSaleWhatsApp() {
+  if (!currentSaleCustomer) { showToast('Please select a customer first', true); return; }
+  if (currentSaleItems.length === 0) { showToast('Please add at least one item', true); return; }
+  showToast('Saving invoice…');
+  const saleId = await doSaveSale();
+  if (!saleId) return;
+  try {
+    await API.sendSaleWhatsApp(saleId);
+    salesInvoices = await API.getSales();
+    showToast('✅ WhatsApp sent!');
+  } catch(e) { showToast('WhatsApp failed: ' + e.message, true); }
+}
+
+async function saveSaleInvoice() {
+  if (!currentSaleCustomer) { showToast('Please select a customer first', true); return; }
+  if (currentSaleItems.length === 0) { showToast('Please add at least one item', true); return; }
+  const id = await doSaveSale();
+  if (id) {
+    showToast('✅ Invoice saved!');
+    salesInvoices = await API.getSales();
+    initSalesPage();
+  }
+}
+
+async function doSaveSale() {
+  const subtotal = currentSaleItems.reduce((s, i) => s + (i.qty * i.unitPrice), 0);
+  const discount = parseFloat((document.getElementById('sale-discount') && document.getElementById('sale-discount').value) || 0) || 0;
+  const gstPct   = parseFloat((document.getElementById('sale-gst') && document.getElementById('sale-gst').value) || 0) || 0;
+  const gstAmt   = ((subtotal - discount) * gstPct) / 100;
+  const total    = subtotal - discount + gstAmt;
+  try {
+    const sale = await API.createSale({
+      customerId:    currentSaleCustomer ? currentSaleCustomer.id   : '',
+      customerName:  currentSaleCustomer ? currentSaleCustomer.name : '',
+      customerPhone: currentSaleCustomer ? currentSaleCustomer.phone: '',
+      customerCity:  currentSaleCustomer ? currentSaleCustomer.city : '',
+      items: currentSaleItems,
+      subtotal, discountAmt: discount, gstPct, gstAmt, totalAmount: total,
+      paymentMethod: (document.getElementById('sale-payment') && document.getElementById('sale-payment').value) || 'Cash',
+      notes: (document.getElementById('sale-notes') && document.getElementById('sale-notes').value) || '',
+    });
+    const numEl = document.getElementById('inv-number'); if (numEl) numEl.textContent = sale.invoiceNumber;
+    return sale.id;
+  } catch(e) {
+    showToast('Save failed: ' + e.message, true);
+    return null;
+  }
+}
+
+function resetSale() { initSalesPage(); }
+
+// ── All Invoices List ────────────────────────────────────────
+
+function renderInvoiceList() {
+  const body = document.getElementById('invoices-table-body');
+  if (!body) return;
+  const q = ((document.getElementById('inv-search') && document.getElementById('inv-search').value) || '').toLowerCase();
+  const list = salesInvoices.filter(i => !i.deleted &&
+    ((i.customerName || '').toLowerCase().includes(q) || (i.invoiceNumber || '').toLowerCase().includes(q)));
+  if (list.length === 0) {
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--bo-muted);">No invoices yet. <span style="cursor:pointer;color:var(--bo-gold-dark);" onclick="navigate('sales')">Create your first invoice →</span></td></tr>`;
+    return;
+  }
+  body.innerHTML = list.map(inv => {
+    const itemCount = Array.isArray(inv.items) ? inv.items.length : 0;
+    return `
+    <tr>
+      <td style="font-weight:500;">${inv.invoiceNumber}</td>
+      <td>${inv.customerName || '—'}</td>
+      <td style="font-size:12px;color:var(--bo-muted);">${itemCount} item${itemCount!==1?'s':''}</td>
+      <td style="color:var(--bo-gold-dark);font-weight:500;">₹${Number(inv.totalAmount).toLocaleString('en-IN')}</td>
+      <td><span class="badge badge-gold">${inv.paymentMethod || '—'}</span></td>
+      <td style="font-size:12px;">${inv.createdBy || '—'}</td>
+      <td style="font-size:12px;color:var(--bo-muted);">${inv.date || ''}</td>
+      <td>${inv.whatsappSent ? '<span class="badge badge-green">✅ Sent</span>' : '<span class="badge badge-rose">✗ No</span>'}</td>
+      <td style="display:flex;gap:4px;">
+        ${!inv.whatsappSent ? `<button class="btn btn-sm" onclick="resendWhatsApp('${inv.id}')" title="Send WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>` : ''}
+        <button class="btn btn-sm btn-danger" onclick="deleteSaleEntry('${inv.id}')"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function resendWhatsApp(id) {
+  showToast('Sending WhatsApp…');
+  try {
+    await API.sendSaleWhatsApp(id);
+    salesInvoices = await API.getSales();
+    renderInvoiceList();
+    showToast('✅ WhatsApp sent!');
+  } catch(e) { showToast('WhatsApp failed: ' + e.message, true); }
+}
+
+async function deleteSaleEntry(id) {
+  try {
+    await API.deleteSale(id);
+    salesInvoices = salesInvoices.filter(i => i.id !== id);
+    renderInvoiceList();
+    showToast('Invoice deleted');
+  } catch(err) { showToast('Delete failed', true); }
+}
+
+// ── Sales Reports (Admin only) ───────────────────────────────
+
+function renderSalesReports() {
+  const active = salesInvoices.filter(i => !i.deleted);
+  const revenue = active.reduce((s, i) => s + Number(i.totalAmount), 0);
+  const waSent  = active.filter(i => i.whatsappSent).length;
+  const avg     = active.length > 0 ? revenue / active.length : 0;
+  const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  el('sr-revenue',  '₹' + revenue.toLocaleString('en-IN'));
+  el('sr-invoices', active.length);
+  el('sr-avg',      '₹' + avg.toFixed(0));
+  el('sr-wa',       waSent);
+
+  // Monthly bar chart
+  const monthly = {};
+  active.forEach(i => {
+    const d = new Date(i.timestamp);
+    const key = d.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
+    monthly[key] = (monthly[key] || 0) + Number(i.totalAmount);
+  });
+  const maxVal = Math.max(...Object.values(monthly), 1);
+  const chartEl = document.getElementById('sr-monthly-chart');
+  if (chartEl) {
+    const entries = Object.entries(monthly).slice(-6);
+    chartEl.innerHTML = entries.length === 0
+      ? '<div style="color:var(--bo-muted);font-size:13px;">No sales data yet.</div>'
+      : entries.map(([month, val]) => `
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;"><span>${month}</span><span style="color:var(--bo-gold-dark);font-weight:500;">₹${val.toLocaleString('en-IN')}</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${(val/maxVal*100).toFixed(0)}%;"></div></div>
+          </div>`).join('');
+  }
+
+  // Table
+  const tb = document.getElementById('sr-table-body');
+  if (tb) {
+    tb.innerHTML = active.slice(0, 25).map(inv => `
+      <tr>
+        <td style="font-weight:500;">${inv.invoiceNumber}</td>
+        <td>${inv.customerName || '—'}</td>
+        <td style="color:var(--bo-gold-dark);">₹${Number(inv.totalAmount).toLocaleString('en-IN')}</td>
+        <td style="font-size:12px;">${inv.createdBy || '—'}</td>
+        <td style="font-size:12px;color:var(--bo-muted);">${inv.date || ''}</td>
+        <td>${inv.whatsappSent ? '✅' : '✗'}</td>
+      </tr>`).join('');
+  }
+}
+
+// ── Audit Log (Admin only) ───────────────────────────────────
+
+async function renderAuditLog() {
+  const body = document.getElementById('audit-table-body');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--bo-muted);">Loading…</td></tr>';
+  try {
+    const logs = await API.getAuditLog();
+    const q = ((document.getElementById('audit-search') && document.getElementById('audit-search').value) || '').toLowerCase();
+    const filtered = logs.filter(l =>
+      (l.action || '').toLowerCase().includes(q) ||
+      (l.employeeName || '').toLowerCase().includes(q) ||
+      (l.details || '').toLowerCase().includes(q)
+    );
+    if (filtered.length === 0) {
+      body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--bo-muted);">No audit log entries found.</td></tr>';
+      return;
+    }
+    body.innerHTML = filtered.slice(0, 100).map(l => `
+      <tr>
+        <td style="font-size:12px;color:var(--bo-muted);white-space:nowrap;">${l.date || ''} ${l.time || ''}</td>
+        <td style="font-weight:500;">${l.employeeName || '—'}</td>
+        <td><span class="badge badge-gold">${l.action || '—'}</span></td>
+        <td style="font-size:12px;color:var(--bo-muted);">${l.details || ''}</td>
+      </tr>`).join('');
+  } catch(e) {
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--bo-danger);">Failed to load audit log.</td></tr>';
+  }
+}

@@ -2,12 +2,27 @@ const express = require('express');
 const router = express.Router();
 const db = require('../sheets/sheetsClient');
 
-// POST - add an audit log entry
+// POST - add audit log entry (enhanced with employee attribution)
 router.post('/', async (req, res) => {
   try {
-    await db.addLog(req.body.action, req.body.details);
+    const { action, details, entityType, entityId } = req.body;
+    const employeeName  = req.headers['x-employee-name']  || 'Unknown';
+    const employeeEmail = req.headers['x-employee-email'] || '';
+    await db.addLog(action, details, employeeName, employeeEmail, entityType || '', entityId || '');
     res.json({ success: true });
   } catch (err) {
+    console.error('[audit] POST:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - fetch audit log for Reports page (admin only enforced on frontend)
+router.get('/', async (req, res) => {
+  try {
+    const logs = await db.getAll('AuditLog');
+    res.json(logs.reverse());
+  } catch (err) {
+    console.error('[audit] GET:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

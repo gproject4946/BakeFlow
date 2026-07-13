@@ -230,4 +230,104 @@ input[type=range]{padding:0;height:20px;}
   #modal-overlay,#modal-overlay *{visibility:visible;}
   #modal-overlay{position:absolute;left:0;top:0;width:100%;background:white;}
   .modal-header button,.modal-footer{display:none!important;}
+  #invoice-print-area,#invoice-print-area *{visibility:visible!important;}
+  #invoice-print-area{position:fixed;left:0;top:0;width:100%;background:white;z-index:99999;}
 }
+
+/* ─── Auth Overlay ──────────────────────────────────────────── */
+.auth-overlay{position:fixed;inset:0;background:linear-gradient(135deg,var(--bo-cream) 0%,var(--bo-warm) 100%);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-card{background:var(--bo-white);border-radius:16px;padding:36px 32px;width:100%;max-width:360px;box-shadow:0 16px 48px rgba(61,43,31,0.14),0 4px 12px rgba(61,43,31,0.08);text-align:center;border:1px solid var(--bo-border);}
+.auth-logo{font-size:44px;margin-bottom:10px;line-height:1;}
+.auth-brand{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:var(--bo-brown);margin-bottom:4px;}
+.auth-sub{font-size:12px;color:var(--bo-muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:20px;}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--bo-muted);font-size:12px;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--bo-border);}
+.auth-divider span{white-space:nowrap;}
+
+/* ─── Role Modal ────────────────────────────────────────────── */
+.role-option{flex:1;cursor:pointer;}
+.role-option input[type=radio]{display:none;}
+.role-option-inner{border:2px solid var(--bo-border);border-radius:10px;padding:14px 10px;text-align:center;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.role-option input[type=radio]:checked + .role-option-inner{border-color:var(--bo-gold);background:rgba(196,154,60,0.08);}
+.role-option-inner:hover{border-color:var(--bo-gold);background:rgba(196,154,60,0.05);}
+
+/* ─── Sidebar User Card ─────────────────────────────────────── */
+.sidebar-user{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);}
+.su-avatar{width:34px;height:34px;border-radius:50%;background:rgba(196,154,60,0.25);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden;}
+.su-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.su-info{flex:1;min-width:0;}
+.su-name{font-size:13px;font-weight:500;color:var(--bo-warm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.su-role{font-size:10px;color:rgba(245,230,204,0.45);text-transform:uppercase;letter-spacing:1px;margin-top:1px;}
+
+/* ─── Admin-only visibility (toggled by JS applySession) ────── */
+/* .admin-only elements are shown/hidden by JS setting display style directly */
+/* These classes are helper overrides only */
+body.role-admin .admin-only { display: revert !important; }
+body.role-admin .nav-section.admin-only { display: block !important; }
+body.role-admin .stats-grid.admin-only  { display: grid !important; }
+body.role-employee .admin-only { display: none !important; }
+
+
+/* ─── Materials Master page ─────────────────────────────────── */
+#mat-ingredients-section,#mat-packaging-section{margin-top:0;}
+.mat-status-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:500;}
+.mat-status-in{background:rgba(45,106,79,0.1);color:var(--bo-success);}
+.mat-status-low{background:rgba(196,154,60,0.15);color:var(--bo-gold-dark);}
+.mat-status-out{background:rgba(155,35,53,0.1);color:var(--bo-danger);}
+
+/* ─── Customer page ─────────────────────────────────────────── */
+.cust-avatar{width:36px;height:36px;border-radius:50%;background:var(--bo-warm);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;color:var(--bo-gold-dark);flex-shrink:0;}
+
+/* ─── Invoice Preview ───────────────────────────────────────── */
+.invoice-preview{background:var(--bo-white);border:1px solid var(--bo-border);border-radius:12px;padding:24px;font-size:13px;box-shadow:0 4px 20px rgba(61,43,31,0.08);}
+.inv-header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:2px solid var(--bo-gold);margin-bottom:16px;}
+.inv-brand{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--bo-brown);}
+.inv-num{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--bo-gold-dark);}
+.inv-bill-to{margin-bottom:16px;padding:12px;background:var(--bo-cream);border-radius:8px;}
+.inv-section-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--bo-muted);margin-bottom:4px;}
+.inv-cust-name{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--bo-brown);}
+.inv-table{width:100%;border-collapse:collapse;margin-bottom:12px;}
+.inv-table th{padding:6px 8px;background:var(--bo-cream);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--bo-muted);font-weight:500;border-bottom:1px solid var(--bo-border);}
+.inv-table td{padding:7px 8px;border-bottom:1px solid rgba(232,213,190,0.4);font-size:12.5px;}
+.inv-table tr:last-child td{border-bottom:none;}
+.inv-totals{padding:12px;background:var(--bo-cream);border-radius:8px;margin-bottom:12px;}
+.inv-total-row{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;}
+.inv-total-row.grand{font-size:15px;font-weight:600;color:var(--bo-gold-dark);border-top:1px dashed var(--bo-gold);padding-top:8px;margin-top:4px;}
+.inv-meta{font-size:11.5px;color:var(--bo-muted);margin-bottom:10px;display:flex;flex-direction:column;gap:3px;}
+.inv-meta-label{font-weight:500;color:var(--bo-brown);}
+.inv-generated-by{font-size:10px;color:var(--bo-muted);text-align:center;margin-bottom:6px;}
+.inv-thank{text-align:center;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--bo-gold-dark);}
+
+/* ─── Sale items list ───────────────────────────────────────── */
+.sale-item-row{display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(232,213,190,0.4);}
+.sale-item-row:last-child{border-bottom:none;}
+.sale-item-row input{padding:5px 8px;font-size:12.5px;}
+
+/* ─── Customer search in sales ──────────────────────────────── */
+.cust-result-item{padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(232,213,190,0.3);transition:background 0.12s;display:flex;justify-content:space-between;align-items:center;}
+.cust-result-item:last-child{border-bottom:none;}
+.cust-result-item:hover{background:var(--bo-warm);}
+
+/* ─── Invoice list page ─────────────────────────────────────── */
+.inv-amount{font-weight:600;color:var(--bo-gold-dark);}
+.inv-badge-payment{display:inline-flex;align-items:center;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:500;}
+.pay-cash{background:rgba(45,106,79,0.1);color:var(--bo-success);}
+.pay-upi{background:rgba(26,74,122,0.1);color:var(--bo-info);}
+.pay-card{background:rgba(196,154,60,0.12);color:var(--bo-gold-dark);}
+.pay-credit{background:rgba(155,35,53,0.1);color:var(--bo-danger);}
+
+/* ─── Responsive additions ──────────────────────────────────── */
+@media(max-width:900px){
+  #page-sales .content > div[style*="grid-template-columns:1fr 420px"]{grid-template-columns:1fr!important;}
+  #page-calculator .content > div[style*="grid-template-columns:1fr 380px"]{grid-template-columns:1fr!important;}
+  #invoice-preview-wrap{position:static!important;}
+}
+@media(max-width:768px){
+  .sidebar{width:200px;}
+  .main{margin-left:200px;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .ingredient-row{grid-template-columns:1fr 1fr 1fr;}
+  .form-row,.form-row-3{grid-template-columns:1fr;}
+  .auth-card{padding:24px 20px;}
+}
+

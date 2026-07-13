@@ -3,50 +3,125 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BlissOven — Bakery Cost Calculator</title>
-  <meta name="description" content="Professional cost calculator for BlissOven bakery. Track ingredient costs, labour, packaging, and calculate profit margins for all your baked products.">
-
-  <!-- Google Fonts -->
+  <title>BakeFlow — Bakery ERP</title>
+  <meta name="description" content="BakeFlow — End-to-end bakery management: cost calculator, inventory, invoicing, and customer management.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
-
-  <!-- Tabler Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-
-  <!-- App Styles -->
   <link rel="stylesheet" href="/css/style.css">
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
-<!-- Loading overlay (shown while connecting to Google Sheets) -->
+<!-- ── Auth Overlay ──────────────────────────────────────────── -->
+<div id="auth-overlay" class="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">🎂</div>
+    <div class="auth-brand">BakeFlow</div>
+    <div class="auth-sub">Bakery Management System</div>
+    <div id="auth-step-signin">
+      <div id="g-signin-btn" style="display:flex;justify-content:center;margin:24px 0 8px;"></div>
+      <div class="auth-divider"><span>or continue with name</span></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <input type="text" id="auth-name-input" placeholder="Your name..." style="flex:1;" onkeydown="if(event.key==='Enter')handleNameLogin()">
+        <button class="btn btn-gold" onclick="handleNameLogin()">Continue →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Role Modal ────────────────────────────────────────────── -->
+<div id="role-modal" class="auth-overlay hidden">
+  <div class="auth-card" style="max-width:400px;">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;margin-bottom:6px;">Who is logging in?</div>
+    <div style="font-size:13px;color:var(--bo-muted);margin-bottom:20px;">Select your role and enter your password.</div>
+    <div style="display:flex;gap:12px;margin-bottom:16px;">
+      <label class="role-option" id="role-admin-opt">
+        <input type="radio" name="role" value="admin" onchange="onRoleChange('admin')" style="display:none;">
+        <div class="role-option-inner">
+          <i class="ti ti-crown" style="font-size:20px;color:var(--bo-gold-dark);"></i>
+          <div style="font-weight:500;">Admin</div>
+          <div style="font-size:11px;color:var(--bo-muted);">Full access</div>
+        </div>
+      </label>
+      <label class="role-option" id="role-emp-opt">
+        <input type="radio" name="role" value="employee" onchange="onRoleChange('employee')" style="display:none;">
+        <div class="role-option-inner">
+          <i class="ti ti-user" style="font-size:20px;color:var(--bo-info);"></i>
+          <div style="font-weight:500;">Employee</div>
+          <div style="font-size:11px;color:var(--bo-muted);">Day-to-day tasks</div>
+        </div>
+      </label>
+    </div>
+    <div id="employee-select-wrap" class="hidden">
+      <div class="form-group">
+        <label class="form-label">Select Employee</label>
+        <select id="employee-select">
+          <option value="staff1">Staff Member 1</option>
+          <option value="staff2">Staff Member 2</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div style="position:relative;">
+        <input type="password" id="role-password" placeholder="Enter password..." onkeydown="if(event.key==='Enter')submitRole();">
+        <button onclick="togglePassVis()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--bo-muted);"><i class="ti ti-eye" id="pass-eye-icon"></i></button>
+      </div>
+    </div>
+    <div id="role-error" style="color:var(--bo-danger);font-size:12px;margin-bottom:8px;display:none;"></div>
+    <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="submitRole()">Confirm &amp; Enter →</button>
+    <button class="btn btn-sm" style="width:100%;justify-content:center;margin-top:8px;" onclick="backToSignin()">← Back</button>
+  </div>
+</div>
+
+<!-- Loading overlay -->
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-spinner"></div>
   <div class="loading-text">Connecting to Google Sheets…</div>
 </div>
 
-<div class="app">
+<div class="app" id="main-app" style="display:none;">
 
 <!-- ── Sidebar ──────────────────────────────────────────────── -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <div class="brand">BlissOven</div>
-    <div class="sub">Cost Calculator</div>
+    <div class="brand">🎂 BakeFlow</div>
+    <div class="sub">Bakery ERP</div>
+  </div>
+  <!-- User card in sidebar -->
+  <div class="sidebar-user" id="sidebar-user">
+    <div class="su-avatar" id="su-avatar">👤</div>
+    <div class="su-info">
+      <div class="su-name" id="su-name">User</div>
+      <div class="su-role" id="su-role">Employee</div>
+    </div>
+    <button class="btn btn-sm" onclick="signOut()" title="Sign Out" style="padding:4px 8px;margin-left:auto;background:transparent;border-color:rgba(245,230,204,0.2);color:rgba(245,230,204,0.6);"><i class="ti ti-logout"></i></button>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section">Main</div>
     <div class="nav-item active" onclick="navigate('dashboard')"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
     <div class="nav-item" onclick="navigate('calculator')"><i class="ti ti-calculator"></i>Cost Calculator</div>
-    <div class="nav-item" onclick="navigate('products')"><i class="ti ti-package"></i>Product Catalog</div>
     <div class="nav-item" onclick="navigate('custom')"><i class="ti ti-sparkles"></i>Custom Order</div>
-    <div class="nav-section">Settings</div>
-    <div class="nav-item" onclick="navigate('ingredients')"><i class="ti ti-leaf"></i>Ingredient Master</div>
-    <div class="nav-item" onclick="navigate('packaging')"><i class="ti ti-box"></i>Packaging Master</div>
-    <div class="nav-item" onclick="navigate('labour')"><i class="ti ti-users"></i>Labour Settings</div>
-    <div class="nav-item" onclick="navigate('overheads')"><i class="ti ti-building"></i>Overhead Settings</div>
-    <div class="nav-section">Reports</div>
-    <div class="nav-item" onclick="navigate('orders')"><i class="ti ti-receipt"></i>Saved Orders</div>
-    <div class="nav-item" onclick="navigate('reports')"><i class="ti ti-chart-bar"></i>Reports</div>
+    <div class="nav-section">Inventory</div>
+    <div class="nav-item" onclick="navigate('materials')"><i class="ti ti-leaf"></i>Raw Materials</div>
+    <div class="nav-item" onclick="navigate('products')"><i class="ti ti-package"></i>Product Catalog</div>
+    <div class="nav-section">Sales</div>
+    <div class="nav-item" onclick="navigate('sales')"><i class="ti ti-receipt"></i>New Invoice</div>
+    <div class="nav-item" onclick="navigate('invoices')"><i class="ti ti-list"></i>All Invoices</div>
+    <div class="nav-item" onclick="navigate('customers')"><i class="ti ti-users"></i>Customers</div>
+    <div class="nav-section">History</div>
+    <div class="nav-item" onclick="navigate('orders')"><i class="ti ti-archive"></i>Saved Orders</div>
+    <!-- ADMIN ONLY sections -->
+    <div class="nav-section admin-only">Settings</div>
+    <div class="nav-item admin-only" onclick="navigate('labour')"><i class="ti ti-users"></i>Labour Settings</div>
+    <div class="nav-item admin-only" onclick="navigate('overheads')"><i class="ti ti-building"></i>Overhead Settings</div>
+    <div class="nav-section admin-only">Reports</div>
+    <div class="nav-item admin-only" onclick="navigate('reports')"><i class="ti ti-chart-bar"></i>Analytics</div>
+    <div class="nav-item admin-only" onclick="navigate('salesreports')"><i class="ti ti-trending-up"></i>Sales &amp; Revenue</div>
+    <div class="nav-item admin-only" onclick="navigate('auditlog')"><i class="ti ti-shield-check"></i>Audit Log</div>
   </nav>
 </aside>
 
@@ -56,22 +131,42 @@
 <!-- DASHBOARD PAGE -->
 <div id="page-dashboard">
   <div class="page-header">
-    <div class="page-title">Good morning, Komal ✦</div>
+    <div class="page-title" id="dash-greeting">Good morning ✦</div>
     <div style="display:flex;gap:8px;">
+      <button class="btn btn-sm" onclick="navigate('sales')"><i class="ti ti-receipt"></i> New Invoice</button>
       <button class="btn btn-gold btn-sm" onclick="navigate('calculator')"><i class="ti ti-plus"></i> New Calculation</button>
     </div>
   </div>
   <div class="content">
-    <div class="stats-grid">
+    <!-- Admin stats -->
+    <div class="stats-grid admin-only" id="admin-dash-stats">
       <div class="stat-card">
-        <div class="stat-label">Total Products</div>
-        <div class="stat-value gold" id="dash-products">—</div>
-        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">in catalog</div>
+        <div class="stat-label">This Month Revenue</div>
+        <div class="stat-value gold" id="dash-revenue">—</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">from sales</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Customers</div>
+        <div class="stat-value" id="dash-customers">—</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">in database</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Invoices</div>
+        <div class="stat-value" id="dash-invoices">—</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">sales generated</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Avg. Profit Margin</div>
         <div class="stat-value green" id="dash-margin">—</div>
-        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">across all products</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">across products</div>
+      </div>
+    </div>
+    <!-- Employee / general stats -->
+    <div class="stats-grid" id="employee-dash-stats">
+      <div class="stat-card">
+        <div class="stat-label">Total Products</div>
+        <div class="stat-value gold" id="dash-products">—</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">in catalog</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Saved Orders</div>
@@ -80,8 +175,13 @@
       </div>
       <div class="stat-card">
         <div class="stat-label">Highest Margin</div>
-        <div class="stat-value rose" id="dash-top">—</div>
+        <div class="stat-value rose" id="dash-top" style="font-size:18px;">—</div>
         <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">best performing</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Low Stock Alerts</div>
+        <div class="stat-value" id="dash-lowstock" style="color:var(--bo-danger);">—</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">items to restock</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
@@ -95,16 +195,19 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Cost Breakdown Guide</div>
-        <div style="font-size:13px;color:var(--bo-muted);margin-bottom:12px;">Average cost distribution across products</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Raw Materials</span><span style="font-weight:500;">45–55%</span></div><div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div></div>
-          <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Labour</span><span style="font-weight:500;">15–25%</span></div><div class="progress-bar"><div class="progress-fill" style="width:20%;background:#E8B4B8;"></div></div></div>
-          <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Packaging</span><span style="font-weight:500;">8–15%</span></div><div class="progress-bar"><div class="progress-fill" style="width:11%;background:#B4C4A8;"></div></div></div>
-          <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Overheads</span><span style="font-weight:500;">10–18%</span></div><div class="progress-bar"><div class="progress-fill" style="width:14%;background:#F5C4A8;"></div></div></div>
-          <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Decoration &amp; Others</span><span style="font-weight:500;">5–12%</span></div><div class="progress-bar"><div class="progress-fill" style="width:8%;background:#C4B4E8;"></div></div></div>
+        <div class="card-title">⚠️ Low Stock Alerts</div>
+        <div id="dash-lowstock-list"><div style="color:var(--bo-muted);font-size:13px;">No inventory data. <span style="cursor:pointer;text-decoration:underline;color:var(--bo-gold-dark);" onclick="navigate('materials')">Set up Raw Materials →</span></div></div>
+        <div style="margin-top:12px;">
+          <button class="btn btn-sm" onclick="navigate('materials')"><i class="ti ti-box"></i> Manage Stock</button>
         </div>
       </div>
+    </div>
+    <div class="card" id="recent-invoices-card" style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="card-title" style="margin:0;">Recent Invoices</div>
+        <button class="btn btn-sm" onclick="navigate('invoices')">View All →</button>
+      </div>
+      <div id="dash-recent-invoices"><div style="color:var(--bo-muted);font-size:13px;">No invoices yet. <span style="cursor:pointer;text-decoration:underline;color:var(--bo-gold-dark);" onclick="navigate('sales')">Create your first invoice →</span></div></div>
     </div>
     <div class="card">
       <div class="card-title">Product Catalog Overview</div>
@@ -127,9 +230,7 @@
   </div>
   <div class="content">
     <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;">
-      <!-- Left: Input Panel -->
       <div>
-        <!-- Product Details -->
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Product Details</div>
           <div class="form-row">
@@ -153,8 +254,6 @@
           </div>
           <div id="dynamic-fields"></div>
         </div>
-
-        <!-- Raw Materials -->
         <div class="card" style="margin-bottom:16px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div class="card-title" style="margin:0;">Raw Materials &amp; Ingredients</div>
@@ -169,8 +268,6 @@
             <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="raw-total">0.00</span></span>
           </div>
         </div>
-
-        <!-- Decoration -->
         <div class="card" style="margin-bottom:16px;" id="decoration-section">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div class="card-title" style="margin:0;">Decoration &amp; Finishing</div>
@@ -195,8 +292,6 @@
             <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="deco-total">0.00</span></span>
           </div>
         </div>
-
-        <!-- Packaging -->
         <div class="card" style="margin-bottom:16px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div class="card-title" style="margin:0;">Packaging &amp; Presentation</div>
@@ -206,7 +301,7 @@
             <button class="btn btn-sm" onclick="addPackItem('Cake Box')">+ Cake Box</button>
             <button class="btn btn-sm" onclick="addPackItem('Cake Board')">+ Cake Board</button>
             <button class="btn btn-sm" onclick="addPackItem('Carry Bag')">+ Carry Bag</button>
-            <button class="btn btn-sm" onclick="addPackItem('BlissOven Sticker')">+ Sticker</button>
+            <button class="btn btn-sm" onclick="addPackItem('Brand Sticker')">+ Sticker</button>
             <button class="btn btn-sm" onclick="addPackItem('Message Card')">+ Card</button>
             <button class="btn btn-sm" onclick="addPackItem('Ribbon')">+ Ribbon</button>
           </div>
@@ -219,8 +314,6 @@
             <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="pack-total">0.00</span></span>
           </div>
         </div>
-
-        <!-- Labour -->
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Labour Cost</div>
           <div class="form-row-3">
@@ -237,8 +330,6 @@
             <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="labour-total">375.00</span></span>
           </div>
         </div>
-
-        <!-- Overheads -->
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Overheads &amp; Utilities</div>
           <div class="form-row-3">
@@ -256,8 +347,6 @@
             <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="overhead-total">105.00</span></span>
           </div>
         </div>
-
-        <!-- Wastage & Buffer -->
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Wastage &amp; Buffer</div>
           <div class="form-row">
@@ -279,8 +368,6 @@
             <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="wastage-total">0.00</span></span>
           </div>
         </div>
-
-        <!-- Misc -->
         <div class="card">
           <div class="card-title">Miscellaneous Costs</div>
           <div class="form-row">
@@ -289,8 +376,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Right: Live Cost Breakdown -->
       <div style="position:sticky;top:72px;">
         <div class="highlight-box" style="margin-bottom:16px;">
           <div style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;margin-bottom:14px;">Live Cost Breakdown</div>
@@ -305,7 +390,6 @@
           <div class="cost-row"><span class="cost-label" style="font-size:12px;">Per Serving</span><span style="font-size:12px;color:var(--bo-muted);">₹<span id="r-per-serving">0.00</span></span></div>
           <div class="cost-row"><span class="cost-label" style="font-size:12px;">Break-even Price</span><span style="font-size:12px;color:var(--bo-muted);">₹<span id="r-breakeven">0.00</span></span></div>
         </div>
-
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Selling Price Calculator</div>
           <div class="form-group"><label class="form-label">Target Profit Margin</label>
@@ -331,12 +415,10 @@
           <div class="cost-row profit"><span class="cost-label">Profit %</span><span class="cost-val" style="color:var(--bo-success);"><span id="r-profit-pct">0</span>%</span></div>
           <div class="cost-row profit" style="border:none;"><span class="cost-label">Wholesale Price (−20%)</span><span class="cost-val">₹<span id="r-wholesale">0</span></span></div>
         </div>
-
         <div class="card" style="margin-bottom:16px;">
           <div style="font-size:12px;color:var(--bo-muted);margin-bottom:8px;display:flex;align-items:center;gap:4px;"><span class="dot"></span>Cost Composition</div>
           <div id="composition-bars"></div>
         </div>
-
         <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="saveOrder()"><i class="ti ti-device-floppy"></i> Save Calculation</button>
       </div>
     </div>
@@ -357,39 +439,210 @@
   </div>
 </div>
 
-<!-- INGREDIENTS MASTER PAGE -->
-<div id="page-ingredients" class="hidden">
+<!-- RAW MATERIALS MASTER PAGE (merged ingredients + packaging) -->
+<div id="page-materials" class="hidden">
   <div class="page-header">
-    <div class="page-title">Ingredient Master</div>
+    <div class="page-title">Raw Materials Master</div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="ing-show-deleted" onchange="renderIngredientsMaster()"> Show deleted</label>
-      <button class="btn btn-gold btn-sm" onclick="showAddIngredient()"><i class="ti ti-plus"></i> Add Ingredient</button>
+      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="mat-show-deleted" onchange="renderMaterialsMaster()"> Show deleted</label>
+      <button class="btn btn-gold btn-sm" onclick="showAddMaterialModal()"><i class="ti ti-plus"></i> Add Item</button>
     </div>
   </div>
   <div class="content">
-    <div class="card">
+    <!-- Inventory Summary Strip -->
+    <div style="display:flex;gap:16px;margin-bottom:20px;">
+      <div class="stat-card" style="flex:1;"><div class="stat-label">Total Items</div><div class="stat-value gold" id="mat-total">—</div></div>
+      <div class="stat-card" style="flex:1;"><div class="stat-label">Ingredients</div><div class="stat-value" id="mat-ing-count">—</div></div>
+      <div class="stat-card" style="flex:1;"><div class="stat-label">Packaging Items</div><div class="stat-value" id="mat-pack-count">—</div></div>
+    </div>
+    <!-- Tab switcher -->
+    <div class="tabs">
+      <div class="tab active" id="tab-ing" onclick="switchMaterialTab('ingredients')">🧪 Ingredients</div>
+      <div class="tab" id="tab-pack" onclick="switchMaterialTab('packaging')">📦 Packaging</div>
+    </div>
+    <!-- Ingredients table -->
+    <div id="mat-ingredients-section" class="card">
       <table>
-        <thead><tr><th>Ingredient</th><th>Category</th><th>Unit</th><th>Current Rate (₹)</th><th>Last Updated</th><th>Actions</th></tr></thead>
-        <tbody id="ingredients-master-body"></tbody>
+        <thead><tr><th>Name</th><th>Category</th><th>Unit</th><th>Rate (₹)</th><th>Last Updated</th><th>Actions</th></tr></thead>
+        <tbody id="mat-ing-body"></tbody>
+      </table>
+    </div>
+    <!-- Packaging table -->
+    <div id="mat-packaging-section" class="card hidden">
+      <table>
+        <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Rate (₹)</th><th>Vendor</th><th>Actions</th></tr></thead>
+        <tbody id="mat-pack-body"></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- PACKAGING PAGE -->
-<div id="page-packaging" class="hidden">
+<!-- Keep old pages as hidden redirectors (IDs preserved for JS compatibility) -->
+<div id="page-ingredients" class="hidden"></div>
+<div id="page-packaging" class="hidden"></div>
+
+<!-- CUSTOMERS PAGE -->
+<div id="page-customers" class="hidden">
   <div class="page-header">
-    <div class="page-title">Packaging Master</div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="pack-show-deleted" onchange="renderPackagingMaster()"> Show deleted</label>
-      <button class="btn btn-gold btn-sm" onclick="showAddPackaging()"><i class="ti ti-plus"></i> Add Item</button>
-    </div>
+    <div class="page-title">Customers</div>
+    <button class="btn btn-gold btn-sm" onclick="showAddCustomer()"><i class="ti ti-plus"></i> Add Customer</button>
   </div>
   <div class="content">
+    <div style="display:flex;gap:12px;margin-bottom:16px;">
+      <input type="text" id="cust-search" placeholder="Search by name or phone..." oninput="renderCustomerList()" style="max-width:300px;">
+    </div>
     <div class="card">
       <table>
-        <thead><tr><th>Item</th><th>Type</th><th>Size/Variant</th><th>Rate (₹)</th><th>Vendor</th><th>Actions</th></tr></thead>
-        <tbody id="packaging-master-body"></tbody>
+        <thead><tr><th>Name</th><th>Phone</th><th>City</th><th>Total Orders</th><th>Total Spent</th><th>Last Order</th><th>Actions</th></tr></thead>
+        <tbody id="customers-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- NEW INVOICE / SALES PAGE -->
+<div id="page-sales" class="hidden">
+  <div class="page-header">
+    <div class="page-title">New Invoice</div>
+    <button class="btn btn-sm" onclick="navigate('invoices')"><i class="ti ti-list"></i> All Invoices</button>
+  </div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:1fr 420px;gap:20px;align-items:start;">
+      <!-- Left: Builder -->
+      <div>
+        <!-- Step 1: Customer -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Step 1 — Customer</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <input type="text" id="sale-cust-search" placeholder="Search existing customer..." oninput="searchSaleCustomers()" style="flex:1;">
+            <button class="btn btn-sm" onclick="showAddCustomerForSale()"><i class="ti ti-plus"></i> New</button>
+          </div>
+          <div id="sale-cust-results" class="hidden" style="background:var(--bo-white);border:1px solid var(--bo-border);border-radius:6px;max-height:180px;overflow-y:auto;margin-bottom:8px;"></div>
+          <div id="sale-selected-cust" style="display:none;padding:10px;background:rgba(196,154,60,0.08);border:1px solid rgba(196,154,60,0.3);border-radius:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:start;">
+              <div>
+                <div style="font-weight:500;" id="sale-cust-name">—</div>
+                <div style="font-size:12px;color:var(--bo-muted);" id="sale-cust-detail">—</div>
+              </div>
+              <button class="btn btn-sm btn-danger" onclick="clearSaleCustomer()"><i class="ti ti-x"></i></button>
+            </div>
+          </div>
+        </div>
+        <!-- Step 2: Items -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Step 2 — Items</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <button class="btn btn-sm" onclick="showAddSaleItemFromCatalog()"><i class="ti ti-package"></i> From Catalog</button>
+            <button class="btn btn-sm" onclick="addCustomSaleItem()"><i class="ti ti-pencil"></i> Custom Item</button>
+          </div>
+          <div id="sale-items-list"></div>
+          <div style="font-size:12px;color:var(--bo-muted);margin-top:8px;" id="sale-items-empty">No items added yet.</div>
+        </div>
+        <!-- Step 3: Totals -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Step 3 — Totals &amp; Options</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">GST (%)</label>
+              <select id="sale-gst" onchange="updateSaleTotals()">
+                <option value="0">No GST (0%)</option>
+                <option value="5">5%</option><option value="12">12%</option>
+                <option value="18">18%</option><option value="28">28%</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Discount (₹)</label><input type="number" id="sale-discount" value="0" min="0" oninput="updateSaleTotals()"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Payment Method</label>
+              <select id="sale-payment" onchange="updateInvoicePreview()">
+                <option value="Cash">Cash</option><option value="UPI">UPI</option>
+                <option value="Card">Card</option><option value="Credit">Credit / Advance</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Notes</label><input type="text" id="sale-notes" placeholder="e.g. Birthday delivery by 6PM" oninput="updateInvoicePreview()"></div>
+          </div>
+          <div style="border-top:1px solid var(--bo-border);padding-top:12px;margin-top:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--bo-muted);">Subtotal</span><span>₹<span id="sale-subtotal">0.00</span></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--bo-muted);">Discount</span><span>−₹<span id="sale-discount-show">0.00</span></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span style="color:var(--bo-muted);">GST</span><span>₹<span id="sale-gst-amt">0.00</span></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:600;color:var(--bo-gold-dark);border-top:2px solid var(--bo-gold);padding-top:8px;margin-top:4px;"><span>Total</span><span>₹<span id="sale-total">0.00</span></span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm" onclick="resetSale()"><i class="ti ti-refresh"></i> Reset</button>
+          <button class="btn btn-sm" onclick="printInvoice()"><i class="ti ti-printer"></i> Print / PDF</button>
+          <button class="btn btn-sm" onclick="sendSaleWhatsApp()"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
+          <button class="btn btn-gold" onclick="saveSaleInvoice()"><i class="ti ti-device-floppy"></i> Save Invoice</button>
+        </div>
+      </div>
+      <!-- Right: Live Invoice Preview -->
+      <div id="invoice-preview-wrap" style="position:sticky;top:72px;">
+        <div class="invoice-preview" id="invoice-print-area">
+          <div class="inv-header">
+            <div>
+              <div class="inv-brand" id="inv-business-name">BakeFlow</div>
+              <div class="inv-contact" id="inv-business-phone" style="font-size:11px;color:var(--bo-muted);margin-top:2px;"></div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--bo-muted);">Invoice</div>
+              <div class="inv-num" id="inv-number">#NEW</div>
+              <div class="inv-date" id="inv-date" style="font-size:11px;color:var(--bo-muted);"></div>
+            </div>
+          </div>
+          <div class="inv-bill-to">
+            <div class="inv-section-label">Bill To</div>
+            <div class="inv-cust-name" id="inv-cust-name">—</div>
+            <div class="inv-cust-detail" id="inv-cust-detail" style="font-size:12px;color:var(--bo-muted);">Select a customer above</div>
+          </div>
+          <table class="inv-table">
+            <thead><tr><th>Item</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Rate</th><th style="text-align:right;">Amount</th></tr></thead>
+            <tbody id="inv-items-body"><tr><td colspan="4" style="color:var(--bo-muted);text-align:center;padding:12px;">Add items to see invoice preview</td></tr></tbody>
+          </table>
+          <div class="inv-totals">
+            <div class="inv-total-row"><span>Subtotal</span><span>₹<span id="inv-subtotal">0.00</span></span></div>
+            <div class="inv-total-row" id="inv-discount-row" style="display:none;"><span>Discount</span><span>−₹<span id="inv-discount">0.00</span></span></div>
+            <div class="inv-total-row" id="inv-gst-row" style="display:none;"><span>GST (<span id="inv-gst-pct">0</span>%)</span><span>₹<span id="inv-gst-amt">0.00</span></span></div>
+            <div class="inv-total-row grand"><span>Total</span><span>₹<span id="inv-total">0.00</span></span></div>
+          </div>
+          <div class="inv-meta">
+            <div><span class="inv-meta-label">Payment:</span> <span id="inv-payment">Cash</span></div>
+            <div id="inv-notes-row" style="display:none;"><span class="inv-meta-label">Note:</span> <span id="inv-notes"></span></div>
+          </div>
+          <div class="inv-generated-by">Generated by BakeFlow ERP</div>
+          <div class="inv-thank">Thank you for your order! 🙏</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ALL INVOICES PAGE -->
+<div id="page-invoices" class="hidden">
+  <div class="page-header">
+    <div class="page-title">All Invoices</div>
+    <button class="btn btn-gold btn-sm" onclick="navigate('sales')"><i class="ti ti-plus"></i> New Invoice</button>
+  </div>
+  <div class="content">
+    <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="inv-search" placeholder="Search by customer or invoice #..." oninput="renderInvoiceList()" style="max-width:300px;">
+      <select id="inv-filter-payment" style="max-width:160px;" onchange="renderInvoiceList()">
+        <option value="">All Payments</option>
+        <option value="Cash">Cash</option>
+        <option value="UPI">UPI</option>
+        <option value="Card">Card</option>
+        <option value="Credit">Credit</option>
+      </select>
+    </div>
+    <!-- Revenue summary strip (admin only) -->
+    <div class="stats-grid admin-only" id="inv-summary-strip" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value gold" id="inv-total-rev">₹0</div></div>
+      <div class="stat-card"><div class="stat-label">Total Invoices</div><div class="stat-value" id="inv-count">0</div></div>
+      <div class="stat-card"><div class="stat-label">Avg. Order Value</div><div class="stat-value" id="inv-avg">₹0</div></div>
+      <div class="stat-card"><div class="stat-label">Pending / Credit</div><div class="stat-value rose" id="inv-pending">0</div></div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Invoice #</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>By</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody id="invoices-table-body"></tbody>
       </table>
     </div>
   </div>
@@ -490,7 +743,7 @@
   </div>
 </div>
 
-<!-- REPORTS PAGE -->
+<!-- REPORTS PAGE (admin only) -->
 <div id="page-reports" class="hidden">
   <div class="page-header"><div class="page-title">Reports &amp; Analytics</div></div>
   <div class="content">
@@ -503,6 +756,34 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
       <div class="card"><div class="card-title">Profitability by Category</div><div id="profitability-chart"></div></div>
       <div class="card"><div class="card-title">Cost Component Analysis</div><div id="cost-analysis"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SALES REPORTS PAGE (admin only) -->
+<div id="page-salesreports" class="hidden">
+  <div class="page-header"><div class="page-title">Sales &amp; Revenue</div></div>
+  <div class="content">
+    <div class="stats-grid" style="margin-bottom:24px;">
+      <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value gold" id="sr-revenue">₹0</div></div>
+      <div class="stat-card"><div class="stat-label">Total Orders</div><div class="stat-value" id="sr-orders">0</div></div>
+      <div class="stat-card"><div class="stat-label">Avg. Order Value</div><div class="stat-value" id="sr-avg">₹0</div></div>
+      <div class="stat-card"><div class="stat-label">Top Customer</div><div class="stat-value green" id="sr-top-cust" style="font-size:16px;">—</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Revenue by Payment Method</div>
+      <div id="sr-payment-breakdown" style="margin-top:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- AUDIT LOG PAGE (admin only) -->
+<div id="page-auditlog" class="hidden">
+  <div class="page-header"><div class="page-title">Audit Log</div></div>
+  <div class="content">
+    <div class="card">
+      <div class="card-title">Recent Activity</div>
+      <div id="audit-log-list" style="font-size:13px;color:var(--bo-muted);">No activity logged yet.</div>
     </div>
   </div>
 </div>
