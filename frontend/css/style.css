@@ -331,3 +331,6 @@ body.role-employee .admin-only { display: none !important; }
   .auth-card{padding:24px 20px;}
 }
 
+
+/* ── Spin animation for scan loader ─────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }

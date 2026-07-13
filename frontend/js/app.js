@@ -1700,9 +1700,34 @@ function showScanInvoice() {
 function handleScanFile(file) {
   if (!file) return;
   _scanFile = file;
+
+  // Show preview wrap
+  document.getElementById('scan-preview-wrap').style.display = 'block';
+  document.getElementById('scan-results').style.display = 'none';
+
+  // Show filename and size
+  const nameEl = document.getElementById('scan-filename');
+  const sizeEl = document.getElementById('scan-filesize');
+  if (nameEl) nameEl.textContent = file.name;
+  if (sizeEl) {
+    const kb = (file.size / 1024).toFixed(1);
+    const mb = (file.size / (1024*1024)).toFixed(2);
+    sizeEl.textContent = file.size > 1024*1024 ? mb + ' MB · Ready to scan' : kb + ' KB · Ready to scan';
+  }
+
+  // Show image preview
   const url = URL.createObjectURL(file);
   document.getElementById('scan-preview').src = url;
-  document.getElementById('scan-preview-wrap').style.display = 'block';
+
+  // Update dropzone to confirm upload
+  const dz = document.getElementById('scan-dropzone');
+  if (dz) {
+    dz.style.background = 'rgba(45,106,79,0.04)';
+    dz.style.borderColor = 'rgba(45,106,79,0.4)';
+    dz.innerHTML = `<i class="ti ti-check" style="font-size:32px;color:var(--bo-success);display:block;margin-bottom:8px;"></i>
+      <div style="font-weight:500;color:var(--bo-success);margin-bottom:4px;">Image ready!</div>
+      <div style="font-size:12px;color:var(--bo-muted);">Click to change image</div>`;
+  }
 }
 
 function handleScanDrop(e) {
@@ -1714,7 +1739,27 @@ function handleScanDrop(e) {
 
 async function runScan() {
   if (!_scanFile) { showToast('Please upload an image first', true); return; }
-  showToast('Scanning with Gemini AI…');
+
+  // Show scanning state
+  const btn = document.getElementById('scan-btn');
+  const statusEl = document.getElementById('scan-status');
+  const statusText = document.getElementById('scan-status-text');
+  if (btn) btn.style.display = 'none';
+  if (statusEl) statusEl.style.display = 'block';
+
+  // Animated status messages to reassure user
+  const messages = [
+    'Uploading image to Gemini AI…',
+    'Reading your invoice…',
+    'Extracting line items…',
+    'Almost done, finalising results…'
+  ];
+  let msgIdx = 0;
+  const msgTimer = setInterval(() => {
+    msgIdx = (msgIdx + 1) % messages.length;
+    if (statusText) statusText.textContent = messages[msgIdx];
+  }, 3500);
+
   try {
     await new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -1723,6 +1768,8 @@ async function runScan() {
           const base64 = ev.target.result.split(',')[1];
           const result = await API.scanInvoice(base64);
           _scanItems = result.items || [];
+          clearInterval(msgTimer);
+          if (statusEl) statusEl.style.display = 'none';
           renderScanResults(_scanItems);
           resolve();
         } catch(err) { reject(err); }
@@ -1730,7 +1777,12 @@ async function runScan() {
       reader.onerror = reject;
       reader.readAsDataURL(_scanFile);
     });
-  } catch(e) { showToast('Scan failed: ' + e.message, true); }
+  } catch(e) {
+    clearInterval(msgTimer);
+    if (statusEl) statusEl.style.display = 'none';
+    if (btn) btn.style.display = 'block';
+    showToast('Scan failed: ' + e.message, true);
+  }
 }
 
 function renderScanResults(items) {
