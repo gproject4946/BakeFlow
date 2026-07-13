@@ -132,11 +132,21 @@ router.post('/:id/send-whatsapp', async (req, res) => {
       `_Invoice by: ${e.name}_`,
     ].filter(l => l !== null).join('\n');
 
+    // Format the phone number dynamically to ensure Twilio can route it
+    let targetPhone = (row.customerPhone || '').toString().trim().replace(/[^0-9+]/g, '');
+    if (!targetPhone.startsWith('+')) {
+      if (targetPhone.length === 10) {
+        targetPhone = '+91' + targetPhone; // Default to India country code
+      } else {
+        targetPhone = '+' + targetPhone;
+      }
+    }
+
     const twilio = require('twilio');
     const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
     await client.messages.create({
       from: process.env.TWILIO_WHATSAPP_FROM,
-      to: `whatsapp:${row.customerPhone}`,
+      to: `whatsapp:${targetPhone}`,
       body: lines,
     });
 
