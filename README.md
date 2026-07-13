@@ -553,6 +553,14 @@ Open **http://localhost:3000** in your browser — BakeFlow is running!
 | Page loads but data is empty | Check that the Google Sheet is shared with your service account email as Editor. |
 | Server crashes on startup | Confirm all required environment variables are set in Render, especially `GOOGLE_CREDENTIALS` (must be valid JSON). |
 
+## 💎 Premium UX & Safety Features
+
+BakeFlow incorporates high-end user interface enhancements designed to keep the application responsive, prevent data entry errors, and provide a premium user experience:
+* **Double-Click Prevention (Safe Actions):** When performing long-running network operations (such as saving a sales invoice, sending a WhatsApp receipt, or importing scanned items), the action buttons are immediately disabled and show a loading spinner (e.g. `Importing...` or `Saving...`). This prevents accidental duplicate API calls and double entries.
+* **Instant Toast Dismissal:** Notification toasts have a built-in reflow layout trigger to ensure CSS animations fire reliably. They automatically dismiss after 3 seconds, but can also be dismissed immediately with a click for advanced users.
+* **Soft-Delete Safety Checks:** Scanned items automatically ignore soft-deleted database entries, ensuring deleted items are never matched or incorrectly restocked during subsequent supplier invoice scans.
+* **Self-Healing Statistics:** The customer database dynamically cross-verifies statistics (such as order counts and total spent) against live invoice records when the database page is loaded, correcting any sync errors automatically.
+
 ---
 
 ## 🗂️ Project Structure
