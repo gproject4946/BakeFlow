@@ -432,26 +432,112 @@ function viewPackagingHistory(idx) {
 
 // ── Reports ───────────────────────────────────────────────────
 function renderReports() {
-  var el = document.getElementById('profitability-chart');
-  var active = catalogProducts.filter(p => !p.deleted);
-  if (active.length === 0) {
-    el.innerHTML = '<div style="color:var(--bo-muted);font-size:12px;">Add products to see analytics.</div>';
+  const activeProds = catalogProducts.filter(p => !p.deleted);
+  
+  // 1. Calculate Average Cost, Average Sell, Best Margin Product, Highest Cost Product
+  const avgCostEl = document.getElementById('rep-avg-cost');
+  const avgSellEl = document.getElementById('rep-avg-sell');
+  const bestMarginEl = document.getElementById('rep-best-margin');
+  const highestCostEl = document.getElementById('rep-highest-cost');
+  
+  if (activeProds.length === 0) {
+    if (avgCostEl) avgCostEl.textContent = '₹0';
+    if (avgSellEl) avgSellEl.textContent = '₹0';
+    if (bestMarginEl) bestMarginEl.textContent = '—';
+    if (highestCostEl) highestCostEl.textContent = '—';
   } else {
-    el.innerHTML = active.slice(0,8).map(p=>`
+    const totalCost = activeProds.reduce((sum, p) => sum + (Number(p.cost) || 0), 0);
+    const totalSell = activeProds.reduce((sum, p) => sum + (Number(p.sell) || 0), 0);
+    const avgCost = totalCost / activeProds.length;
+    const avgSell = totalSell / activeProds.length;
+    
+    // Best margin product
+    let bestProd = activeProds[0];
+    let maxMargin = Number(bestProd.margin) || 0;
+    for (const p of activeProds) {
+      const margin = Number(p.margin) || 0;
+      if (margin > maxMargin) {
+        maxMargin = margin;
+        bestProd = p;
+      }
+    }
+    
+    // Highest cost product
+    let highestProd = activeProds[0];
+    let maxCost = Number(highestProd.cost) || 0;
+    for (const p of activeProds) {
+      const cost = Number(p.cost) || 0;
+      if (cost > maxCost) {
+        maxCost = cost;
+        highestProd = p;
+      }
+    }
+    
+    if (avgCostEl) avgCostEl.textContent = `₹${Math.round(avgCost)}`;
+    if (avgSellEl) avgSellEl.textContent = `₹${Math.round(avgSell)}`;
+    if (bestMarginEl) bestMarginEl.textContent = `${bestProd.emoji} ${bestProd.name} (${maxMargin}%)`;
+    if (highestCostEl) highestCostEl.textContent = `${highestProd.emoji} ${highestProd.name} (₹${Math.round(maxCost)})`;
+  }
+  
+  // 2. Profitability by Category Chart
+  const el = document.getElementById('profitability-chart');
+  if (activeProds.length === 0) {
+    el.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:20px;text-align:center;">Add products to catalog to see analytics.</div>';
+  } else {
+    el.innerHTML = activeProds.slice(0, 8).map(p => `
       <div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;"><span>${p.emoji} ${p.name}</span><span style="font-weight:500;color:var(--bo-success);">${p.margin}%</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,p.margin)}%;"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;">
+          <span>${p.emoji} ${p.name}</span>
+          <span style="font-weight:500;color:var(--bo-success);">${p.margin}%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${Math.min(100, p.margin)}%;"></div>
+        </div>
       </div>`).join('');
   }
-  var el2 = document.getElementById('cost-analysis');
-  var cats = ['Raw Materials','Labour','Packaging','Overheads','Decoration'];
-  var vals = [50,20,11,14,5];
-  var colors = ['var(--bo-gold)','var(--bo-rose)','#B4C4A8','#F5C4A8','#C4B4E8'];
-  el2.innerHTML = cats.map((c,i)=>`
-    <div style="margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;"><span>${c}</span><span style="font-weight:500;">${vals[i]}%</span></div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${vals[i]}%;background:${colors[i]};"></div></div>
-    </div>`).join('');
+  
+  // 3. Cost Component Analysis Chart (from saved recipes/orders)
+  const el2 = document.getElementById('cost-analysis');
+  const activeOrders = savedOrders.filter(o => !o.deleted);
+  
+  if (activeOrders.length === 0) {
+    el2.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:20px;text-align:center;">Add cost calculations to see cost breakdown.</div>';
+  } else {
+    let raw = 0, labour = 0, pack = 0, overhead = 0, deco = 0;
+    activeOrders.forEach(o => {
+      raw += Number(o.summary && o.summary.rawCost) || 0;
+      labour += Number(o.labour && o.labour.totalCost) || 0;
+      pack += Number(o.summary && o.summary.packCost) || 0;
+      overhead += Number(o.overheads && o.overheads.totalCost) || 0;
+      deco += Number(o.summary && o.summary.decoCost) || 0;
+    });
+    
+    const sum = raw + labour + pack + overhead + deco;
+    const cats = ['Raw Materials', 'Labour', 'Packaging', 'Overheads', 'Decoration'];
+    const colors = ['var(--bo-gold)', 'var(--bo-rose)', '#B4C4A8', '#F5C4A8', '#C4B4E8'];
+    
+    if (sum === 0) {
+      el2.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:20px;text-align:center;">All calculations have zero costs.</div>';
+    } else {
+      const vals = [
+        Math.round((raw / sum) * 100),
+        Math.round((labour / sum) * 100),
+        Math.round((pack / sum) * 100),
+        Math.round((overhead / sum) * 100),
+        Math.round((deco / sum) * 100),
+      ];
+      el2.innerHTML = cats.map((c, i) => `
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;">
+            <span>${c}</span>
+            <span style="font-weight:500;">${vals[i]}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${vals[i]}%;background:${colors[i]};"></div>
+          </div>
+        </div>`).join('');
+    }
+  }
 }
 
 // ── Add Ingredient Modal ──────────────────────────────────────
