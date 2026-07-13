@@ -2199,11 +2199,37 @@ function resetSale() { initSalesPage(); }
 function renderInvoiceList() {
   const body = document.getElementById('invoices-table-body');
   if (!body) return;
+
+  // Calculate summary metrics
+  const activeInvoices = salesInvoices.filter(i => !i.deleted);
+  const totalRev = activeInvoices.reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
+  const totalCount = activeInvoices.length;
+  const avgVal = totalCount > 0 ? (totalRev / totalCount) : 0;
+  const pendingCredit = activeInvoices.filter(i => (i.paymentMethod || '').toLowerCase() === 'credit').length;
+
+  // Update DOM elements if they exist
+  const totalRevEl = document.getElementById('inv-total-rev');
+  const countEl = document.getElementById('inv-count');
+  const avgEl = document.getElementById('inv-avg');
+  const pendingEl = document.getElementById('inv-pending');
+
+  if (totalRevEl) totalRevEl.textContent = `₹${totalRev.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (countEl) countEl.textContent = totalCount;
+  if (avgEl) avgEl.textContent = `₹${avgVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (pendingEl) pendingEl.textContent = pendingCredit;
+
   const q = ((document.getElementById('inv-search') && document.getElementById('inv-search').value) || '').toLowerCase();
-  const list = salesInvoices.filter(i => !i.deleted &&
-    ((i.customerName || '').toLowerCase().includes(q) || (i.invoiceNumber || '').toLowerCase().includes(q)));
+  const filterPay = ((document.getElementById('inv-filter-payment') && document.getElementById('inv-filter-payment').value) || '');
+  
+  const list = salesInvoices.filter(i => {
+    if (i.deleted) return false;
+    const matchesSearch = ((i.customerName || '').toLowerCase().includes(q) || (i.invoiceNumber || '').toLowerCase().includes(q));
+    const matchesPayment = !filterPay || (i.paymentMethod || '') === filterPay;
+    return matchesSearch && matchesPayment;
+  });
+
   if (list.length === 0) {
-    body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--bo-muted);">No invoices yet. <span style="cursor:pointer;color:var(--bo-gold-dark);" onclick="navigate('sales')">Create your first invoice →</span></td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--bo-muted);">No matching invoices found. <span style="cursor:pointer;color:var(--bo-gold-dark);" onclick="navigate('sales')">Create one →</span></td></tr>`;
     return;
   }
   body.innerHTML = list.map(inv => {
