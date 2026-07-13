@@ -29,12 +29,14 @@ var _scanItems = [];
 
 // ── Default fallbacks (used if server returns nothing) ────────
 var DEFAULT_LABOUR = {
-  rates: { head: 200, deco: 180, pack: 100, delivery: 150, min: 100 },
+  empCount: 10,
+  monthlySalaries: 150000,
+  hoursPerDay: 8,
+  daysPerMonth: 26,
   times: { prep: 30, bake: 45, decoSimple: 30, decoComplex: 120, pack: 15 }
 };
 var DEFAULT_OVERHEAD = {
-  fixed: { rent: 15000, elec: 3000, gas: 1500, internet: 500, clean: 1000, days: 25, orders: 3 },
-  toggles: { elec: true, gas: true, water: true, rent: true, clean: true, depr: false, admin: false, gst: false }
+  fixed: { rent: 15000, elec: 3000, gas: 1500, clean: 1500 }
 };
 
 // ── Loading overlay ──────────────────────────────────────────
@@ -71,53 +73,36 @@ async function initApp() {
     var overheadSettings = settings.overhead || DEFAULT_OVERHEAD;
 
     // Populate labour inputs
-    var labourInputs = document.querySelectorAll('#page-labour input[type=number]');
-    if (labourInputs.length >= 5) {
-      labourInputs[0].value = labourSettings.rates.head;
-      labourInputs[1].value = labourSettings.rates.deco;
-      labourInputs[2].value = labourSettings.rates.pack;
-      labourInputs[3].value = labourSettings.rates.delivery;
-      labourInputs[4].value = labourSettings.rates.min;
-    }
-    var timeInputs = document.querySelectorAll('#page-labour .card:last-child input[type=number]');
-    if (timeInputs.length >= 5) {
-      timeInputs[0].value = labourSettings.times.prep;
-      timeInputs[1].value = labourSettings.times.bake;
-      timeInputs[2].value = labourSettings.times.decoSimple;
-      timeInputs[3].value = labourSettings.times.decoComplex;
-      timeInputs[4].value = labourSettings.times.pack;
-    }
+    document.getElementById('labour-emp-count').value       = labourSettings.empCount !== undefined ? labourSettings.empCount : 10;
+    document.getElementById('labour-monthly-salaries').value = labourSettings.monthlySalaries !== undefined ? labourSettings.monthlySalaries : 150000;
+    document.getElementById('labour-hours-per-day').value   = labourSettings.hoursPerDay !== undefined ? labourSettings.hoursPerDay : 8;
+    document.getElementById('labour-days-per-month').value  = labourSettings.daysPerMonth !== undefined ? labourSettings.daysPerMonth : 26;
+
+    // Populate default times
+    const times = labourSettings.times || DEFAULT_LABOUR.times;
+    document.getElementById('def-time-prep').value      = times.prep !== undefined ? times.prep : 30;
+    document.getElementById('def-time-bake').value      = times.bake !== undefined ? times.bake : 45;
+    document.getElementById('def-time-deco').value      = times.decoSimple !== undefined ? times.decoSimple : 30;
+    document.getElementById('def-time-deco-comp').value = times.decoComplex !== undefined ? times.decoComplex : 120;
+    document.getElementById('def-time-pack').value      = times.pack !== undefined ? times.pack : 15;
 
     // Populate overhead inputs
-    document.getElementById('monthly-rent').value  = overheadSettings.fixed.rent;
-    document.getElementById('monthly-elec').value  = overheadSettings.fixed.elec;
-    document.getElementById('monthly-gas').value   = overheadSettings.fixed.gas;
-    document.getElementById('monthly-clean').value = overheadSettings.fixed.clean;
-    document.getElementById('working-days').value  = overheadSettings.fixed.days;
-    document.getElementById('daily-orders').value  = overheadSettings.fixed.orders;
+    document.getElementById('monthly-rent').value  = overheadSettings.fixed && overheadSettings.fixed.rent !== undefined ? overheadSettings.fixed.rent : 15000;
+    document.getElementById('monthly-elec').value  = overheadSettings.fixed && overheadSettings.fixed.elec !== undefined ? overheadSettings.fixed.elec : 3000;
+    document.getElementById('monthly-gas').value   = overheadSettings.fixed && overheadSettings.fixed.gas !== undefined ? overheadSettings.fixed.gas : 1500;
+    document.getElementById('monthly-clean').value = overheadSettings.fixed && overheadSettings.fixed.clean !== undefined ? overheadSettings.fixed.clean : 1500;
 
-    // Wire overhead save button
+    // Wire save buttons
     var ohSaveBtn = document.querySelector('#page-overheads button');
     if (ohSaveBtn) ohSaveBtn.onclick = saveOverheadSettingsFromUI;
 
-    // Wire labour save buttons
     var labSave1 = document.querySelector('#page-labour .card:first-child button');
     var labSave2 = document.querySelector('#page-labour .card:last-child button');
     if (labSave1) labSave1.onclick = saveLabourSettingsFromUI;
     if (labSave2) labSave2.onclick = saveLabourSettingsFromUI;
 
-    // Load overhead toggles
-    var toggles    = document.querySelectorAll('#page-overheads .toggle');
-    var toggleKeys = ['elec','gas','water','rent','clean','depr','admin','gst'];
-    toggles.forEach((t, i) => {
-      var key = toggleKeys[i];
-      if (overheadSettings.toggles[key]) t.classList.add('on');
-      else t.classList.remove('on');
-      t.onclick = async () => { t.classList.toggle('on'); await saveOverheadSettingsFromUI(); };
-    });
-
-    // Default hourly wage in calculator
-    document.getElementById('labour-rate').value = labourSettings.rates.head;
+    // Update derived rates
+    deriveSettingsRates();
 
     // Update saved orders count
     document.getElementById('dash-orders').textContent = savedOrders.filter(o => !o.deleted).length;
@@ -147,62 +132,79 @@ async function initApp() {
 
 // ── Settings ──────────────────────────────────────────────────
 async function saveLabourSettingsFromUI() {
-  var labourInputs = document.querySelectorAll('#page-labour input[type=number]');
-  var timeInputs   = document.querySelectorAll('#page-labour .card:last-child input[type=number]');
-  var settings = {
-    rates: {
-      head:     +(labourInputs[0]?.value) || 200,
-      deco:     +(labourInputs[1]?.value) || 180,
-      pack:     +(labourInputs[2]?.value) || 100,
-      delivery: +(labourInputs[3]?.value) || 150,
-      min:      +(labourInputs[4]?.value) || 100,
-    },
+  const settings = {
+    empCount:        parseInt(document.getElementById('labour-emp-count').value) || 10,
+    monthlySalaries: parseFloat(document.getElementById('labour-monthly-salaries').value) || 0,
+    hoursPerDay:     parseFloat(document.getElementById('labour-hours-per-day').value) || 8,
+    daysPerMonth:    parseFloat(document.getElementById('labour-days-per-month').value) || 26,
     times: {
-      prep:       +(timeInputs[0]?.value) || 30,
-      bake:       +(timeInputs[1]?.value) || 45,
-      decoSimple: +(timeInputs[2]?.value) || 30,
-      decoComplex:+(timeInputs[3]?.value) || 120,
-      pack:       +(timeInputs[4]?.value) || 15,
-    },
+      prep:        parseInt(document.getElementById('def-time-prep').value) || 30,
+      bake:        parseInt(document.getElementById('def-time-bake').value) || 45,
+      decoSimple:  parseInt(document.getElementById('def-time-deco').value) || 30,
+      decoComplex: parseInt(document.getElementById('def-time-deco-comp').value) || 120,
+      pack:        parseInt(document.getElementById('def-time-pack').value) || 15,
+    }
   };
   await API.saveSettings('labour', settings);
-  document.getElementById('labour-rate').value = settings.rates.head;
+  deriveSettingsRates();
   recalculate();
   showToast('Labour settings saved!');
 }
 
 async function saveOverheadSettingsFromUI() {
-  var toggles    = document.querySelectorAll('#page-overheads .toggle');
-  var toggleKeys = ['elec','gas','water','rent','clean','depr','admin','gst'];
-  var toggleVals = {};
-  toggles.forEach((t, i) => { toggleVals[toggleKeys[i]] = t.classList.contains('on'); });
-
-  var settings = {
+  const settings = {
     fixed: {
-      rent:     +(document.getElementById('monthly-rent').value)  || 0,
-      elec:     +(document.getElementById('monthly-elec').value)  || 0,
-      gas:      +(document.getElementById('monthly-gas').value)   || 0,
-      internet: 500,
-      clean:    +(document.getElementById('monthly-clean').value) || 0,
-      days:     +(document.getElementById('working-days').value)  || 25,
-      orders:   +(document.getElementById('daily-orders').value)  || 3,
-    },
-    toggles: toggleVals,
+      rent:  parseFloat(document.getElementById('monthly-rent').value) || 0,
+      elec:  parseFloat(document.getElementById('monthly-elec').value) || 0,
+      gas:   parseFloat(document.getElementById('monthly-gas').value) || 0,
+      clean: parseFloat(document.getElementById('monthly-clean').value) || 0,
+    }
   };
   await API.saveSettings('overhead', settings);
-  calcDailyOverhead();
-  updateCalculatorOverheads(settings);
+  deriveSettingsRates();
+  recalculate();
   showToast('Overhead settings saved!');
 }
 
-function updateCalculatorOverheads(s) {
-  var denom = (s.fixed.days * s.fixed.orders) || 1;
-  document.getElementById('oh-elec').value  = s.toggles.elec  ? Math.round(s.fixed.elec  / denom) : 0;
-  document.getElementById('oh-gas').value   = s.toggles.gas   ? Math.round(s.fixed.gas   / denom) : 0;
-  document.getElementById('oh-water').value = s.toggles.water ? 5 : 0;
-  document.getElementById('oh-rent').value  = s.toggles.rent  ? Math.round(s.fixed.rent  / denom) : 0;
-  document.getElementById('oh-admin').value = s.toggles.clean ? Math.round(s.fixed.clean / denom) : 0;
-  recalculate();
+function deriveSettingsRates() {
+  const empCount = parseInt(document.getElementById('labour-emp-count').value) || 10;
+  const salaries = parseFloat(document.getElementById('labour-monthly-salaries').value) || 0;
+  const hours = parseFloat(document.getElementById('labour-hours-per-day').value) || 8;
+  const days = parseFloat(document.getElementById('labour-days-per-month').value) || 26;
+
+  const rent = parseFloat(document.getElementById('monthly-rent').value) || 0;
+  const elec = parseFloat(document.getElementById('monthly-elec').value) || 0;
+  const gas = parseFloat(document.getElementById('monthly-gas').value) || 0;
+  const clean = parseFloat(document.getElementById('monthly-clean').value) || 0;
+
+  const totalHours = days * hours;
+  const labourRate = totalHours > 0 ? (salaries / totalHours) : 0;
+  const totalOverhead = rent + elec + gas + clean;
+  const overheadRate = totalHours > 0 ? (totalOverhead / totalHours) : 0;
+
+  const dLabour = document.getElementById('derived-labour-rate-display');
+  const dOverhead = document.getElementById('derived-overhead-rate-display');
+  if (dLabour) dLabour.textContent = Math.round(labourRate);
+  if (dOverhead) dOverhead.textContent = Math.round(overheadRate);
+
+  const sLabour = document.getElementById('summary-monthly-labour');
+  const sOverheads = document.getElementById('summary-monthly-overheads');
+  const sTotal = document.getElementById('summary-monthly-total');
+  const sDaily = document.getElementById('summary-daily-cost');
+  const sHourly = document.getElementById('summary-hourly-cost');
+
+  if (sLabour) sLabour.textContent = salaries.toLocaleString('en-IN');
+  if (sOverheads) sOverheads.textContent = totalOverhead.toLocaleString('en-IN');
+  
+  const totalMonthlyCost = salaries + totalOverhead;
+  if (sTotal) sTotal.textContent = totalMonthlyCost.toLocaleString('en-IN');
+  if (sDaily) sDaily.textContent = days > 0 ? Math.round(totalMonthlyCost / days).toLocaleString('en-IN') : '0';
+  if (sHourly) sHourly.textContent = totalHours > 0 ? Math.round(totalMonthlyCost / totalHours).toLocaleString('en-IN') : '0';
+
+  const calcLabourRate = document.getElementById('labour-rate');
+  const calcOverheadRate = document.getElementById('overhead-rate');
+  if (calcLabourRate) calcLabourRate.value = labourRate.toFixed(2);
+  if (calcOverheadRate) calcOverheadRate.value = overheadRate.toFixed(2);
 }
 
 // ── Navigation ────────────────────────────────────────────────
@@ -924,15 +926,12 @@ function recalculate(){
   document.getElementById('labour-total').textContent=labourTotal.toFixed(2);
   document.getElementById('r-labour').textContent=labourTotal.toFixed(2);
 
-  var elec=+(document.getElementById('oh-elec').value)||0;
-  var gas=+(document.getElementById('oh-gas').value)||0;
-  var water=+(document.getElementById('oh-water').value)||0;
-  var rent=+(document.getElementById('oh-rent').value)||0;
-  var admin=+(document.getElementById('oh-admin').value)||0;
-  var delivery=+(document.getElementById('oh-delivery').value)||0;
-  var overheadTotal=elec+gas+water+rent+admin+delivery;
-  document.getElementById('overhead-total').textContent=overheadTotal.toFixed(2);
-  document.getElementById('r-overhead').textContent=overheadTotal.toFixed(2);
+  var ohRate = +(document.getElementById('overhead-rate').value) || 0;
+  var overheadTotal = (totalMins / 60) * ohRate;
+  document.getElementById('overhead-total').textContent = overheadTotal.toFixed(2);
+  document.getElementById('r-overhead').textContent = overheadTotal.toFixed(2);
+  var ohTimeDisplay = document.getElementById('overhead-time-display');
+  if (ohTimeDisplay) ohTimeDisplay.textContent = (totalMins / 60).toFixed(1) + ' hrs';
 
   var misc=+(document.getElementById('misc-cost').value)||0;
   document.getElementById('r-misc').textContent=misc.toFixed(2);
@@ -1067,7 +1066,6 @@ function loadTemplate(type){
       renderIngredients();renderDecorations();renderPackaging();
       document.getElementById('labour-prep').value=30;document.getElementById('labour-bake').value=45;
       document.getElementById('labour-deco').value=type==='theme-cake'?90:45;document.getElementById('labour-pack').value=15;
-      document.getElementById('oh-elec').value=25;document.getElementById('oh-gas').value=15;document.getElementById('oh-rent').value=50;
       recalculate();
     }
   },100);
@@ -1108,7 +1106,7 @@ async function saveOrder(){
     decorations:JSON.parse(JSON.stringify(decorations)),
     packaging:JSON.parse(JSON.stringify(packaging)),
     labour:{prep:+(document.getElementById('labour-prep').value)||0,bake:+(document.getElementById('labour-bake').value)||0,deco:+(document.getElementById('labour-deco').value)||0,pack:+(document.getElementById('labour-pack').value)||0,rate:+(document.getElementById('labour-rate').value)||0,hours:parseFloat(document.getElementById('labour-hours').textContent)||0,totalCost:parseFloat(document.getElementById('r-labour').textContent)||0},
-    overheads:{elec:+(document.getElementById('oh-elec').value)||0,gas:+(document.getElementById('oh-gas').value)||0,water:+(document.getElementById('oh-water').value)||0,rent:+(document.getElementById('oh-rent').value)||0,admin:+(document.getElementById('oh-admin').value)||0,delivery:+(document.getElementById('oh-delivery').value)||0,totalCost:parseFloat(document.getElementById('overhead-total').textContent)||0},
+    overheads:{elec:0,gas:0,water:0,rent:0,admin:0,delivery:0,rate:parseFloat(document.getElementById('overhead-rate').value)||0,totalCost:parseFloat(document.getElementById('overhead-total').textContent)||0},
     wastage:{pct:+(document.getElementById('wastage-pct').value)||0,bufferPct:+(document.getElementById('buffer-pct').value)||0,totalCost:parseFloat(document.getElementById('r-wastage').textContent)||0},
     misc:{cost:+(document.getElementById('misc-cost').value)||0,notes:document.getElementById('misc-notes').value||''},
     summary:{rawCost:parseFloat(document.getElementById('r-raw').textContent)||0,decoCost:parseFloat(document.getElementById('r-deco').textContent)||0,packCost:parseFloat(document.getElementById('r-pack').textContent)||0,totalCost:parseFloat(document.getElementById('r-cost').textContent)||0,perServing:parseFloat(document.getElementById('r-per-serving').textContent)||0,breakeven:parseFloat(document.getElementById('r-breakeven').textContent)||0,targetMargin:+(document.getElementById('margin-slider').value)||60,pricingRule:document.getElementById('price-rule').value,gstPct:+(document.getElementById('gst-pct').value)||0,sellingPrice:parseFloat(document.getElementById('r-selling').textContent)||0,profitAmount:parseFloat(document.getElementById('r-profit').textContent)||0,profitPct:parseFloat(document.getElementById('r-profit-pct').textContent)||0},
@@ -1146,7 +1144,7 @@ function loadOrderForEdit(orderId){
   packaging=JSON.parse(JSON.stringify(order.packaging||[]));
   renderIngredients();renderDecorations();renderPackaging();
   if(order.labour){document.getElementById('labour-prep').value=order.labour.prep;document.getElementById('labour-bake').value=order.labour.bake;document.getElementById('labour-deco').value=order.labour.deco;document.getElementById('labour-pack').value=order.labour.pack;document.getElementById('labour-rate').value=order.labour.rate;}
-  if(order.overheads){document.getElementById('oh-elec').value=order.overheads.elec;document.getElementById('oh-gas').value=order.overheads.gas;document.getElementById('oh-water').value=order.overheads.water;document.getElementById('oh-rent').value=order.overheads.rent;document.getElementById('oh-admin').value=order.overheads.admin;document.getElementById('oh-delivery').value=order.overheads.delivery||0;}
+  if(order.overheads){document.getElementById('overhead-rate').value=order.overheads.rate||order.overheads.hourlyRate||0;}
   if(order.wastage){document.getElementById('wastage-pct').value=order.wastage.pct;document.getElementById('wastage-val').textContent=order.wastage.pct+'%';document.getElementById('buffer-pct').value=order.wastage.bufferPct;document.getElementById('buffer-val').textContent=order.wastage.bufferPct+'%';}
   if(order.misc){document.getElementById('misc-cost').value=order.misc.cost;document.getElementById('misc-notes').value=order.misc.notes;}
   if(order.summary){document.getElementById('margin-slider').value=order.summary.targetMargin||60;document.getElementById('margin-pct-val').textContent=(order.summary.targetMargin||60)+'%';document.getElementById('price-rule').value=order.summary.pricingRule||'exact';document.getElementById('gst-pct').value=order.summary.gstPct||0;}
@@ -1388,15 +1386,7 @@ function viewOrderInvoice(orderId){
 
 // ── Overhead calculator ───────────────────────────────────────
 function calcDailyOverhead(){
-  var rent=+(document.getElementById('monthly-rent').value)||0;
-  var elec=+(document.getElementById('monthly-elec').value)||0;
-  var gas=+(document.getElementById('monthly-gas').value)||0;
-  var clean=+(document.getElementById('monthly-clean').value)||0;
-  var days=+(document.getElementById('working-days').value)||25;
-  var orders=+(document.getElementById('daily-orders').value)||3;
-  var total=rent+elec+gas+clean;
-  var perOrder=days*orders>0?Math.round(total/(days*orders)):0;
-  document.getElementById('oh-per-order').textContent=perOrder;
+  deriveSettingsRates();
 }
 
 // ── Modal helpers ─────────────────────────────────────────────
