@@ -652,7 +652,7 @@ function handleSearchInput(inputEl, type) {
 }
 
 function selectSuggestion(idx,matched,type){
-  if(type==='ingredient'){var ing=ingredients[idx];ing.name=matched.name;ing.masterId=matched.name;ing.unit=determineDefaultUnit(matched.unit);ing.rate=convertMasterRate(matched.rate,matched.unit,ing.unit);ing.wastage=ing.wastage||0;renderIngredients();}
+  if(type==='ingredient'){var ing=ingredients[idx];ing.name=matched.name;ing.masterId=matched.name;ing.unit=determineDefaultUnit(matched.unit,matched.name);ing.rate=convertMasterRate(matched.rate,matched.unit,ing.unit,matched.name);ing.wastage=ing.wastage||0;renderIngredients();}
   else if(type==='packaging'){var pack=packaging[idx];pack.name=matched.name;pack.qty=1;pack.unit='piece';pack.rate=matched.rate;renderPackaging();}
   else if(type==='decoration'){var deco=decorations[idx];deco.name=matched.name;deco.qty=1;deco.unit=matched.unit||'piece';deco.rate=matched.rate;renderDecorations();}
   recalculate();
@@ -661,6 +661,55 @@ function selectSuggestion(idx,matched,type){
 }
 
 // ── Unit conversion ───────────────────────────────────────────
+function parsePackageSize(name, unit) {
+  const str = ((name || '') + ' ' + (unit || '')).toLowerCase();
+  const regex = /(\d+(?:\.\d+)?)\s*(kg|g|gm|grams|ml|l|litre|litres|piece|pcs|pkt|packet|bag|set)\b/gi;
+  let match;
+  while ((match = regex.exec(str)) !== null) {
+    const val = parseFloat(match[1]);
+    const u = match[2].toLowerCase();
+    if (val > 0) {
+      if (u === 'kg') return { val: val * 1000, stdUnit: 'g' };
+      if (u === 'g' || u === 'gm' || u === 'grams') return { val: val, stdUnit: 'g' };
+      if (u === 'l' || u === 'litre' || u === 'litres') return { val: val * 1000, stdUnit: 'ml' };
+      if (u === 'ml') return { val: val, stdUnit: 'ml' };
+      if (u === 'piece' || u === 'pcs' || u === 'pkt' || u === 'packet' || u === 'bag' || u === 'set') return { val: val, stdUnit: 'piece' };
+    }
+  }
+  const normUnit = (unit || '').toLowerCase().trim();
+  if (normUnit === 'kg') return { val: 1000, stdUnit: 'g' };
+  if (normUnit === 'g' || normUnit === 'gm') return { val: 1, stdUnit: 'g' };
+  if (normUnit === 'l' || normUnit === 'litre') return { val: 1000, stdUnit: 'ml' };
+  if (normUnit === 'ml') return { val: 1, stdUnit: 'ml' };
+  return null;
+}
+
+function getConversionFactorV2(itemName, masterUnit, targetUnit) {
+  masterUnit = (masterUnit || '').toLowerCase().trim();
+  targetUnit = (targetUnit || '').toLowerCase().trim();
+  if (masterUnit === targetUnit) return 1;
+  const pkg = parsePackageSize(itemName, masterUnit);
+  if (pkg) {
+    let targetVal = 1;
+    let targetStd = targetUnit;
+    if (targetUnit === 'kg') {
+      targetVal = 1000;
+      targetStd = 'g';
+    } else if (targetUnit === 'l' || targetUnit === 'litre') {
+      targetVal = 1000;
+      targetStd = 'ml';
+    } else if (targetUnit === 'g' || targetUnit === 'gm') {
+      targetStd = 'g';
+    } else if (targetUnit === 'ml') {
+      targetStd = 'ml';
+    }
+    if (pkg.stdUnit === targetStd) {
+      return targetVal / pkg.val;
+    }
+  }
+  return getUnitConversionFactor(masterUnit, targetUnit);
+}
+
 function getUnitConversionFactor(masterUnit,targetUnit){
   masterUnit=masterUnit.toLowerCase().trim();targetUnit=targetUnit.toLowerCase().trim();
   if(masterUnit===targetUnit)return 1;
@@ -680,11 +729,22 @@ function getUnitConversionFactor(masterUnit,targetUnit){
   if(masterUnit==='30ml'&&targetUnit==='ml')return 1/30;
   return 1;
 }
-function determineDefaultUnit(u){u=u.toLowerCase().trim();if(u==='kg')return'g';if(u==='litre'||u==='l')return'ml';if(u.includes('g'))return'g';if(u.includes('ml'))return'ml';return u;}
-function convertMasterRate(rate,masterUnit,targetUnit){return +((rate*getUnitConversionFactor(masterUnit,targetUnit)).toFixed(4));}
-function onIngredientUnitChange(idx,newUnit){var ing=ingredients[idx];ing.unit=newUnit;var m=ingredientsMaster.find(x=>x.name===ing.name);if(m)ing.rate=convertMasterRate(m.rate,m.unit,newUnit);recalculate();}
+function determineDefaultUnit(u, name){
+  u=u.toLowerCase().trim();
+  if(u==='kg')return'g';
+  if(u==='litre'||u==='l')return'ml';
+  if(u.includes('g'))return'g';
+  if(u.includes('ml'))return'ml';
+  if(name){
+    const pkg=parsePackageSize(name, u);
+    if(pkg && (pkg.stdUnit==='g' || pkg.stdUnit==='ml')) return pkg.stdUnit;
+  }
+  return u;
+}
+function convertMasterRate(rate,masterUnit,targetUnit,itemName){return +((rate*getConversionFactorV2(itemName,masterUnit,targetUnit)).toFixed(4));}
+function onIngredientUnitChange(idx,newUnit){var ing=ingredients[idx];ing.unit=newUnit;var m=ingredientsMaster.find(x=>x.name===ing.name);if(m)ing.rate=convertMasterRate(m.rate,m.unit,newUnit,ing.name);recalculate();}
 function onPackagingUnitChange(idx,newUnit){var p=packaging[idx];p.unit=newUnit;var m=packagingMaster.find(x=>x.name===p.name);if(m)p.rate=m.rate;recalculate();}
-function onDecorationUnitChange(idx,newUnit){var d=decorations[idx];d.unit=newUnit;var m=packagingMaster.find(x=>x.name===d.name)||ingredientsMaster.find(x=>x.name===d.name);if(m){d.rate=ingredientsMaster.includes(m)?convertMasterRate(m.rate,m.unit,newUnit):m.rate;}recalculate();}
+function onDecorationUnitChange(idx,newUnit){var d=decorations[idx];d.unit=newUnit;var m=packagingMaster.find(x=>x.name===d.name)||ingredientsMaster.find(x=>x.name===d.name);if(m){d.rate=ingredientsMaster.includes(m)?convertMasterRate(m.rate,m.unit,newUnit,d.name):m.rate;}recalculate();}
 
 // ── Ingredient / Decoration / Packaging management ────────────
 function addIngredient(name,qty,unit,rate){var id='ing-'+Date.now()+'-'+Math.random();ingredients.push({id,name:name||'',qty:qty||0,unit:unit||'g',rate:rate||0,wastage:0});renderIngredients();recalculate();}
@@ -1012,9 +1072,9 @@ function cancelEdit(){currentEditingOrderId=null;var b=document.getElementById('
 
 function applyCurrentMasterRates(){
   var n=0;
-  ingredients.forEach(ing=>{var m=ingredientsMaster.find(x=>x.name===ing.name);if(m){var r=convertMasterRate(m.rate,m.unit,ing.unit);if(ing.rate!==r){ing.rate=r;n++;}}});
+  ingredients.forEach(ing=>{var m=ingredientsMaster.find(x=>x.name===ing.name);if(m){var r=convertMasterRate(m.rate,m.unit,ing.unit,ing.name);if(ing.rate!==r){ing.rate=r;n++;}}});
   packaging.forEach(p=>{var m=packagingMaster.find(x=>x.name===p.name);if(m&&p.rate!==m.rate){p.rate=m.rate;n++;}});
-  decorations.forEach(d=>{var m=packagingMaster.find(x=>x.name===d.name)||ingredientsMaster.find(x=>x.name===d.name);if(m){var r=ingredientsMaster.includes(m)?convertMasterRate(m.rate,m.unit,d.unit):m.rate;if(d.rate!==r){d.rate=r;n++;}}});
+  decorations.forEach(d=>{var m=packagingMaster.find(x=>x.name===d.name)||ingredientsMaster.find(x=>x.name===d.name);if(m){var r=ingredientsMaster.includes(m)?convertMasterRate(m.rate,m.unit,d.unit,d.name):m.rate;if(d.rate!==r){d.rate=r;n++;}}});
   renderIngredients();renderDecorations();renderPackaging();recalculate();
   showToast(`Updated ${n} item${n!==1?'s':''} to current master rates!`);
 }
