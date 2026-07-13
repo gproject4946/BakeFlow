@@ -1263,15 +1263,23 @@ function closeModal(e){if(e.target===document.getElementById('modal-overlay'))cl
 
 // ── Toast ─────────────────────────────────────────────────────
 var _toastTimer=null;
-function showToast(msg,isError){
-  var t=document.getElementById('toast');
-  var m=document.getElementById('toast-msg');
-  if(!t||!m)return;
-  m.textContent=msg;
-  t.className='toast'+(isError?' error':'');
-  requestAnimationFrame(()=>t.classList.add('show'));
-  if(_toastTimer)clearTimeout(_toastTimer);
-  _toastTimer=setTimeout(()=>t.classList.remove('show'),3200);
+function showToast(msg, isError) {
+  var t = document.getElementById('toast');
+  var m = document.getElementById('toast-msg');
+  if (!t || !m) return;
+  
+  m.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '');
+  
+  // Force a browser reflow to ensure CSS transition triggers properly
+  t.offsetHeight; 
+  
+  t.classList.add('show');
+  
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+  }, 3000);
 }
 
 // ── Start ─────────────────────────────────────────────────────
