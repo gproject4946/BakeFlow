@@ -1,0 +1,22 @@
+# ── Environment ──────────────────────────────────────────────
+.env
+*.env.local
+
+# ── Google credentials key file (if using file path method) ──
+credentials.json
+service-account.json
+*.json.key
+
+# ── Node ─────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs ─────────────────────────────────────────────────────
+logs/
+*.log

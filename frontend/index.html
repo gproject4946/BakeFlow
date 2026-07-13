@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BlissOven — Bakery Cost Calculator</title>
+  <meta name="description" content="Professional cost calculator for BlissOven bakery. Track ingredient costs, labour, packaging, and calculate profit margins for all your baked products.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Tabler Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- Loading overlay (shown while connecting to Google Sheets) -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Connecting to Google Sheets…</div>
+</div>
+
+<div class="app">
+
+<!-- ── Sidebar ──────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">BlissOven</div>
+    <div class="sub">Cost Calculator</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="navigate('dashboard')"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+    <div class="nav-item" onclick="navigate('calculator')"><i class="ti ti-calculator"></i>Cost Calculator</div>
+    <div class="nav-item" onclick="navigate('products')"><i class="ti ti-package"></i>Product Catalog</div>
+    <div class="nav-item" onclick="navigate('custom')"><i class="ti ti-sparkles"></i>Custom Order</div>
+    <div class="nav-section">Settings</div>
+    <div class="nav-item" onclick="navigate('ingredients')"><i class="ti ti-leaf"></i>Ingredient Master</div>
+    <div class="nav-item" onclick="navigate('packaging')"><i class="ti ti-box"></i>Packaging Master</div>
+    <div class="nav-item" onclick="navigate('labour')"><i class="ti ti-users"></i>Labour Settings</div>
+    <div class="nav-item" onclick="navigate('overheads')"><i class="ti ti-building"></i>Overhead Settings</div>
+    <div class="nav-section">Reports</div>
+    <div class="nav-item" onclick="navigate('orders')"><i class="ti ti-receipt"></i>Saved Orders</div>
+    <div class="nav-item" onclick="navigate('reports')"><i class="ti ti-chart-bar"></i>Reports</div>
+  </nav>
+</aside>
+
+<!-- ── Main Content ────────────────────────────────────────── -->
+<main class="main">
+
+<!-- DASHBOARD PAGE -->
+<div id="page-dashboard">
+  <div class="page-header">
+    <div class="page-title">Good morning, Komal ✦</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-gold btn-sm" onclick="navigate('calculator')"><i class="ti ti-plus"></i> New Calculation</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Products</div>
+        <div class="stat-value gold" id="dash-products">—</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">in catalog</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg. Profit Margin</div>
+        <div class="stat-value green" id="dash-margin">—</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">across all products</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Saved Orders</div>
+        <div class="stat-value" id="dash-orders">—</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">calculations saved</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Highest Margin</div>
+        <div class="stat-value rose" id="dash-top">—</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">best performing</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+      <div class="card">
+        <div class="card-title">Quick Calculations</div>
+        <div class="product-grid" style="grid-template-columns:repeat(2,1fr);">
+          <div class="product-card" onclick="quickCalc('Rasmalai Cake')"><span class="emoji">🎂</span><div class="pc-name">Rasmalai Cake</div><div class="pc-cat">Fusion Cake</div></div>
+          <div class="product-card" onclick="quickCalc('Fruit Cake')"><span class="emoji">🍓</span><div class="pc-name">Fruit Cake</div><div class="pc-cat">Signature Cake</div></div>
+          <div class="product-card" onclick="quickCalc('Brownie Box')"><span class="emoji">🍫</span><div class="pc-name">Brownie Box</div><div class="pc-cat">Dessert Box</div></div>
+          <div class="product-card" onclick="quickCalc('Cookie Box')"><span class="emoji">🍪</span><div class="pc-name">Cookie Box</div><div class="pc-cat">Gift Box</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Cost Breakdown Guide</div>
+        <div style="font-size:13px;color:var(--bo-muted);margin-bottom:12px;">Average cost distribution across products</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Raw Materials</span><span style="font-weight:500;">45–55%</span></div><div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Labour</span><span style="font-weight:500;">15–25%</span></div><div class="progress-bar"><div class="progress-fill" style="width:20%;background:#E8B4B8;"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Packaging</span><span style="font-weight:500;">8–15%</span></div><div class="progress-bar"><div class="progress-fill" style="width:11%;background:#B4C4A8;"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Overheads</span><span style="font-weight:500;">10–18%</span></div><div class="progress-bar"><div class="progress-fill" style="width:14%;background:#F5C4A8;"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Decoration &amp; Others</span><span style="font-weight:500;">5–12%</span></div><div class="progress-bar"><div class="progress-fill" style="width:8%;background:#C4B4E8;"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Product Catalog Overview</div>
+      <table>
+        <thead><tr><th>Product</th><th>Category</th><th>Cost Price</th><th>Selling Price</th><th>Margin</th><th>Status</th></tr></thead>
+        <tbody id="catalog-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CALCULATOR PAGE -->
+<div id="page-calculator" class="hidden">
+  <div class="page-header">
+    <div class="page-title">Cost Calculator</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-sm" onclick="resetCalc()"><i class="ti ti-refresh"></i> Reset</button>
+      <button class="btn btn-gold btn-sm" onclick="saveOrder()"><i class="ti ti-device-floppy"></i> Save Order</button>
+    </div>
+  </div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;">
+      <!-- Left: Input Panel -->
+      <div>
+        <!-- Product Details -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Product Details</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label required">Product / Order Name</label><input type="text" id="calc-name" placeholder="e.g. Fruit Cake — Birthday Order" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label required">Product Category</label>
+              <select id="calc-category" onchange="onCategoryChange()">
+                <option value="">— Select Category —</option>
+                <option value="cake">Celebration Cake</option><option value="fruit-cake">Fruit Cake</option>
+                <option value="theme-cake">Custom Theme Cake</option><option value="fusion-cake">Fusion Cake (Indian)</option>
+                <option value="cupcake">Cupcakes</option><option value="brownie">Brownies / Brownie Box</option>
+                <option value="cookie">Cookies / Cookie Box</option><option value="bread">Homemade Bread</option>
+                <option value="chocolate">Artisan Chocolate Box</option><option value="cheesecake">Cheesecake</option>
+                <option value="muffin">Muffins</option><option value="pastry">Pastries</option>
+                <option value="gift-box">Gift / Combo Box</option><option value="custom">Fully Custom</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Batch Size</label><input type="number" id="calc-batch" value="1" min="1" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Servings per Batch</label><input type="number" id="calc-servings" value="8" min="1" oninput="recalculate()"></div>
+          </div>
+          <div id="dynamic-fields"></div>
+        </div>
+
+        <!-- Raw Materials -->
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="card-title" style="margin:0;">Raw Materials &amp; Ingredients</div>
+            <button class="btn btn-sm" onclick="addIngredient()"><i class="ti ti-plus"></i> Add</button>
+          </div>
+          <div style="font-size:11px;color:var(--bo-muted);display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:8px;padding:0 0 6px;border-bottom:1px solid var(--bo-border);margin-bottom:8px;">
+            <span>Ingredient</span><span>Qty</span><span>Unit</span><span>Rate (₹/unit)</span><span>Wastage%</span><span></span>
+          </div>
+          <div id="ingredient-list"></div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bo-border);display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:var(--bo-muted);">Total raw material cost</span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="raw-total">0.00</span></span>
+          </div>
+        </div>
+
+        <!-- Decoration -->
+        <div class="card" style="margin-bottom:16px;" id="decoration-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="card-title" style="margin:0;">Decoration &amp; Finishing</div>
+            <button class="btn btn-sm" onclick="addDecoration()"><i class="ti ti-plus"></i> Add Item</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+            <button class="btn btn-sm" onclick="addDecoItem('Fondant')">+ Fondant</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Edible Print')">+ Edible Print</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Cake Topper')">+ Topper</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Glitter')">+ Glitter</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Drip')">+ Drip</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Candle')">+ Candle</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Fresh Flowers')">+ Flowers</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Sugar Pearls')">+ Pearls</button>
+          </div>
+          <div style="font-size:11px;color:var(--bo-muted);display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:8px;padding:0 0 6px;border-bottom:1px solid var(--bo-border);margin-bottom:8px;">
+            <span>Item</span><span>Qty</span><span>Unit</span><span>Rate (₹/unit)</span><span>Cost</span><span></span>
+          </div>
+          <div id="decoration-list"></div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bo-border);display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:var(--bo-muted);">Total decoration cost</span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="deco-total">0.00</span></span>
+          </div>
+        </div>
+
+        <!-- Packaging -->
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="card-title" style="margin:0;">Packaging &amp; Presentation</div>
+            <button class="btn btn-sm" onclick="addPackaging()"><i class="ti ti-plus"></i> Add</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+            <button class="btn btn-sm" onclick="addPackItem('Cake Box')">+ Cake Box</button>
+            <button class="btn btn-sm" onclick="addPackItem('Cake Board')">+ Cake Board</button>
+            <button class="btn btn-sm" onclick="addPackItem('Carry Bag')">+ Carry Bag</button>
+            <button class="btn btn-sm" onclick="addPackItem('BlissOven Sticker')">+ Sticker</button>
+            <button class="btn btn-sm" onclick="addPackItem('Message Card')">+ Card</button>
+            <button class="btn btn-sm" onclick="addPackItem('Ribbon')">+ Ribbon</button>
+          </div>
+          <div style="font-size:11px;color:var(--bo-muted);display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:8px;padding:0 0 6px;border-bottom:1px solid var(--bo-border);margin-bottom:8px;">
+            <span>Item</span><span>Qty</span><span>Unit</span><span>Rate (₹)</span><span></span>
+          </div>
+          <div id="packaging-list"></div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bo-border);display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:var(--bo-muted);">Total packaging cost</span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="pack-total">0.00</span></span>
+          </div>
+        </div>
+
+        <!-- Labour -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Labour Cost</div>
+          <div class="form-row-3">
+            <div class="form-group"><label class="form-label">Prep Time (mins)</label><input type="number" id="labour-prep" value="30" min="0" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Baking Time (mins)</label><input type="number" id="labour-bake" value="45" min="0" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Decoration (mins)</label><input type="number" id="labour-deco" value="60" min="0" oninput="recalculate()"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Packing Time (mins)</label><input type="number" id="labour-pack" value="15" min="0" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Hourly Wage (₹/hr)</label><input type="number" id="labour-rate" value="150" min="0" oninput="recalculate()"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--bo-border);">
+            <span style="color:var(--bo-muted);">Total labour time: <span id="labour-hours">2.5 hrs</span></span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="labour-total">375.00</span></span>
+          </div>
+        </div>
+
+        <!-- Overheads -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Overheads &amp; Utilities</div>
+          <div class="form-row-3">
+            <div class="form-group"><label class="form-label">Electricity (₹)</label><input type="number" id="oh-elec" value="25" min="0" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Gas / Fuel (₹)</label><input type="number" id="oh-gas" value="15" min="0" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Water (₹)</label><input type="number" id="oh-water" value="5" min="0" oninput="recalculate()"></div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group"><label class="form-label">Rent Allocation (₹)</label><input type="number" id="oh-rent" value="50" min="0" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Cleaning / Admin (₹)</label><input type="number" id="oh-admin" value="10" min="0" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Delivery (₹)</label><input type="number" id="oh-delivery" value="0" min="0" oninput="recalculate()"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--bo-border);">
+            <span style="color:var(--bo-muted);">Total overhead cost</span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="overhead-total">105.00</span></span>
+          </div>
+        </div>
+
+        <!-- Wastage & Buffer -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Wastage &amp; Buffer</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Wastage / Spoilage Buffer</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input type="range" id="wastage-pct" min="0" max="25" value="5" step="1" oninput="document.getElementById('wastage-val').textContent=this.value+'%';recalculate()">
+                <span class="range-val" id="wastage-val">5%</span>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Emergency Price Buffer</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input type="range" id="buffer-pct" min="0" max="15" value="3" step="1" oninput="document.getElementById('buffer-val').textContent=this.value+'%';recalculate()">
+                <span class="range-val" id="buffer-val">3%</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--bo-border);">
+            <span style="color:var(--bo-muted);">Total wastage/buffer cost</span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="wastage-total">0.00</span></span>
+          </div>
+        </div>
+
+        <!-- Misc -->
+        <div class="card">
+          <div class="card-title">Miscellaneous Costs</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Miscellaneous (₹)</label><input type="number" id="misc-cost" value="0" min="0" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Notes</label><input type="text" id="misc-notes" placeholder="e.g. special ingredients, rush order"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Live Cost Breakdown -->
+      <div style="position:sticky;top:72px;">
+        <div class="highlight-box" style="margin-bottom:16px;">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;margin-bottom:14px;">Live Cost Breakdown</div>
+          <div class="cost-row"><span class="cost-label">Raw Materials</span><span class="cost-val">₹<span id="r-raw">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Decoration &amp; Finishing</span><span class="cost-val">₹<span id="r-deco">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Packaging</span><span class="cost-val">₹<span id="r-pack">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Labour</span><span class="cost-val">₹<span id="r-labour">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Overheads &amp; Utilities</span><span class="cost-val">₹<span id="r-overhead">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Wastage &amp; Buffer</span><span class="cost-val">₹<span id="r-wastage">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Miscellaneous</span><span class="cost-val">₹<span id="r-misc">0.00</span></span></div>
+          <div class="cost-row total"><span>Total Cost Price</span><span class="cost-val">₹<span id="r-cost">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label" style="font-size:12px;">Per Serving</span><span style="font-size:12px;color:var(--bo-muted);">₹<span id="r-per-serving">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label" style="font-size:12px;">Break-even Price</span><span style="font-size:12px;color:var(--bo-muted);">₹<span id="r-breakeven">0.00</span></span></div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Selling Price Calculator</div>
+          <div class="form-group"><label class="form-label">Target Profit Margin</label>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <input type="range" id="margin-slider" min="10" max="150" value="60" step="5" oninput="document.getElementById('margin-pct-val').textContent=this.value+'%';recalculate()">
+              <span class="range-val" id="margin-pct-val">60%</span>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Pricing Rule</label>
+            <select id="price-rule" onchange="recalculate()">
+              <option value="exact">Exact calculated price</option>
+              <option value="round50">Round to nearest ₹50</option>
+              <option value="round100">Round to nearest ₹100</option>
+              <option value="end9">End in ₹9 (e.g. ₹549)</option>
+              <option value="end99">End in ₹99 (e.g. ₹599)</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">GST (%)</label><input type="number" id="gst-pct" value="0" min="0" max="28" oninput="recalculate()"></div>
+          <div class="cost-row selling" style="margin-top:12px;border-top:2px solid rgba(45,106,79,0.3);padding-top:12px;">
+            <span>Suggested Selling Price</span><span class="cost-val" style="color:var(--bo-success);">₹<span id="r-selling">0</span></span>
+          </div>
+          <div class="cost-row profit"><span class="cost-label">Profit Amount</span><span class="cost-val" style="color:var(--bo-success);">₹<span id="r-profit">0</span></span></div>
+          <div class="cost-row profit"><span class="cost-label">Profit %</span><span class="cost-val" style="color:var(--bo-success);"><span id="r-profit-pct">0</span>%</span></div>
+          <div class="cost-row profit" style="border:none;"><span class="cost-label">Wholesale Price (−20%)</span><span class="cost-val">₹<span id="r-wholesale">0</span></span></div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div style="font-size:12px;color:var(--bo-muted);margin-bottom:8px;display:flex;align-items:center;gap:4px;"><span class="dot"></span>Cost Composition</div>
+          <div id="composition-bars"></div>
+        </div>
+
+        <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="saveOrder()"><i class="ti ti-device-floppy"></i> Save Calculation</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCTS PAGE -->
+<div id="page-products" class="hidden">
+  <div class="page-header">
+    <div class="page-title">Product Catalog</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="prod-show-deleted" onchange="renderProductCatalog()"> Show deleted</label>
+      <button class="btn btn-gold btn-sm" onclick="showAddProduct()"><i class="ti ti-plus"></i> Add Product</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="product-grid" id="product-catalog-grid"></div>
+  </div>
+</div>
+
+<!-- INGREDIENTS MASTER PAGE -->
+<div id="page-ingredients" class="hidden">
+  <div class="page-header">
+    <div class="page-title">Ingredient Master</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="ing-show-deleted" onchange="renderIngredientsMaster()"> Show deleted</label>
+      <button class="btn btn-gold btn-sm" onclick="showAddIngredient()"><i class="ti ti-plus"></i> Add Ingredient</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <table>
+        <thead><tr><th>Ingredient</th><th>Category</th><th>Unit</th><th>Current Rate (₹)</th><th>Last Updated</th><th>Actions</th></tr></thead>
+        <tbody id="ingredients-master-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PACKAGING PAGE -->
+<div id="page-packaging" class="hidden">
+  <div class="page-header">
+    <div class="page-title">Packaging Master</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="pack-show-deleted" onchange="renderPackagingMaster()"> Show deleted</label>
+      <button class="btn btn-gold btn-sm" onclick="showAddPackaging()"><i class="ti ti-plus"></i> Add Item</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <table>
+        <thead><tr><th>Item</th><th>Type</th><th>Size/Variant</th><th>Rate (₹)</th><th>Vendor</th><th>Actions</th></tr></thead>
+        <tbody id="packaging-master-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- LABOUR SETTINGS PAGE -->
+<div id="page-labour" class="hidden">
+  <div class="page-header"><div class="page-title">Labour Settings</div></div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <div class="card-title">Default Labour Rates</div>
+        <div class="form-group"><label class="form-label">Head Baker / Pastry Chef (₹/hr)</label><input type="number" value="200"></div>
+        <div class="form-group"><label class="form-label">Decoration Specialist (₹/hr)</label><input type="number" value="180"></div>
+        <div class="form-group"><label class="form-label">Packing Staff (₹/hr)</label><input type="number" value="100"></div>
+        <div class="form-group"><label class="form-label">Delivery Person (₹/trip)</label><input type="number" value="150"></div>
+        <div class="form-group"><label class="form-label">Minimum Labour Charge (₹)</label><input type="number" value="100"></div>
+        <button class="btn btn-gold btn-sm">Save Settings</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Default Time Estimates (minutes)</div>
+        <div class="form-group"><label class="form-label">Standard Cake Prep</label><input type="number" value="30"></div>
+        <div class="form-group"><label class="form-label">Standard Baking Time</label><input type="number" value="45"></div>
+        <div class="form-group"><label class="form-label">Simple Decoration</label><input type="number" value="30"></div>
+        <div class="form-group"><label class="form-label">Complex Decoration (theme cake)</label><input type="number" value="120"></div>
+        <div class="form-group"><label class="form-label">Packaging Time</label><input type="number" value="15"></div>
+        <button class="btn btn-gold btn-sm">Save Settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OVERHEAD SETTINGS PAGE -->
+<div id="page-overheads" class="hidden">
+  <div class="page-header"><div class="page-title">Overhead Settings</div></div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <div class="card-title">Monthly Fixed Overheads</div>
+        <div class="form-group"><label class="form-label">Monthly Rent (₹)</label><input type="number" value="15000" id="monthly-rent" oninput="calcDailyOverhead()"></div>
+        <div class="form-group"><label class="form-label">Monthly Electricity (₹)</label><input type="number" value="3000" id="monthly-elec" oninput="calcDailyOverhead()"></div>
+        <div class="form-group"><label class="form-label">Monthly Gas / LPG (₹)</label><input type="number" value="1500" id="monthly-gas" oninput="calcDailyOverhead()"></div>
+        <div class="form-group"><label class="form-label">Monthly Internet / Software (₹)</label><input type="number" value="500"></div>
+        <div class="form-group"><label class="form-label">Monthly Cleaning &amp; Misc (₹)</label><input type="number" value="1000" id="monthly-clean" oninput="calcDailyOverhead()"></div>
+        <div class="form-group"><label class="form-label">Working Days per Month</label><input type="number" value="25" id="working-days" oninput="calcDailyOverhead()"></div>
+        <div class="form-group"><label class="form-label">Avg. Orders per Day</label><input type="number" value="3" id="daily-orders" oninput="calcDailyOverhead()"></div>
+        <div class="highlight-box" style="padding:14px;">
+          <div style="font-size:12px;color:var(--bo-muted);margin-bottom:4px;">Calculated overhead per order</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--bo-gold-dark);">₹<span id="oh-per-order">280</span></div>
+          <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">Use this as your baseline overhead allocation</div>
+        </div>
+        <button class="btn btn-gold btn-sm" style="margin-top:12px;">Save Settings</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Per-Product Overhead Toggles</div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Include electricity cost</span><div class="toggle on"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Include gas / fuel cost</span><div class="toggle on"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Include water cost</span><div class="toggle on"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Include rent allocation</span><div class="toggle on"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Include cleaning overhead</span><div class="toggle on"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Machine depreciation</span><div class="toggle"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Admin / internet overhead</span><div class="toggle"></div></div>
+        <div class="overhead-item" style="border:none;"><span style="font-size:13.5px;">GST calculation</span><div class="toggle"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SAVED ORDERS PAGE -->
+<div id="page-orders" class="hidden">
+  <div class="page-header"><div class="page-title">Saved Orders</div></div>
+  <div class="content">
+    <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+      <div style="position:relative;flex:1;max-width:300px;">
+        <input type="text" id="order-search" placeholder="Search orders by name..." oninput="renderSavedOrdersList()">
+      </div>
+      <select id="order-filter-category" style="max-width:200px;" onchange="renderSavedOrdersList()">
+        <option value="">— All Categories —</option>
+        <option value="cake">Celebration Cake</option><option value="fruit-cake">Fruit Cake</option>
+        <option value="theme-cake">Custom Theme Cake</option><option value="fusion-cake">Fusion Cake (Indian)</option>
+        <option value="cupcake">Cupcakes</option><option value="brownie">Brownies / Brownie Box</option>
+        <option value="cookie">Cookies / Cookie Box</option><option value="bread">Homemade Bread</option>
+        <option value="chocolate">Artisan Chocolate Box</option><option value="cheesecake">Cheesecake</option>
+        <option value="muffin">Muffins</option><option value="pastry">Pastries</option>
+        <option value="gift-box">Gift / Combo Box</option><option value="custom">Fully Custom</option>
+      </select>
+      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="order-show-deleted" onchange="renderSavedOrdersList()"> Show deleted</label>
+      <button class="btn btn-sm" onclick="clearSavedOrdersFilters()"><i class="ti ti-refresh"></i> Reset</button>
+    </div>
+    <div class="card">
+      <div id="saved-orders-content">
+        <div style="text-align:center;padding:40px;color:var(--bo-muted);">
+          <i class="ti ti-receipt" style="font-size:40px;opacity:0.3;display:block;margin-bottom:12px;"></i>
+          No saved calculations yet. Use the Cost Calculator to create and save orders.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REPORTS PAGE -->
+<div id="page-reports" class="hidden">
+  <div class="page-header"><div class="page-title">Reports &amp; Analytics</div></div>
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Avg. Cost Price</div><div class="stat-value gold">₹480</div></div>
+      <div class="stat-card"><div class="stat-label">Avg. Selling Price</div><div class="stat-value">₹850</div></div>
+      <div class="stat-card"><div class="stat-label">Best Margin Product</div><div class="stat-value green" style="font-size:18px;">Brownies</div></div>
+      <div class="stat-card"><div class="stat-label">Highest Cost Product</div><div class="stat-value rose" style="font-size:18px;">Theme Cake</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card"><div class="card-title">Profitability by Category</div><div id="profitability-chart"></div></div>
+      <div class="card"><div class="card-title">Cost Component Analysis</div><div id="cost-analysis"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOM ORDER PAGE -->
+<div id="page-custom" class="hidden">
+  <div class="page-header">
+    <div class="page-title">Custom Order Builder</div>
+    <button class="btn btn-gold btn-sm" onclick="navigate('calculator')"><i class="ti ti-arrow-right"></i> Open in Calculator</button>
+  </div>
+  <div class="content">
+    <div class="card" style="max-width:680px;">
+      <div class="card-title">Build Your Custom Order</div>
+      <p style="font-size:13.5px;color:var(--bo-muted);margin-bottom:20px;">Select a base product type to get smart, pre-filled templates with all relevant fields. This will open a fully customizable calculation.</p>
+      <div class="product-grid">
+        <div class="product-card" onclick="loadTemplate('fruit-cake')"><span class="emoji">🍓</span><div class="pc-name">Fruit Cake</div><div class="pc-cat">With fruit garnish &amp; cream</div></div>
+        <div class="product-card" onclick="loadTemplate('theme-cake')"><span class="emoji">🎨</span><div class="pc-name">Theme Cake</div><div class="pc-cat">Custom decoration &amp; fondant</div></div>
+        <div class="product-card" onclick="loadTemplate('brownie-box')"><span class="emoji">🍫</span><div class="pc-name">Brownie Box</div><div class="pc-cat">Assorted box with packaging</div></div>
+        <div class="product-card" onclick="loadTemplate('cookie-box')"><span class="emoji">🍪</span><div class="pc-name">Cookie Box</div><div class="pc-cat">Mixed cookies with box &amp; filler</div></div>
+        <div class="product-card" onclick="loadTemplate('fusion-cake')"><span class="emoji">🇮🇳</span><div class="pc-name">Fusion Cake</div><div class="pc-cat">Indian flavour specialties</div></div>
+        <div class="product-card" onclick="loadTemplate('choco-box')"><span class="emoji">🍬</span><div class="pc-name">Chocolate Box</div><div class="pc-cat">Artisan filled chocolates</div></div>
+        <div class="product-card" onclick="loadTemplate('bread')"><span class="emoji">🍞</span><div class="pc-name">Artisan Bread</div><div class="pc-cat">Homemade loaf</div></div>
+        <div class="product-card" onclick="loadTemplate('gift-box')"><span class="emoji">🎁</span><div class="pc-name">Gift / Hamper Box</div><div class="pc-cat">Combo with multiple items</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- Modal overlay -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal(event)">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirm-overlay" class="confirm-modal-overlay hidden" onclick="if(event.target===this)cancelConfirm()">
+  <div class="confirm-modal">
+    <div class="confirm-modal-header">
+      <div class="confirm-modal-icon" id="confirm-icon"><i class="ti ti-trash" id="confirm-icon-i"></i></div>
+      <div><div class="confirm-modal-title" id="confirm-title">Delete this record?</div></div>
+    </div>
+    <div class="confirm-modal-body" id="confirm-body">This action cannot be undone.</div>
+    <div class="confirm-modal-footer">
+      <button class="btn btn-sm" onclick="cancelConfirm()">Cancel</button>
+      <button class="btn btn-sm btn-danger-solid" id="confirm-action-btn" onclick="executeConfirm()"><i class="ti ti-trash" id="confirm-btn-icon"></i> <span id="confirm-btn-label">Delete</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"><i class="ti ti-check"></i><span id="toast-msg">Saved!</span></div>
+
+<!-- Scripts -->
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

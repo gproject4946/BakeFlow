@@ -1,0 +1,3535 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+--bo-cream:#FDF6EC;--bo-warm:#F5E6CC;--bo-gold:#C49A3C;--bo-gold-dark:#8B6914;--bo-rose:#E8B4B8;--bo-rose-dark:#9B4F52;
+--bo-brown:#3D2B1F;--bo-text:#2C1810;--bo-muted:#7A5C4A;--bo-border:#E8D5BE;--bo-white:#FFFDF8;
+--bo-success:#2D6A4F;--bo-danger:#9B2335;--bo-info:#1A4A7A;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bo-cream);color:var(--bo-text);min-height:100vh;}
+h1,h2,h3,.serif{font-family:'Cormorant Garamond',serif;}
+
+/* Layout */
+.app{display:flex;min-height:100vh;}
+.sidebar{width:240px;background:var(--bo-brown);color:var(--bo-warm);flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100;}
+.main{margin-left:240px;flex:1;min-height:100vh;}
+
+/* Sidebar */
+.sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,0.1);}
+.sidebar-logo .brand{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--bo-warm);}
+.sidebar-logo .sub{font-size:11px;color:rgba(245,230,204,0.5);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.sidebar-nav{flex:1;padding:12px 0;}
+.nav-section{padding:16px 20px 8px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(245,230,204,0.35);}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;transition:all 0.15s;color:rgba(245,230,204,0.65);font-size:13.5px;border-left:2px solid transparent;}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:var(--bo-warm);}
+.nav-item.active{background:rgba(196,154,60,0.15);color:var(--bo-gold);border-left-color:var(--bo-gold);}
+.nav-item i{font-size:16px;width:18px;}
+
+/* Header */
+.page-header{background:var(--bo-white);border-bottom:1px solid var(--bo-border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;border:1px solid var(--bo-border);background:var(--bo-white);color:var(--bo-text);font-size:13px;cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif;}
+.btn:hover{background:var(--bo-warm);border-color:var(--bo-gold);}
+.btn-primary{background:var(--bo-brown);color:var(--bo-warm);border-color:var(--bo-brown);}
+.btn-primary:hover{background:#2a1e14;border-color:#2a1e14;}
+.btn-gold{background:var(--bo-gold);color:var(--bo-white);border-color:var(--bo-gold);}
+.btn-gold:hover{background:var(--bo-gold-dark);}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-danger{background:#fdf2f2;color:var(--bo-danger);border-color:#e8c0c0;}
+
+/* Content */
+.content{padding:28px 32px;}
+
+/* Cards */
+.card{background:var(--bo-white);border:1px solid var(--bo-border);border-radius:10px;padding:20px;}
+.card-sm{padding:14px 16px;}
+.card-title{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;margin-bottom:12px;}
+
+/* Stat cards */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-card{background:var(--bo-white);border:1px solid var(--bo-border);border-radius:10px;padding:16px 18px;}
+.stat-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--bo-muted);margin-bottom:6px;}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;}
+.stat-value.gold{color:var(--bo-gold-dark);}
+.stat-value.green{color:var(--bo-success);}
+.stat-value.rose{color:var(--bo-rose-dark);}
+
+/* Form elements */
+.form-group{margin-bottom:14px;}
+.form-label{font-size:12px;font-weight:500;color:var(--bo-muted);margin-bottom:5px;display:block;letter-spacing:0.5px;}
+.form-label.required::after{content:' *';color:var(--bo-danger);}
+input[type=text],input[type=number],select,textarea{width:100%;padding:8px 11px;border:1px solid var(--bo-border);border-radius:6px;font-size:13.5px;font-family:'DM Sans',sans-serif;background:var(--bo-white);color:var(--bo-text);outline:none;transition:border-color 0.15s;}
+input:focus,select:focus,textarea:focus{border-color:var(--bo-gold);box-shadow:0 0 0 3px rgba(196,154,60,0.1);}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237A5C4A' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
+textarea{resize:vertical;min-height:70px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{padding:10px 12px;background:var(--bo-cream);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--bo-muted);font-weight:500;text-align:left;border-bottom:1px solid var(--bo-border);}
+td{padding:10px 12px;border-bottom:1px solid rgba(232,213,190,0.4);color:var(--bo-text);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(245,230,204,0.3);}
+
+/* Tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--bo-border);margin-bottom:20px;}
+.tab{padding:10px 18px;cursor:pointer;font-size:13px;color:var(--bo-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;}
+.tab:hover{color:var(--bo-text);}
+.tab.active{color:var(--bo-gold-dark);border-bottom-color:var(--bo-gold);font-weight:500;}
+
+/* Section divider */
+.section-divider{display:flex;align-items:center;gap:12px;margin:20px 0 16px;}
+.section-divider span{font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:600;color:var(--bo-brown);white-space:nowrap;}
+.section-divider::before,.section-divider::after{content:'';flex:1;height:1px;background:var(--bo-border);}
+
+/* Cost breakdown */
+.cost-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(232,213,190,0.4);font-size:13.5px;}
+.cost-row:last-child{border-bottom:none;}
+.cost-row.total{font-weight:500;font-size:15px;padding-top:12px;border-top:2px solid var(--bo-gold);margin-top:4px;}
+.cost-row.total .cost-val{color:var(--bo-gold-dark);font-family:'Cormorant Garamond',serif;font-size:18px;}
+.cost-row.selling{font-size:15px;font-weight:500;}
+.cost-row.selling .cost-val{color:var(--bo-success);font-family:'Cormorant Garamond',serif;font-size:18px;}
+.cost-row.profit{font-size:13.5px;}
+.cost-row.profit .cost-val{color:var(--bo-success);}
+.cost-label{color:var(--bo-muted);}
+.cost-val{font-weight:500;}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:100px;font-size:11px;font-weight:500;}
+.badge-gold{background:rgba(196,154,60,0.12);color:var(--bo-gold-dark);}
+.badge-green{background:rgba(45,106,79,0.1);color:var(--bo-success);}
+.badge-rose{background:rgba(155,79,82,0.1);color:var(--bo-rose-dark);}
+.badge-info{background:rgba(26,74,122,0.1);color:var(--bo-info);}
+
+/* Ingredient row */
+.ingredient-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;}
+.ingredient-row input,.ingredient-row select{padding:6px 9px;font-size:12.5px;}
+.remove-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #f0d0d0;border-radius:5px;background:#fdf2f2;color:var(--bo-danger);cursor:pointer;font-size:14px;}
+.remove-btn:hover{background:#f8dcdc;}
+
+/* Progress bar */
+.progress-bar{height:6px;background:var(--bo-warm);border-radius:3px;overflow:hidden;margin-top:4px;}
+.progress-fill{height:100%;background:var(--bo-gold);border-radius:3px;transition:width 0.3s;}
+
+/* Highlight box */
+.highlight-box{background:linear-gradient(135deg,rgba(196,154,60,0.08),rgba(196,154,60,0.04));border:1px solid rgba(196,154,60,0.3);border-radius:10px;padding:20px;}
+.highlight-box.green{background:rgba(45,106,79,0.05);border-color:rgba(45,106,79,0.25);}
+
+/* Product grid */
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+.product-card{background:var(--bo-white);border:1px solid var(--bo-border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.15s;}
+.product-card:hover{border-color:var(--bo-gold);box-shadow:0 2px 12px rgba(196,154,60,0.12);}
+.product-card .emoji{font-size:28px;margin-bottom:8px;display:block;}
+.product-card .pc-name{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;margin-bottom:4px;}
+.product-card .pc-cat{font-size:11px;color:var(--bo-muted);margin-bottom:8px;}
+.product-card .pc-price{font-size:13px;color:var(--bo-gold-dark);font-weight:500;}
+.product-card .pc-margin{font-size:11px;color:var(--bo-success);margin-top:2px;}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(45,27,16,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal{background:var(--bo-white);border-radius:14px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(45,27,16,0.25);}
+.modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--bo-border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bo-white);z-index:10;}
+.modal-header h3{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;}
+.modal-body{padding:20px 24px;}
+.modal-footer{padding:14px 24px;border-top:1px solid var(--bo-border);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--bo-white);}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bo-brown);color:var(--bo-warm);padding:12px 18px;border-radius:8px;font-size:13.5px;z-index:999;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);transform:translateY(80px);opacity:0;transition:all 0.3s;}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* Responsive */
+@media(max-width:768px){
+.sidebar{width:200px;}
+.main{margin-left:200px;}
+.stats-grid{grid-template-columns:1fr 1fr;}
+.ingredient-row{grid-template-columns:1fr 1fr 1fr;}
+.form-row,.form-row-3{grid-template-columns:1fr;}
+}
+
+/* Hidden */
+.hidden{display:none!important;}
+
+/* Soft-deleted rows */
+tr.soft-deleted td{opacity:0.45;text-decoration:line-through;color:var(--bo-muted);}
+tr.soft-deleted .badge{opacity:0.5;}
+.deleted-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;background:rgba(155,35,53,0.1);color:var(--bo-danger);border:1px solid rgba(155,35,53,0.25);border-radius:100px;padding:2px 7px;margin-left:6px;}
+
+/* Confirm Modal */
+.confirm-modal-overlay{position:fixed;inset:0;background:rgba(45,27,16,0.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px);}
+.confirm-modal{background:var(--bo-white);border-radius:14px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(45,27,16,0.3);overflow:hidden;animation:confirmIn 0.18s ease;}
+@keyframes confirmIn{from{transform:scale(0.9);opacity:0;}to{transform:scale(1);opacity:1;}}
+.confirm-modal-header{padding:20px 22px 0;display:flex;align-items:flex-start;gap:14px;}
+.confirm-modal-icon{width:42px;height:42px;border-radius:50%;background:rgba(155,35,53,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.confirm-modal-icon i{font-size:20px;color:var(--bo-danger);}
+.confirm-modal-icon.restore{background:rgba(45,106,79,0.1);}
+.confirm-modal-icon.restore i{color:var(--bo-success);}
+.confirm-modal-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;margin-bottom:4px;}
+.confirm-modal-body{padding:10px 22px 0 78px;font-size:13px;color:var(--bo-muted);line-height:1.5;}
+.confirm-modal-footer{padding:18px 22px;display:flex;justify-content:flex-end;gap:10px;}
+.btn-danger-solid{background:var(--bo-danger);color:#fff;border-color:var(--bo-danger);}
+.btn-danger-solid:hover{background:#7a1929;border-color:#7a1929;}
+.btn-success-solid{background:var(--bo-success);color:#fff;border-color:var(--bo-success);}
+.btn-success-solid:hover{background:#1e4d37;border-color:#1e4d37;}
+
+/* Bulk select */
+.bulk-bar{background:var(--bo-brown);color:var(--bo-warm);padding:10px 20px;border-radius:8px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;font-size:13px;animation:confirmIn 0.15s ease;}
+.checkbox-cell{width:36px;text-align:center;}
+input[type=checkbox].row-check{width:15px;height:15px;cursor:pointer;accent-color:var(--bo-gold);}
+.select-all-wrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--bo-muted);cursor:pointer;margin-bottom:10px;user-select:none;}
+.select-all-wrap input{accent-color:var(--bo-gold);}
+
+/* Range */
+input[type=range]{padding:0;height:20px;}
+.range-val{font-size:13px;font-weight:500;color:var(--bo-gold-dark);min-width:36px;text-align:right;}
+
+/* Overhead toggle */
+.overhead-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(232,213,190,0.4);}
+.overhead-item:last-child{border-bottom:none;}
+.toggle{width:36px;height:20px;background:var(--bo-warm);border-radius:10px;border:1px solid var(--bo-border);cursor:pointer;position:relative;transition:all 0.15s;}
+.toggle.on{background:var(--bo-gold);}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;background:white;border-radius:50%;transition:all 0.15s;}
+.toggle.on::after{left:18px;}
+
+.dot{width:8px;height:8px;border-radius:50%;background:var(--bo-gold);display:inline-block;margin-right:4px;}
+
+/* Autocomplete Dropdown Styles */
+.autocomplete-wrapper {
+  position: relative;
+  width: 100%;
+}
+.autocomplete-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bo-white);
+  border: 1px solid var(--bo-border);
+  border-radius: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 16px rgba(45,27,16,0.15);
+}
+.autocomplete-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12.5px;
+  border-bottom: 1px solid rgba(232,213,190,0.2);
+  transition: all 0.15s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+.autocomplete-item:hover, .autocomplete-item.active {
+  background: var(--bo-warm);
+  color: var(--bo-gold-dark);
+}
+.autocomplete-item .details {
+  font-size: 11px;
+  color: var(--bo-muted);
+}
+
+/* History Modal & timeline styles */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+.timeline-item {
+  padding-left: 18px;
+  border-left: 2px solid var(--bo-gold);
+  position: relative;
+  font-size: 12.5px;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bo-gold-dark);
+}
+.timeline-time {
+  font-size: 10.5px;
+  color: var(--bo-muted);
+  margin-bottom: 2px;
+}
+
+/* Print Styles & Invoice */
+.invoice-container {
+  padding: 24px;
+  color: var(--bo-text);
+  font-family: 'DM Sans', sans-serif;
+}
+.invoice-header {
+  border-bottom: 2px solid var(--bo-gold);
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.invoice-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--bo-brown);
+}
+.invoice-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 20px;
+  color: var(--bo-muted);
+}
+.invoice-section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bo-brown);
+  border-bottom: 1px solid var(--bo-border);
+  padding-bottom: 4px;
+  margin: 14px 0 8px;
+}
+.invoice-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--bo-cream);
+  border-radius: 8px;
+}
+.invoice-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13.5px;
+  padding: 4px 0;
+}
+.invoice-total-row.grand {
+  font-size: 16px;
+  font-weight: 600;
+  border-top: 1px dashed var(--bo-gold);
+  padding-top: 8px;
+  margin-top: 4px;
+  color: var(--bo-gold-dark);
+}
+
+/* Edit banner styling */
+.edit-banner {
+  background: rgba(196,154,60,0.12);
+  border: 1px dashed var(--bo-gold);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+.edit-banner .badge {
+  font-weight: 600;
+  font-size: 10px;
+}
+
+/* Print view only override */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #modal-overlay, #modal-overlay * {
+    visibility: visible;
+  }
+  #modal-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+  }
+  .modal-header button, .modal-footer {
+    display: none !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">BlissOven</div>
+    <div class="sub">Cost Calculator</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="navigate('dashboard')"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+    <div class="nav-item" onclick="navigate('calculator')"><i class="ti ti-calculator"></i>Cost Calculator</div>
+    <div class="nav-item" onclick="navigate('products')"><i class="ti ti-package"></i>Product Catalog</div>
+    <div class="nav-item" onclick="navigate('custom')"><i class="ti ti-sparkles"></i>Custom Order</div>
+    <div class="nav-section">Settings</div>
+    <div class="nav-item" onclick="navigate('ingredients')"><i class="ti ti-leaf"></i>Ingredient Master</div>
+    <div class="nav-item" onclick="navigate('packaging')"><i class="ti ti-box"></i>Packaging Master</div>
+    <div class="nav-item" onclick="navigate('labour')"><i class="ti ti-users"></i>Labour Settings</div>
+    <div class="nav-item" onclick="navigate('overheads')"><i class="ti ti-building"></i>Overhead Settings</div>
+    <div class="nav-section">Reports</div>
+    <div class="nav-item" onclick="navigate('orders')"><i class="ti ti-receipt"></i>Saved Orders</div>
+    <div class="nav-item" onclick="navigate('reports')"><i class="ti ti-chart-bar"></i>Reports</div>
+  </nav>
+</aside>
+
+<!-- Main Content -->
+<main class="main">
+
+<!-- DASHBOARD PAGE -->
+<div id="page-dashboard">
+  <div class="page-header">
+    <div class="page-title">Good morning, Komal ✦</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-gold btn-sm" onclick="navigate('calculator')"><i class="ti ti-plus"></i> New Calculation</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Products</div>
+        <div class="stat-value gold" id="dash-products">12</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">in catalog</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg. Profit Margin</div>
+        <div class="stat-value green" id="dash-margin">42%</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">across all products</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Saved Orders</div>
+        <div class="stat-value" id="dash-orders">0</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">calculations saved</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Highest Margin</div>
+        <div class="stat-value rose" id="dash-top">Brownies</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">best performing</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+      <div class="card">
+        <div class="card-title">Quick Calculations</div>
+        <div class="product-grid" style="grid-template-columns:repeat(2,1fr);">
+          <div class="product-card" onclick="quickCalc('Rasmalai Cake')">
+            <span class="emoji">🎂</span>
+            <div class="pc-name">Rasmalai Cake</div>
+            <div class="pc-cat">Fusion Cake</div>
+          </div>
+          <div class="product-card" onclick="quickCalc('Fruit Cake')">
+            <span class="emoji">🍓</span>
+            <div class="pc-name">Fruit Cake</div>
+            <div class="pc-cat">Signature Cake</div>
+          </div>
+          <div class="product-card" onclick="quickCalc('Brownie Box')">
+            <span class="emoji">🍫</span>
+            <div class="pc-name">Brownie Box</div>
+            <div class="pc-cat">Dessert Box</div>
+          </div>
+          <div class="product-card" onclick="quickCalc('Cookie Box')">
+            <span class="emoji">🍪</span>
+            <div class="pc-name">Cookie Box</div>
+            <div class="pc-cat">Gift Box</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Cost Breakdown Guide</div>
+        <div style="font-size:13px;color:var(--bo-muted);margin-bottom:12px;">Average cost distribution across products</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Raw Materials</span><span style="font-weight:500;">45–55%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Labour</span><span style="font-weight:500;">15–25%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:20%;background:#E8B4B8;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Packaging</span><span style="font-weight:500;">8–15%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:11%;background:#B4C4A8;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Overheads</span><span style="font-weight:500;">10–18%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:14%;background:#F5C4A8;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;"><span>Decoration & Others</span><span style="font-weight:500;">5–12%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:8%;background:#C4B4E8;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Product Catalog Overview</div>
+      <table>
+        <thead><tr><th>Product</th><th>Category</th><th>Cost Price</th><th>Selling Price</th><th>Margin</th><th>Status</th></tr></thead>
+        <tbody id="catalog-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CALCULATOR PAGE -->
+<div id="page-calculator" class="hidden">
+  <div class="page-header">
+    <div class="page-title">Cost Calculator</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-sm" onclick="resetCalc()"><i class="ti ti-refresh"></i> Reset</button>
+      <button class="btn btn-gold btn-sm" onclick="saveOrder()"><i class="ti ti-device-floppy"></i> Save Order</button>
+    </div>
+  </div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;">
+      <!-- Left: Input Panel -->
+      <div>
+        <!-- Product Selection -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Product Details</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label required">Product / Order Name</label>
+              <input type="text" id="calc-name" placeholder="e.g. Fruit Cake — Birthday Order" oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label required">Product Category</label>
+              <select id="calc-category" onchange="onCategoryChange()">
+                <option value="">— Select Category —</option>
+                <option value="cake">Celebration Cake</option>
+                <option value="fruit-cake">Fruit Cake</option>
+                <option value="theme-cake">Custom Theme Cake</option>
+                <option value="fusion-cake">Fusion Cake (Indian)</option>
+                <option value="cupcake">Cupcakes</option>
+                <option value="brownie">Brownies / Brownie Box</option>
+                <option value="cookie">Cookies / Cookie Box</option>
+                <option value="bread">Homemade Bread</option>
+                <option value="chocolate">Artisan Chocolate Box</option>
+                <option value="cheesecake">Cheesecake</option>
+                <option value="muffin">Muffins</option>
+                <option value="pastry">Pastries</option>
+                <option value="gift-box">Gift / Combo Box</option>
+                <option value="custom">Fully Custom</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Batch Size</label>
+              <input type="number" id="calc-batch" value="1" min="1" oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Servings per Batch</label>
+              <input type="number" id="calc-servings" value="8" min="1" oninput="recalculate()">
+            </div>
+          </div>
+          <!-- Dynamic category fields -->
+          <div id="dynamic-fields"></div>
+        </div>
+
+        <!-- Ingredients -->
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="card-title" style="margin:0;">Raw Materials & Ingredients</div>
+            <button class="btn btn-sm" onclick="addIngredient()"><i class="ti ti-plus"></i> Add</button>
+          </div>
+          <div style="font-size:11px;color:var(--bo-muted);display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:8px;padding:0 0 6px;border-bottom:1px solid var(--bo-border);margin-bottom:8px;">
+            <span>Ingredient</span><span>Qty</span><span>Unit</span><span>Rate (₹/unit)</span><span>Wastage%</span><span></span>
+          </div>
+          <div id="ingredient-list"></div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bo-border);display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:var(--bo-muted);">Total raw material cost</span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="raw-total">0.00</span></span>
+          </div>
+        </div>
+
+        <!-- Decoration & Finishing -->
+        <div class="card" style="margin-bottom:16px;" id="decoration-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="card-title" style="margin:0;">Decoration & Finishing</div>
+            <button class="btn btn-sm" onclick="addDecoration()"><i class="ti ti-plus"></i> Add Item</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;" id="deco-quick-btns">
+            <button class="btn btn-sm" onclick="addDecoItem('Fondant')">+ Fondant</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Edible Print')">+ Edible Print</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Cake Topper')">+ Topper</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Glitter')">+ Glitter</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Drip')">+ Drip</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Candle')">+ Candle</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Fresh Flowers')">+ Flowers</button>
+            <button class="btn btn-sm" onclick="addDecoItem('Sugar Pearls')">+ Pearls</button>
+          </div>
+          <div style="font-size:11px;color:var(--bo-muted);display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:8px;padding:0 0 6px;border-bottom:1px solid var(--bo-border);margin-bottom:8px;">
+            <span>Item</span><span>Qty</span><span>Unit</span><span>Rate (₹/unit)</span><span>Cost</span><span></span>
+          </div>
+          <div id="decoration-list"></div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bo-border);display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:var(--bo-muted);">Total decoration cost</span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="deco-total">0.00</span></span>
+          </div>
+        </div>
+
+        <!-- Packaging -->
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="card-title" style="margin:0;">Packaging & Presentation</div>
+            <button class="btn btn-sm" onclick="addPackaging()"><i class="ti ti-plus"></i> Add</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+            <button class="btn btn-sm" onclick="addPackItem('Cake Box')">+ Cake Box</button>
+            <button class="btn btn-sm" onclick="addPackItem('Cake Board')">+ Cake Board</button>
+            <button class="btn btn-sm" onclick="addPackItem('Carry Bag')">+ Carry Bag</button>
+            <button class="btn btn-sm" onclick="addPackItem('BlissOven Sticker')">+ Sticker</button>
+            <button class="btn btn-sm" onclick="addPackItem('Message Card')">+ Card</button>
+            <button class="btn btn-sm" onclick="addPackItem('Ribbon')">+ Ribbon</button>
+          </div>
+          <div style="font-size:11px;color:var(--bo-muted);display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:8px;padding:0 0 6px;border-bottom:1px solid var(--bo-border);margin-bottom:8px;">
+            <span>Item</span><span>Qty</span><span>Unit</span><span>Rate (₹)</span><span></span>
+          </div>
+          <div id="packaging-list"></div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bo-border);display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:var(--bo-muted);">Total packaging cost</span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="pack-total">0.00</span></span>
+          </div>
+        </div>
+
+        <!-- Labour -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Labour Cost</div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label">Prep Time (mins)</label>
+              <input type="number" id="labour-prep" value="30" min="0" oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Baking Time (mins)</label>
+              <input type="number" id="labour-bake" value="45" min="0" oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Decoration (mins)</label>
+              <input type="number" id="labour-deco" value="60" min="0" oninput="recalculate()">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Packing Time (mins)</label>
+              <input type="number" id="labour-pack" value="15" min="0" oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hourly Wage (₹/hr)</label>
+              <input type="number" id="labour-rate" value="150" min="0" oninput="recalculate()">
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--bo-border);">
+            <span style="color:var(--bo-muted);">Total labour time: <span id="labour-hours">2.5 hrs</span></span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="labour-total">375.00</span></span>
+          </div>
+        </div>
+
+        <!-- Overhead & Utilities -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Overheads & Utilities</div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label">Electricity (₹)</label>
+              <input type="number" id="oh-elec" value="25" min="0" oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Gas / Fuel (₹)</label>
+              <input type="number" id="oh-gas" value="15" min="0" oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Water (₹)</label>
+              <input type="number" id="oh-water" value="5" min="0" oninput="recalculate()">
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label">Rent Allocation (₹)</label>
+              <input type="number" id="oh-rent" value="50" min="0" oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Cleaning / Admin (₹)</label>
+              <input type="number" id="oh-admin" value="10" min="0" oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Delivery (₹)</label>
+              <input type="number" id="oh-delivery" value="0" min="0" oninput="recalculate()">
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--bo-border);">
+            <span style="color:var(--bo-muted);">Total overhead cost</span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="overhead-total">105.00</span></span>
+          </div>
+        </div>
+
+        <!-- Wastage & Buffer -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Wastage & Buffer</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Wastage / Spoilage Buffer</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input type="range" id="wastage-pct" min="0" max="25" value="5" step="1" oninput="document.getElementById('wastage-val').textContent=this.value+'%';recalculate()">
+                <span class="range-val" id="wastage-val">5%</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Emergency Price Buffer</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input type="range" id="buffer-pct" min="0" max="15" value="3" step="1" oninput="document.getElementById('buffer-val').textContent=this.value+'%';recalculate()">
+                <span class="range-val" id="buffer-val">3%</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--bo-border);">
+            <span style="color:var(--bo-muted);">Total wastage/buffer cost</span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="wastage-total">0.00</span></span>
+          </div>
+        </div>
+
+        <!-- Misc -->
+        <div class="card">
+          <div class="card-title">Miscellaneous Costs</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Miscellaneous (₹)</label>
+              <input type="number" id="misc-cost" value="0" min="0" oninput="recalculate()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Notes</label>
+              <input type="text" id="misc-notes" placeholder="e.g. special ingredients, rush order">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Live Cost Breakdown -->
+      <div style="position:sticky;top:72px;">
+        <div class="highlight-box" style="margin-bottom:16px;">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;margin-bottom:14px;">Live Cost Breakdown</div>
+          <div class="cost-row"><span class="cost-label">Raw Materials</span><span class="cost-val">₹<span id="r-raw">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Decoration & Finishing</span><span class="cost-val">₹<span id="r-deco">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Packaging</span><span class="cost-val">₹<span id="r-pack">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Labour</span><span class="cost-val">₹<span id="r-labour">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Overheads & Utilities</span><span class="cost-val">₹<span id="r-overhead">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Wastage & Buffer</span><span class="cost-val">₹<span id="r-wastage">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Miscellaneous</span><span class="cost-val">₹<span id="r-misc">0.00</span></span></div>
+          <div class="cost-row total"><span>Total Cost Price</span><span class="cost-val">₹<span id="r-cost">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label" style="font-size:12px;">Per Serving</span><span style="font-size:12px;color:var(--bo-muted);">₹<span id="r-per-serving">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label" style="font-size:12px;">Break-even Price</span><span style="font-size:12px;color:var(--bo-muted);">₹<span id="r-breakeven">0.00</span></span></div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Selling Price Calculator</div>
+          <div class="form-group">
+            <label class="form-label">Target Profit Margin</label>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <input type="range" id="margin-slider" min="10" max="150" value="60" step="5" oninput="document.getElementById('margin-pct-val').textContent=this.value+'%';recalculate()">
+              <span class="range-val" id="margin-pct-val">60%</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pricing Rule</label>
+            <select id="price-rule" onchange="recalculate()">
+              <option value="exact">Exact calculated price</option>
+              <option value="round50">Round to nearest ₹50</option>
+              <option value="round100">Round to nearest ₹100</option>
+              <option value="end9">End in ₹9 (e.g. ₹549)</option>
+              <option value="end99">End in ₹99 (e.g. ₹599)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">GST (%)</label>
+            <input type="number" id="gst-pct" value="0" min="0" max="28" oninput="recalculate()">
+          </div>
+          <div class="cost-row selling" style="margin-top:12px;border-top:2px solid rgba(45,106,79,0.3);padding-top:12px;">
+            <span>Suggested Selling Price</span><span class="cost-val" style="color:var(--bo-success);">₹<span id="r-selling">0</span></span>
+          </div>
+          <div class="cost-row profit"><span class="cost-label">Profit Amount</span><span class="cost-val" style="color:var(--bo-success);">₹<span id="r-profit">0</span></span></div>
+          <div class="cost-row profit"><span class="cost-label">Profit %</span><span class="cost-val" style="color:var(--bo-success);"><span id="r-profit-pct">0</span>%</span></div>
+          <div class="cost-row profit" style="border:none;"><span class="cost-label">Wholesale Price (−20%)</span><span class="cost-val">₹<span id="r-wholesale">0</span></span></div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div style="font-size:12px;color:var(--bo-muted);margin-bottom:8px;display:flex;align-items:center;gap:4px;"><span class="dot"></span>Cost Composition</div>
+          <div id="composition-bars"></div>
+        </div>
+
+        <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="saveOrder()"><i class="ti ti-device-floppy"></i> Save Calculation</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCTS PAGE -->
+<div id="page-products" class="hidden">
+  <div class="page-header">
+    <div class="page-title">Product Catalog</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="prod-show-deleted" onchange="renderProductCatalog()"> Show deleted</label>
+      <button class="btn btn-gold btn-sm" onclick="showAddProduct()"><i class="ti ti-plus"></i> Add Product</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="product-grid" id="product-catalog-grid"></div>
+  </div>
+</div>
+
+<!-- INGREDIENTS MASTER PAGE -->
+<div id="page-ingredients" class="hidden">
+  <div class="page-header">
+    <div class="page-title">Ingredient Master</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="ing-show-deleted" onchange="renderIngredientsMaster()"> Show deleted</label>
+      <button class="btn btn-gold btn-sm" onclick="showAddIngredient()"><i class="ti ti-plus"></i> Add Ingredient</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <table>
+        <thead><tr><th>Ingredient</th><th>Category</th><th>Unit</th><th>Current Rate (₹)</th><th>Last Updated</th><th>Actions</th></tr></thead>
+        <tbody id="ingredients-master-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PACKAGING PAGE -->
+<div id="page-packaging" class="hidden">
+  <div class="page-header">
+    <div class="page-title">Packaging Master</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="pack-show-deleted" onchange="renderPackagingMaster()"> Show deleted</label>
+      <button class="btn btn-gold btn-sm" onclick="showAddPackaging()"><i class="ti ti-plus"></i> Add Item</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <table>
+        <thead><tr><th>Item</th><th>Type</th><th>Size/Variant</th><th>Rate (₹)</th><th>Vendor</th><th>Actions</th></tr></thead>
+        <tbody id="packaging-master-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- LABOUR PAGE -->
+<div id="page-labour" class="hidden">
+  <div class="page-header"><div class="page-title">Labour Settings</div></div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <div class="card-title">Default Labour Rates</div>
+        <div class="form-group"><label class="form-label">Head Baker / Pastry Chef (₹/hr)</label><input type="number" value="200" oninput="saveLabour(this,'head')"></div>
+        <div class="form-group"><label class="form-label">Decoration Specialist (₹/hr)</label><input type="number" value="180" oninput="saveLabour(this,'deco')"></div>
+        <div class="form-group"><label class="form-label">Packing Staff (₹/hr)</label><input type="number" value="100" oninput="saveLabour(this,'pack')"></div>
+        <div class="form-group"><label class="form-label">Delivery Person (₹/trip)</label><input type="number" value="150" oninput="saveLabour(this,'delivery')"></div>
+        <div class="form-group"><label class="form-label">Minimum Labour Charge (₹)</label><input type="number" value="100" oninput="saveLabour(this,'min')"></div>
+        <button class="btn btn-gold btn-sm" onclick="showToast('Labour settings saved!')">Save Settings</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Default Time Estimates (minutes)</div>
+        <div class="form-group"><label class="form-label">Standard Cake Prep</label><input type="number" value="30"></div>
+        <div class="form-group"><label class="form-label">Standard Baking Time</label><input type="number" value="45"></div>
+        <div class="form-group"><label class="form-label">Simple Decoration</label><input type="number" value="30"></div>
+        <div class="form-group"><label class="form-label">Complex Decoration (theme cake)</label><input type="number" value="120"></div>
+        <div class="form-group"><label class="form-label">Packaging Time</label><input type="number" value="15"></div>
+        <button class="btn btn-gold btn-sm" onclick="showToast('Time estimates saved!')">Save Settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OVERHEAD SETTINGS -->
+<div id="page-overheads" class="hidden">
+  <div class="page-header"><div class="page-title">Overhead Settings</div></div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <div class="card-title">Monthly Fixed Overheads</div>
+        <div class="form-group"><label class="form-label">Monthly Rent (₹)</label><input type="number" value="15000" id="monthly-rent" oninput="calcDailyOverhead()"></div>
+        <div class="form-group"><label class="form-label">Monthly Electricity (₹)</label><input type="number" value="3000" id="monthly-elec" oninput="calcDailyOverhead()"></div>
+        <div class="form-group"><label class="form-label">Monthly Gas / LPG (₹)</label><input type="number" value="1500" id="monthly-gas" oninput="calcDailyOverhead()"></div>
+        <div class="form-group"><label class="form-label">Monthly Internet / Software (₹)</label><input type="number" value="500"></div>
+        <div class="form-group"><label class="form-label">Monthly Cleaning & Misc (₹)</label><input type="number" value="1000" id="monthly-clean" oninput="calcDailyOverhead()"></div>
+        <div class="form-group"><label class="form-label">Working Days per Month</label><input type="number" value="25" id="working-days" oninput="calcDailyOverhead()"></div>
+        <div class="form-group"><label class="form-label">Avg. Orders per Day</label><input type="number" value="3" id="daily-orders" oninput="calcDailyOverhead()"></div>
+        <div class="highlight-box" style="padding:14px;">
+          <div style="font-size:12px;color:var(--bo-muted);margin-bottom:4px;">Calculated overhead per order</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--bo-gold-dark);">₹<span id="oh-per-order">280</span></div>
+          <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">Use this as your baseline overhead allocation</div>
+        </div>
+        <button class="btn btn-gold btn-sm" style="margin-top:12px;" onclick="showToast('Overhead settings saved!')">Save Settings</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Per-Product Overhead Toggles</div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Include electricity cost</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Include gas / fuel cost</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Include water cost</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Include rent allocation</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Include cleaning overhead</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Machine depreciation</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+        <div class="overhead-item"><span style="font-size:13.5px;">Admin / internet overhead</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+        <div class="overhead-item" style="border:none;"><span style="font-size:13.5px;">GST calculation</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SAVED ORDERS PAGE -->
+<div id="page-orders" class="hidden">
+  <div class="page-header"><div class="page-title">Saved Orders</div></div>
+  <div class="content">
+    <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+      <div style="position:relative;flex:1;max-width:300px;">
+        <input type="text" id="order-search" placeholder="Search orders by name..." oninput="renderSavedOrdersList()">
+      </div>
+      <select id="order-filter-category" style="max-width:200px;" onchange="renderSavedOrdersList()">
+        <option value="">— All Categories —</option>
+        <option value="cake">Celebration Cake</option>
+        <option value="fruit-cake">Fruit Cake</option>
+        <option value="theme-cake">Custom Theme Cake</option>
+        <option value="fusion-cake">Fusion Cake (Indian)</option>
+        <option value="cupcake">Cupcakes</option>
+        <option value="brownie">Brownies / Brownie Box</option>
+        <option value="cookie">Cookies / Cookie Box</option>
+        <option value="bread">Homemade Bread</option>
+        <option value="chocolate">Artisan Chocolate Box</option>
+        <option value="cheesecake">Cheesecake</option>
+        <option value="muffin">Muffins</option>
+        <option value="pastry">Pastries</option>
+        <option value="gift-box">Gift / Combo Box</option>
+        <option value="custom">Fully Custom</option>
+      </select>
+      <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="order-show-deleted" onchange="renderSavedOrdersList()"> Show deleted</label>
+      <button class="btn btn-sm" onclick="clearSavedOrdersFilters()"><i class="ti ti-refresh"></i> Reset</button>
+    </div>
+    <div class="card">
+      <div id="saved-orders-content">
+        <div style="text-align:center;padding:40px;color:var(--bo-muted);">
+          <i class="ti ti-receipt" style="font-size:40px;opacity:0.3;display:block;margin-bottom:12px;"></i>
+          No saved calculations yet. Use the Cost Calculator to create and save orders.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REPORTS PAGE -->
+<div id="page-reports" class="hidden">
+  <div class="page-header"><div class="page-title">Reports & Analytics</div></div>
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Avg. Cost Price</div><div class="stat-value gold">₹480</div></div>
+      <div class="stat-card"><div class="stat-label">Avg. Selling Price</div><div class="stat-value">₹850</div></div>
+      <div class="stat-card"><div class="stat-label">Best Margin Product</div><div class="stat-value green" style="font-size:18px;">Brownies</div></div>
+      <div class="stat-card"><div class="stat-label">Highest Cost Product</div><div class="stat-value rose" style="font-size:18px;">Theme Cake</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <div class="card-title">Profitability by Category</div>
+        <div id="profitability-chart"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Cost Component Analysis</div>
+        <div id="cost-analysis"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOM ORDER PAGE -->
+<div id="page-custom" class="hidden">
+  <div class="page-header">
+    <div class="page-title">Custom Order Builder</div>
+    <button class="btn btn-gold btn-sm" onclick="navigate('calculator')"><i class="ti ti-arrow-right"></i> Open in Calculator</button>
+  </div>
+  <div class="content">
+    <div class="card" style="max-width:680px;">
+      <div class="card-title">Build Your Custom Order</div>
+      <p style="font-size:13.5px;color:var(--bo-muted);margin-bottom:20px;">Select a base product type to get smart, pre-filled templates with all relevant fields. This will open a fully customizable calculation.</p>
+      <div class="product-grid">
+        <div class="product-card" onclick="loadTemplate('fruit-cake')"><span class="emoji">🍓</span><div class="pc-name">Fruit Cake</div><div class="pc-cat">With fruit garnish & cream</div></div>
+        <div class="product-card" onclick="loadTemplate('theme-cake')"><span class="emoji">🎨</span><div class="pc-name">Theme Cake</div><div class="pc-cat">Custom decoration & fondant</div></div>
+        <div class="product-card" onclick="loadTemplate('brownie-box')"><span class="emoji">🍫</span><div class="pc-name">Brownie Box</div><div class="pc-cat">Assorted box with packaging</div></div>
+        <div class="product-card" onclick="loadTemplate('cookie-box')"><span class="emoji">🍪</span><div class="pc-name">Cookie Box</div><div class="pc-cat">Mixed cookies with box & filler</div></div>
+        <div class="product-card" onclick="loadTemplate('fusion-cake')"><span class="emoji">🇮🇳</span><div class="pc-name">Fusion Cake</div><div class="pc-cat">Indian flavour specialties</div></div>
+        <div class="product-card" onclick="loadTemplate('choco-box')"><span class="emoji">🍬</span><div class="pc-name">Chocolate Box</div><div class="pc-cat">Artisan filled chocolates</div></div>
+        <div class="product-card" onclick="loadTemplate('bread')"><span class="emoji">🍞</span><div class="pc-name">Artisan Bread</div><div class="pc-cat">Homemade loaf</div></div>
+        <div class="product-card" onclick="loadTemplate('gift-box')"><span class="emoji">🎁</span><div class="pc-name">Gift / Hamper Box</div><div class="pc-cat">Combo with multiple items</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- Modals -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal(event)">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirm-overlay" class="confirm-modal-overlay hidden" onclick="if(event.target===this)cancelConfirm()">
+  <div class="confirm-modal">
+    <div class="confirm-modal-header">
+      <div class="confirm-modal-icon" id="confirm-icon"><i class="ti ti-trash" id="confirm-icon-i"></i></div>
+      <div>
+        <div class="confirm-modal-title" id="confirm-title">Delete this record?</div>
+      </div>
+    </div>
+    <div class="confirm-modal-body" id="confirm-body">This action cannot be undone.</div>
+    <div class="confirm-modal-footer">
+      <button class="btn btn-sm" onclick="cancelConfirm()">Cancel</button>
+      <button class="btn btn-sm btn-danger-solid" id="confirm-action-btn" onclick="executeConfirm()"><i class="ti ti-trash" id="confirm-btn-icon"></i> <span id="confirm-btn-label">Delete</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><i class="ti ti-check"></i><span id="toast-msg">Saved!</span></div>
+
+<script>
+var currentPage = 'dashboard';
+var ingredients = [];
+var decorations = [];
+var packaging = [];
+var savedOrders = [];
+var catalogProducts = [];
+var ingredientsMaster = [];
+var packagingMaster = [];
+var auditLog = [];
+var currentEditingOrderId = null;
+
+// Fallback static defaults
+var catalogProductsDefaults = [
+  {id:1,name:'Rasmalai Cake',cat:'Fusion Cake',emoji:'🎂',cost:520,sell:950,margin:45},
+  {id:2,name:'Gulab Jamun Cake',cat:'Fusion Cake',emoji:'🍮',cost:480,sell:850,margin:43},
+  {id:3,name:'Fruit Cake (500g)',cat:'Signature Cake',emoji:'🍓',cost:380,sell:650,margin:41},
+  {id:4,name:'Classic Chocolate Cake',cat:'Celebration Cake',emoji:'🍫',cost:320,sell:550,margin:42},
+  {id:5,name:'Fudgy Brownie Box (8pc)',cat:'Brownie Box',emoji:'🟫',cost:280,sell:499,margin:44},
+  {id:6,name:'Walnut Brownie Box',cat:'Brownie Box',emoji:'🌰',cost:300,sell:549,margin:45},
+  {id:7,name:'Oreo Cheesecake',cat:'Cheesecake',emoji:'🍰',cost:420,sell:750,margin:44},
+  {id:8,name:'Mango Cake',cat:'Fusion Cake',emoji:'🥭',cost:360,sell:650,margin:44},
+  {id:9,name:'Kesar Pista Cake',cat:'Fusion Cake',emoji:'⭐',cost:500,sell:900,margin:44},
+  {id:10,name:'Artisan Bread Loaf',cat:'Homemade Bread',emoji:'🍞',cost:95,sell:180,margin:47},
+  {id:11,name:'Cookie Box (12pc)',cat:'Cookie Box',emoji:'🍪',cost:220,sell:399,margin:45},
+  {id:12,name:'Chocolate Box (10pc)',cat:'Chocolate Box',emoji:'🍬',cost:350,sell:649,margin:46}
+];
+
+var ingredientsMasterDefaults = [
+  {name:'All-Purpose Flour',cat:'Dry',unit:'kg',rate:48,updated:'2024-01-15'},
+  {name:'Maida',cat:'Dry',unit:'kg',rate:40,updated:'2024-01-15'},
+  {name:'Sugar (Fine)',cat:'Dry',unit:'kg',rate:50,updated:'2024-01-10'},
+  {name:'Powdered Sugar',cat:'Dry',unit:'kg',rate:60,updated:'2024-01-10'},
+  {name:'Cocoa Powder',cat:'Dry',unit:'kg',rate:350,updated:'2024-01-12'},
+  {name:'Baking Powder',cat:'Dry',unit:'g',rate:25,updated:'2024-01-05'},
+  {name:'Baking Soda',cat:'Dry',unit:'g',rate:15,updated:'2024-01-05'},
+  {name:'Fresh Cream (25% fat)',cat:'Dairy',unit:'litre',rate:180,updated:'2024-01-18'},
+  {name:'Whipping Cream',cat:'Dairy',unit:'litre',rate:280,updated:'2024-01-18'},
+  {name:'Butter (Amul)',cat:'Dairy',unit:'g',rate:120,updated:'2024-01-16'},
+  {name:'Cream Cheese',cat:'Dairy',unit:'g',rate:180,updated:'2024-01-14'},
+  {name:'Eggs',cat:'Dairy',unit:'piece',rate:8,updated:'2024-01-18'},
+  {name:'Milk',cat:'Dairy',unit:'litre',rate:60,updated:'2024-01-18'},
+  {name:'Belgian Dark Chocolate',cat:'Chocolate',unit:'kg',rate:900,updated:'2024-01-10'},
+  {name:'Belgian Milk Chocolate',cat:'Chocolate',unit:'kg',rate:800,updated:'2024-01-10'},
+  {name:'White Chocolate',cat:'Chocolate',unit:'kg',rate:850,updated:'2024-01-10'},
+  {name:'Alphonso Mango Pulp',cat:'Fruit',unit:'kg',rate:250,updated:'2024-01-08'},
+  {name:'Strawberry (fresh)',cat:'Fruit',unit:'kg',rate:200,updated:'2024-01-18'},
+  {name:'Kiwi',cat:'Fruit',unit:'piece',rate:30,updated:'2024-01-18'},
+  {name:'Saffron (Kashmiri)',cat:'Spice',unit:'gram',rate:12,updated:'2024-01-01'},
+  {name:'Cardamom Powder',cat:'Spice',unit:'50g',rate:45,updated:'2024-01-05'},
+  {name:'Vanilla Extract',cat:'Flavour',unit:'30ml',rate:80,updated:'2024-01-05'},
+  {name:'Lotus Biscoff',cat:'Add-in',unit:'250g pack',rate:220,updated:'2024-01-12'},
+  {name:'Nutella',cat:'Add-in',unit:'350g',rate:280,updated:'2024-01-12'},
+  {name:'Walnuts (California)',cat:'Nuts',unit:'kg',rate:900,updated:'2024-01-06'},
+  {name:'Pistachios (raw)',cat:'Nuts',unit:'kg',rate:1200,updated:'2024-01-06'}
+];
+
+var packagingMasterDefaults = [
+  {name:'Cake Box 500g',type:'Box',size:'6×6 inch',rate:35,vendor:'LocalSupply'},
+  {name:'Cake Box 1kg',type:'Box',size:'8×8 inch',rate:45,vendor:'LocalSupply'},
+  {name:'Cake Box 2kg',type:'Box',size:'10×10 inch',rate:60,vendor:'LocalSupply'},
+  {name:'Brownie Box (8pc)',type:'Box',size:'Standard',rate:25,vendor:'LocalSupply'},
+  {name:'Cookie Box (12pc)',type:'Box',size:'Standard',rate:30,vendor:'LocalSupply'},
+  {name:'Chocolate Box (10pc)',type:'Box',size:'Luxury',rate:55,vendor:'GiftPackaging'},
+  {name:'Cake Board 6"',type:'Board',size:'6 inch',rate:8,vendor:'LocalSupply'},
+  {name:'Cake Board 8"',type:'Board',size:'8 inch',rate:12,vendor:'LocalSupply'},
+  {name:'Cake Board 10"',type:'Board',size:'10 inch',rate:16,vendor:'LocalSupply'},
+  {name:'Carry Bag (small)',type:'Bag',size:'Small',rate:15,vendor:'PrintedBags'},
+  {name:'Carry Bag (large)',type:'Bag',size:'Large',rate:22,vendor:'PrintedBags'},
+  {name:'BlissOven Sticker',type:'Sticker',size:'Standard',rate:3,vendor:'PrintShop'},
+  {name:'Message Card',type:'Card',size:'A6',rate:5,vendor:'PrintShop'},
+  {name:'Thank-you Card',type:'Card',size:'Small',rate:4,vendor:'PrintShop'},
+  {name:'Ribbon',type:'Accessory',size:'1m',rate:8,vendor:'LocalSupply'},
+  {name:'Tissue / Filler Paper',type:'Filler',size:'Sheet',rate:2,vendor:'LocalSupply'}
+];
+
+// BlissDB Async Local Storage Wrapper (Database Ready)
+var BlissDB = {
+  get(key, defaultVal) {
+    var val = localStorage.getItem(key);
+    return val ? JSON.parse(val) : defaultVal;
+  },
+  set(key, val) {
+    localStorage.setItem(key, JSON.stringify(val));
+  },
+  
+  // Ingredients
+  async getIngredients() {
+    return this.get('bo_ingredients_master', ingredientsMasterDefaults);
+  },
+  async saveIngredients(list) {
+    this.set('bo_ingredients_master', list);
+    await this.log('Updated Ingredient Master', list.length + ' ingredients total');
+  },
+  
+  // Packaging
+  async getPackaging() {
+    return this.get('bo_packaging_master', packagingMasterDefaults);
+  },
+  async savePackaging(list) {
+    this.set('bo_packaging_master', list);
+    await this.log('Updated Packaging Master', list.length + ' packaging items total');
+  },
+  
+  // Labour
+  async getLabourSettings() {
+    return this.get('bo_labour_settings', {
+      rates: { head: 200, deco: 180, pack: 100, delivery: 150, min: 100 },
+      times: { prep: 30, bake: 45, decoSimple: 30, decoComplex: 120, pack: 15 }
+    });
+  },
+  async saveLabourSettings(settings) {
+    this.set('bo_labour_settings', settings);
+    await this.log('Updated Labour Settings', 'Rates and times modified');
+  },
+  
+  // Overheads
+  async getOverheadSettings() {
+    return this.get('bo_overhead_settings', {
+      fixed: { rent: 15000, elec: 3000, gas: 1500, internet: 500, clean: 1000, days: 25, orders: 3 },
+      toggles: { elec: true, gas: true, water: true, rent: true, clean: true, depr: false, admin: false, gst: false }
+    });
+  },
+  async saveOverheadSettings(settings) {
+    this.set('bo_overhead_settings', settings);
+    await this.log('Updated Overhead Settings', 'Fixed costs and toggles modified');
+  },
+  
+  // Orders
+  async getOrders() {
+    return this.get('bo_orders', []);
+  },
+  async saveOrder(order) {
+    var orders = await this.getOrders();
+    var idx = orders.findIndex(o => o.id === order.id);
+    if (idx > -1) {
+      orders[idx] = order;
+      await this.log('Updated Order', order.name + ' (ID: ' + order.id + ')');
+    } else {
+      orders.push(order);
+      await this.log('Created Order', order.name + ' (ID: ' + order.id + ')');
+    }
+    this.set('bo_orders', orders);
+    return order;
+  },
+  async deleteOrder(id) {
+    var orders = await this.getOrders();
+    var order = orders.find(o => o.id === id);
+    orders = orders.filter(o => o.id !== id);
+    this.set('bo_orders', orders);
+    await this.log('Deleted Order', (order ? order.name : 'Unknown') + ' (ID: ' + id + ')');
+  },
+  
+  // Catalog Products
+  async getCatalogProducts() {
+    return this.get('bo_catalog_products', catalogProductsDefaults);
+  },
+  async saveCatalogProducts(list) {
+    this.set('bo_catalog_products', list);
+    await this.log('Updated Product Catalog', list.length + ' products total');
+  },
+  
+  // Audit Logs
+  async getAuditLog() {
+    return this.get('bo_audit_log', []);
+  },
+  async log(action, details) {
+    var logs = this.get('bo_audit_log', []);
+    logs.unshift({
+      id: 'log-' + Date.now() + '-' + Math.random(),
+      timestamp: Date.now(),
+      date: new Date().toLocaleString(),
+      action: action,
+      details: details || ''
+    });
+    if (logs.length > 100) logs = logs.slice(0, 100);
+    this.set('bo_audit_log', logs);
+  }
+};
+
+// Application Bootstrap
+async function initApp() {
+  ingredientsMaster = await BlissDB.getIngredients();
+  packagingMaster = await BlissDB.getPackaging();
+  catalogProducts = await BlissDB.getCatalogProducts();
+  savedOrders = await BlissDB.getOrders();
+  
+  // Load labour settings into inputs
+  var labourSettings = await BlissDB.getLabourSettings();
+  var labourInputs = document.querySelectorAll('#page-labour input');
+  if (labourInputs.length >= 5) {
+    labourInputs[0].value = labourSettings.rates.head;
+    labourInputs[1].value = labourSettings.rates.deco;
+    labourInputs[2].value = labourSettings.rates.pack;
+    labourInputs[3].value = labourSettings.rates.delivery;
+    labourInputs[4].value = labourSettings.rates.min;
+  }
+  
+  // Fill time estimate inputs
+  var timeInputs = document.querySelectorAll('#page-labour .card:last-child input');
+  if (timeInputs.length >= 5) {
+    timeInputs[0].value = labourSettings.times.prep;
+    timeInputs[1].value = labourSettings.times.bake;
+    timeInputs[2].value = labourSettings.times.decoSimple;
+    timeInputs[3].value = labourSettings.times.decoComplex;
+    timeInputs[4].value = labourSettings.times.pack;
+  }
+  
+  // Load overhead settings into inputs
+  var overheadSettings = await BlissDB.getOverheadSettings();
+  document.getElementById('monthly-rent').value = overheadSettings.fixed.rent;
+  document.getElementById('monthly-elec').value = overheadSettings.fixed.elec;
+  document.getElementById('monthly-gas').value = overheadSettings.fixed.gas;
+  document.getElementById('monthly-clean').value = overheadSettings.fixed.clean;
+  document.getElementById('working-days').value = overheadSettings.fixed.days;
+  document.getElementById('daily-orders').value = overheadSettings.fixed.orders;
+  
+  // Configure overhead settings save listeners
+  var overheadSaveBtn = document.querySelector('#page-overheads button');
+  if (overheadSaveBtn) {
+    overheadSaveBtn.onclick = function() {
+      saveOverheadSettingsFromUI();
+    };
+  }
+  
+  var labourSaveBtn1 = document.querySelector('#page-labour .card:first-child button');
+  var labourSaveBtn2 = document.querySelector('#page-labour .card:last-child button');
+  if (labourSaveBtn1) labourSaveBtn1.onclick = () => saveLabourSettingsFromUI();
+  if (labourSaveBtn2) labourSaveBtn2.onclick = () => saveLabourSettingsFromUI();
+  
+  // Load toggles
+  var toggles = document.querySelectorAll('#page-overheads .toggle');
+  var toggleKeys = ['elec', 'gas', 'water', 'rent', 'clean', 'depr', 'admin', 'gst'];
+  toggles.forEach((t, i) => {
+    var key = toggleKeys[i];
+    if (overheadSettings.toggles[key]) {
+      t.classList.add('on');
+    } else {
+      t.classList.remove('on');
+    }
+    t.onclick = async function() {
+      t.classList.toggle('on');
+      await saveOverheadSettingsFromUI();
+    };
+  });
+  
+  // Configure hourly wage standard
+  document.getElementById('labour-rate').value = labourSettings.rates.head;
+  document.getElementById('dash-orders').textContent = savedOrders.filter(o=>!o.deleted).length;
+  
+  // Render views
+  renderIngredients();
+  renderDecorations();
+  renderPackaging();
+  renderDashboardTable();
+  renderSavedOrdersList();
+  recalculate();
+  calcDailyOverhead();
+}
+
+// Settings Action Bindings
+async function saveLabourSettingsFromUI() {
+  var labourInputs = document.querySelectorAll('#page-labour input');
+  var timeInputs = document.querySelectorAll('#page-labour .card:last-child input');
+  
+  var settings = {
+    rates: {
+      head: +(labourInputs[0].value) || 200,
+      deco: +(labourInputs[1].value) || 180,
+      pack: +(labourInputs[2].value) || 100,
+      delivery: +(labourInputs[3].value) || 150,
+      min: +(labourInputs[4].value) || 100
+    },
+    times: {
+      prep: +(timeInputs[0].value) || 30,
+      bake: +(timeInputs[1].value) || 45,
+      decoSimple: +(timeInputs[2].value) || 30,
+      decoComplex: +(timeInputs[3].value) || 120,
+      pack: +(timeInputs[4].value) || 15
+    }
+  };
+  await BlissDB.saveLabourSettings(settings);
+  document.getElementById('labour-rate').value = settings.rates.head;
+  recalculate();
+  showToast('Labour settings saved!');
+}
+
+async function saveOverheadSettingsFromUI() {
+  var toggles = document.querySelectorAll('#page-overheads .toggle');
+  var toggleKeys = ['elec', 'gas', 'water', 'rent', 'clean', 'depr', 'admin', 'gst'];
+  var toggleVals = {};
+  toggles.forEach((t, i) => {
+    toggleVals[toggleKeys[i]] = t.classList.contains('on');
+  });
+  
+  var settings = {
+    fixed: {
+      rent: +(document.getElementById('monthly-rent').value) || 0,
+      elec: +(document.getElementById('monthly-elec').value) || 0,
+      gas: +(document.getElementById('monthly-gas').value) || 0,
+      internet: 500,
+      clean: +(document.getElementById('monthly-clean').value) || 0,
+      days: +(document.getElementById('working-days').value) || 25,
+      orders: +(document.getElementById('daily-orders').value) || 3
+    },
+    toggles: toggleVals
+  };
+  await BlissDB.saveOverheadSettings(settings);
+  calcDailyOverhead();
+  updateCalculatorOverheads(settings);
+  showToast('Overhead settings saved!');
+}
+
+function updateCalculatorOverheads(settings) {
+  document.getElementById('oh-elec').value = settings.toggles.elec ? Math.round(settings.fixed.elec / (settings.fixed.days * settings.fixed.orders)) : 0;
+  document.getElementById('oh-gas').value = settings.toggles.gas ? Math.round(settings.fixed.gas / (settings.fixed.days * settings.fixed.orders)) : 0;
+  document.getElementById('oh-water').value = settings.toggles.water ? 5 : 0;
+  document.getElementById('oh-rent').value = settings.toggles.rent ? Math.round(settings.fixed.rent / (settings.fixed.days * settings.fixed.orders)) : 0;
+  document.getElementById('oh-admin').value = settings.toggles.clean ? Math.round(settings.fixed.clean / (settings.fixed.days * settings.fixed.orders)) : 0;
+  recalculate();
+}
+
+function navigate(page){
+  currentPage=page;
+  document.querySelectorAll('[id^="page-"]').forEach(p=>p.classList.add('hidden'));
+  document.getElementById('page-'+page).classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>{if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+page+"'"))n.classList.add('active');});
+  if(page==='products')renderProductCatalog();
+  if(page==='ingredients')renderIngredientsMaster();
+  if(page==='packaging')renderPackagingMaster();
+  if(page==='reports')renderReports();
+  if(page==='dashboard')renderDashboardTable();
+  if(page==='orders')renderSavedOrdersList();
+}
+
+function renderDashboardTable(){
+  var body=document.getElementById('catalog-table-body');
+  var activeProducts = catalogProducts.filter(p => p.deleted !== true);
+  // Update Total Products stat card
+  var dashProd = document.getElementById('dash-products');
+  if (dashProd) dashProd.textContent = activeProducts.length;
+  // Update Avg Margin stat card
+  var dashMargin = document.getElementById('dash-margin');
+  if (dashMargin && activeProducts.length > 0) {
+    var avgMargin = Math.round(activeProducts.reduce((s,p)=>s+(p.margin||0),0)/activeProducts.length);
+    dashMargin.textContent = avgMargin + '%';
+  } else if (dashMargin) {
+    dashMargin.textContent = '0%';
+  }
+  // Update Highest Margin stat card
+  var dashTop = document.getElementById('dash-top');
+  if (dashTop && activeProducts.length > 0) {
+    var topProd = activeProducts.reduce((best,p)=>(p.margin||0)>(best.margin||0)?p:best, activeProducts[0]);
+    dashTop.textContent = topProd.name.length > 16 ? topProd.name.substring(0,14)+'…' : topProd.name;
+  }
+  if(activeProducts.length===0){
+    body.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--bo-muted);padding:20px;font-size:13px;">No active products in catalog. <span style="cursor:pointer;text-decoration:underline;color:var(--bo-gold-dark);" onclick="navigate('products')">Go to Product Catalog →</span></td></tr>`;
+    return;
+  }
+  body.innerHTML=activeProducts.map(p=>`
+    <tr>
+      <td><span style="font-size:16px;margin-right:6px;">${p.emoji}</span>${p.name}</td>
+      <td><span class="badge badge-gold">${p.cat}</span></td>
+      <td>₹${p.cost}</td>
+      <td>₹${p.sell}</td>
+      <td><span class="badge badge-green">${p.margin}%</span></td>
+      <td><span class="badge badge-gold">Active</span></td>
+    </tr>`).join('');
+}
+
+function renderProductCatalog(){
+  var grid=document.getElementById('product-catalog-grid');
+  var showDeleted = document.getElementById('prod-show-deleted') && document.getElementById('prod-show-deleted').checked;
+  var list = showDeleted ? catalogProducts : catalogProducts.filter(p => !p.deleted);
+  if(list.length===0){
+    grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--bo-muted);">${showDeleted?'No products in catalog.':'No active products. <span style="cursor:pointer;text-decoration:underline;color:var(--bo-gold-dark);" onclick="document.getElementById(\'prod-show-deleted\').checked=true;renderProductCatalog()">Show deleted?</span>'}</div>`;
+    return;
+  }
+  grid.innerHTML=list.map(p=>{
+    var realIdx=catalogProducts.indexOf(p);
+    var isDeleted=!!p.deleted;
+    return `
+    <div class="product-card" style="${isDeleted?'opacity:0.5;border-style:dashed;':''}">
+      <span class="emoji">${p.emoji}</span>
+      <div class="pc-name">${p.name}${isDeleted?'<span class="deleted-tag" style="font-size:9px;display:inline-flex;vertical-align:middle;margin-left:4px;"> Deleted</span>':''}</div>
+      <div class="pc-cat">${p.cat}</div>
+      <div class="pc-price">Cost: ₹${p.cost} → Sell: ₹${p.sell}</div>
+      <div class="pc-margin">Margin: ${p.margin}% <span style="color:var(--bo-muted);">| Profit: ₹${p.sell-p.cost}</span></div>
+      <div style="display:flex;gap:6px;margin-top:10px;">
+        ${isDeleted
+          ? `<button class="btn btn-sm btn-success-solid" style="flex:1;justify-content:center;" onclick="restoreCatalogProduct(${realIdx})"><i class="ti ti-restore"></i> Restore</button>
+             <button class="btn btn-sm btn-danger-solid" onclick="hardDeleteCatalogProduct(${realIdx})" title="Permanently Delete"><i class="ti ti-trash-x"></i></button>`
+          : `<button class="btn btn-sm btn-danger" style="margin-left:auto;" onclick="softDeleteCatalogProduct(${realIdx})"><i class="ti ti-trash"></i> Delete</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderIngredientsMaster(){
+  var body=document.getElementById('ingredients-master-body');
+  var showDeleted = document.getElementById('ing-show-deleted') && document.getElementById('ing-show-deleted').checked;
+  var list = showDeleted ? ingredientsMaster : ingredientsMaster.filter(i => !i.deleted);
+  if(list.length===0){
+    body.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--bo-muted);padding:24px;font-size:13px;">${showDeleted?'No ingredients in master list.':'No active ingredients. <span style="cursor:pointer;text-decoration:underline;color:var(--bo-gold-dark);" onclick="document.getElementById(\'ing-show-deleted\').checked=true;renderIngredientsMaster()">Show deleted?</span>'}</td></tr>`;
+    return;
+  }
+  body.innerHTML=list.map((i,idx)=>{
+    var realIdx=ingredientsMaster.indexOf(i);
+    var isDeleted=!!i.deleted;
+    return `
+    <tr class="${isDeleted?'soft-deleted':''}">
+      <td style="font-weight:500;">${i.name}${isDeleted?'<span class="deleted-tag"><i class="ti ti-trash" style="font-size:9px;"></i> Deleted</span>':''}</td>
+      <td><span class="badge badge-info">${i.cat}</span></td>
+      <td>${i.unit}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="master-ing-rate-${realIdx}" value="${i.rate}" style="width:80px;padding:4px 8px;font-size:12px;" ${isDeleted?'disabled':''}>
+          <button class="btn btn-sm" style="padding:4px 6px;border:none;background:transparent;color:var(--bo-gold-dark);" onclick="viewIngredientHistory(${realIdx})" title="Price History"><i class="ti ti-history"></i></button>
+        </div>
+      </td>
+      <td style="color:var(--bo-muted);font-size:12px;">${i.updated}</td>
+      <td style="display:flex;gap:5px;align-items:center;">
+        ${isDeleted
+          ? `<button class="btn btn-sm btn-success-solid" onclick="restoreIngredient(${realIdx})"><i class="ti ti-restore"></i> Restore</button>
+             <button class="btn btn-sm btn-danger-solid" onclick="hardDeleteIngredient(${realIdx})" title="Permanently Delete"><i class="ti ti-trash-x"></i></button>`
+          : `<button class="btn btn-sm" onclick="updateMasterIngredient(${realIdx}, document.getElementById('master-ing-rate-${realIdx}').value)">Update</button>
+             <button class="btn btn-sm btn-danger" onclick="softDeleteIngredient(${realIdx})" title="Delete"><i class="ti ti-trash"></i></button>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function updateMasterIngredient(idx, newRateVal) {
+  var item = ingredientsMaster[idx];
+  var oldRate = item.rate;
+  var newRate = parseFloat(newRateVal) || 0;
+  
+  if (oldRate === newRate) {
+    showToast('Price did not change.');
+    return;
+  }
+  
+  item.rate = newRate;
+  item.updated = new Date().toLocaleDateString();
+  
+  if (!item.rateHistory) item.rateHistory = [];
+  item.rateHistory.unshift({
+    date: new Date().toLocaleDateString(),
+    timestamp: Date.now(),
+    oldRate: oldRate,
+    newRate: newRate
+  });
+  
+  await BlissDB.saveIngredients(ingredientsMaster);
+  renderIngredientsMaster();
+  showToast('Ingredient rate updated & audited!');
+}
+
+function viewIngredientHistory(idx) {
+  var item = ingredientsMaster[idx];
+  var modal = document.getElementById('modal-content');
+  var history = item.rateHistory || [];
+  
+  var timelineHtml = '';
+  if (history.length === 0) {
+    timelineHtml = '<div style="color:var(--bo-muted);font-size:13px;padding:12px 0;">No rate changes recorded for this item yet.</div>';
+  } else {
+    timelineHtml = `
+      <div class="timeline">
+        ${history.map(h => `
+          <div class="timeline-item">
+            <div class="timeline-time">${new Date(h.timestamp).toLocaleString()}</div>
+            <div>Rate changed from <strong>₹${h.oldRate}</strong> to <strong>₹${h.newRate}</strong> (per ${item.unit})</div>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+  
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3>Rate Audit History: ${item.name}</h3>
+      <button class="btn btn-sm" onclick="document.getElementById('modal-overlay').classList.add('hidden')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size: 13.5px; margin-bottom: 12px; color: var(--bo-muted);">
+        Category: <strong>${item.cat}</strong> • Base Unit: <strong>${item.unit}</strong> • Current Rate: <strong>₹${item.rate}</strong>
+      </div>
+      <div class="section-divider" style="margin: 12px 0 8px;"><span>Price Changes</span></div>
+      ${timelineHtml}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="document.getElementById('modal-overlay').classList.add('hidden')">Close</button>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function renderPackagingMaster(){
+  var body=document.getElementById('packaging-master-body');
+  var showDeleted = document.getElementById('pack-show-deleted') && document.getElementById('pack-show-deleted').checked;
+  var list = showDeleted ? packagingMaster : packagingMaster.filter(p => !p.deleted);
+  if(list.length===0){
+    body.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--bo-muted);padding:24px;font-size:13px;">${showDeleted?'No packaging items.':'No active packaging items. <span style="cursor:pointer;text-decoration:underline;color:var(--bo-gold-dark);" onclick="document.getElementById(\'pack-show-deleted\').checked=true;renderPackagingMaster()">Show deleted?</span>'}</td></tr>`;
+    return;
+  }
+  body.innerHTML=list.map((p,idx)=>{
+    var realIdx=packagingMaster.indexOf(p);
+    var isDeleted=!!p.deleted;
+    return `
+    <tr class="${isDeleted?'soft-deleted':''}">
+      <td style="font-weight:500;">${p.name}${isDeleted?'<span class="deleted-tag"><i class="ti ti-trash" style="font-size:9px;"></i> Deleted</span>':''}</td>
+      <td><span class="badge badge-gold">${p.type}</span></td>
+      <td>${p.size}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="master-pack-rate-${realIdx}" value="${p.rate}" style="width:80px;padding:4px 8px;font-size:12px;" ${isDeleted?'disabled':''}>
+          <button class="btn btn-sm" style="padding:4px 6px;border:none;background:transparent;color:var(--bo-gold-dark);" onclick="viewPackagingHistory(${realIdx})" title="Price History"><i class="ti ti-history"></i></button>
+        </div>
+      </td>
+      <td style="color:var(--bo-muted);font-size:12px;">${p.vendor}</td>
+      <td style="display:flex;gap:5px;align-items:center;">
+        ${isDeleted
+          ? `<button class="btn btn-sm btn-success-solid" onclick="restorePackaging(${realIdx})"><i class="ti ti-restore"></i> Restore</button>
+             <button class="btn btn-sm btn-danger-solid" onclick="hardDeletePackaging(${realIdx})" title="Permanently Delete"><i class="ti ti-trash-x"></i></button>`
+          : `<button class="btn btn-sm" onclick="updateMasterPackaging(${realIdx}, document.getElementById('master-pack-rate-${realIdx}').value)">Update</button>
+             <button class="btn btn-sm btn-danger" onclick="softDeletePackaging(${realIdx})" title="Delete"><i class="ti ti-trash"></i></button>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function updateMasterPackaging(idx, newRateVal) {
+  var item = packagingMaster[idx];
+  var oldRate = item.rate;
+  var newRate = parseFloat(newRateVal) || 0;
+  
+  if (oldRate === newRate) {
+    showToast('Price did not change.');
+    return;
+  }
+  
+  item.rate = newRate;
+  
+  if (!item.rateHistory) item.rateHistory = [];
+  item.rateHistory.unshift({
+    date: new Date().toLocaleDateString(),
+    timestamp: Date.now(),
+    oldRate: oldRate,
+    newRate: newRate
+  });
+  
+  await BlissDB.savePackaging(packagingMaster);
+  renderPackagingMaster();
+  showToast('Packaging item rate updated & audited!');
+}
+
+function viewPackagingHistory(idx) {
+  var item = packagingMaster[idx];
+  var modal = document.getElementById('modal-content');
+  var history = item.rateHistory || [];
+  
+  var timelineHtml = '';
+  if (history.length === 0) {
+    timelineHtml = '<div style="color:var(--bo-muted);font-size:13px;padding:12px 0;">No rate changes recorded for this item yet.</div>';
+  } else {
+    timelineHtml = `
+      <div class="timeline">
+        ${history.map(h => `
+          <div class="timeline-item">
+            <div class="timeline-time">${new Date(h.timestamp).toLocaleString()}</div>
+            <div>Rate changed from <strong>₹${h.oldRate}</strong> to <strong>₹${h.newRate}</strong></div>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+  
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3>Rate Audit History: ${item.name}</h3>
+      <button class="btn btn-sm" onclick="document.getElementById('modal-overlay').classList.add('hidden')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size: 13.5px; margin-bottom: 12px; color: var(--bo-muted);">
+        Type: <strong>${item.type}</strong> • Variant/Size: <strong>${item.size}</strong> • Current Rate: <strong>₹${item.rate}</strong>
+      </div>
+      <div class="section-divider" style="margin: 12px 0 8px;"><span>Price Changes</span></div>
+      ${timelineHtml}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="document.getElementById('modal-overlay').classList.add('hidden')">Close</button>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function renderReports(){
+  var el=document.getElementById('profitability-chart');
+  if (catalogProducts.length === 0) {
+    el.innerHTML = '<div style="color:var(--bo-muted);font-size:12px;">Add standard products to see analytics.</div>';
+  } else {
+    el.innerHTML=catalogProducts.slice(0,6).map(p=>`
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;">
+          <span>${p.emoji} ${p.name}</span><span style="font-weight:500;color:var(--bo-success);">${p.margin}%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, p.margin)}%;"></div></div>
+      </div>`).join('');
+  }
+  var el2=document.getElementById('cost-analysis');
+  var cats=['Raw Materials','Labour','Packaging','Overheads','Decoration'];
+  var vals=[50,20,11,14,5];
+  var colors=['var(--bo-gold)','var(--bo-rose)','#B4C4A8','#F5C4A8','#C4B4E8'];
+  el2.innerHTML=cats.map((c,i)=>`
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;">
+        <span>${c}</span><span style="font-weight:500;">${vals[i]}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${vals[i]}%;background:${colors[i]};"></div></div>
+    </div>`).join('');
+}
+
+// Master Add Forms Modals
+function showAddIngredient() {
+  var modal = document.getElementById('modal-content');
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3>Add New Master Ingredient</h3>
+      <button class="btn btn-sm" onclick="document.getElementById('modal-overlay').classList.add('hidden')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="add-ing-form" onsubmit="saveNewMasterIngredient(event)">
+        <div class="form-group">
+          <label class="form-label required">Ingredient Name</label>
+          <input type="text" id="new-ing-name" required placeholder="e.g. Cocoa Powder (Callebaut)">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label required">Category</label>
+            <select id="new-ing-cat" required>
+              <option value="Dry">Dry Goods</option>
+              <option value="Dairy">Dairy</option>
+              <option value="Chocolate">Chocolate</option>
+              <option value="Fruit">Fruits</option>
+              <option value="Spice">Spices</option>
+              <option value="Flavour">Flavours / Extracts</option>
+              <option value="Add-in">Add-ins</option>
+              <option value="Nuts">Nuts & Seeds</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label required">Base Unit</label>
+            <select id="new-ing-unit" required>
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="litre">litre</option>
+              <option value="ml">ml</option>
+              <option value="piece">piece</option>
+              <option value="500g">500g</option>
+              <option value="200g">200g</option>
+              <option value="250g pack">250g pack</option>
+              <option value="350g">350g</option>
+              <option value="100g pack">100g pack</option>
+              <option value="30ml">30ml</option>
+              <option value="gram">gram</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Purchase Rate (₹)</label>
+          <input type="number" id="new-ing-rate" required min="0" step="0.01" placeholder="e.g. 350">
+        </div>
+        <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:10px;"><i class="ti ti-plus"></i> Add to Master list</button>
+      </form>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+async function saveNewMasterIngredient(e) {
+  e.preventDefault();
+  var name = document.getElementById('new-ing-name').value;
+  var cat = document.getElementById('new-ing-cat').value;
+  var unit = document.getElementById('new-ing-unit').value;
+  var rate = parseFloat(document.getElementById('new-ing-rate').value) || 0;
+  
+  if (ingredientsMaster.some(i => i.name.toLowerCase() === name.toLowerCase())) {
+    alert('An ingredient with this name already exists in the master list!');
+    return;
+  }
+  
+  ingredientsMaster.push({
+    name: name,
+    cat: cat,
+    unit: unit,
+    rate: rate,
+    updated: new Date().toLocaleDateString(),
+    rateHistory: [{
+      date: new Date().toLocaleDateString(),
+      timestamp: Date.now(),
+      oldRate: 0,
+      newRate: rate
+    }]
+  });
+  
+  await BlissDB.saveIngredients(ingredientsMaster);
+  renderIngredientsMaster();
+  document.getElementById('modal-overlay').classList.add('hidden');
+  showToast('Ingredient added successfully!');
+}
+
+function showAddPackaging() {
+  var modal = document.getElementById('modal-content');
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3>Add New Packaging Item</h3>
+      <button class="btn btn-sm" onclick="document.getElementById('modal-overlay').classList.add('hidden')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="add-pack-form" onsubmit="saveNewMasterPackaging(event)">
+        <div class="form-group">
+          <label class="form-label required">Item Name</label>
+          <input type="text" id="new-pack-name" required placeholder="e.g. Cake Box Luxury (8 inch)">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label required">Type</label>
+            <select id="new-pack-type" required>
+              <option value="Box">Box</option>
+              <option value="Board">Board</option>
+              <option value="Bag">Bag</option>
+              <option value="Sticker">Sticker</option>
+              <option value="Card">Card</option>
+              <option value="Accessory">Accessory</option>
+              <option value="Filler">Filler</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Size / Variant</label>
+            <input type="text" id="new-pack-size" placeholder="e.g. 8x8 inch">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label required">Item Rate (₹)</label>
+            <input type="number" id="new-pack-rate" required min="0" step="0.01" placeholder="e.g. 45">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vendor Name</label>
+            <input type="text" id="new-pack-vendor" placeholder="e.g. LocalSupply">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:10px;"><i class="ti ti-plus"></i> Add to Packaging list</button>
+      </form>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+async function saveNewMasterPackaging(e) {
+  e.preventDefault();
+  var name = document.getElementById('new-pack-name').value;
+  var type = document.getElementById('new-pack-type').value;
+  var size = document.getElementById('new-pack-size').value || 'Standard';
+  var rate = parseFloat(document.getElementById('new-pack-rate').value) || 0;
+  var vendor = document.getElementById('new-pack-vendor').value || 'Unknown';
+  
+  if (packagingMaster.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+    alert('A packaging item with this name already exists in the master list!');
+    return;
+  }
+  
+  packagingMaster.push({
+    name: name,
+    type: type,
+    size: size,
+    rate: rate,
+    vendor: vendor,
+    rateHistory: [{
+      date: new Date().toLocaleDateString(),
+      timestamp: Date.now(),
+      oldRate: 0,
+      newRate: rate
+    }]
+  });
+  
+  await BlissDB.savePackaging(packagingMaster);
+  renderPackagingMaster();
+  document.getElementById('modal-overlay').classList.add('hidden');
+  showToast('Packaging item added successfully!');
+}
+
+function showAddProduct() {
+  var modal = document.getElementById('modal-content');
+  var calcCost = parseFloat(document.getElementById('r-cost').textContent) || 0;
+  var calcSell = parseFloat(document.getElementById('r-selling').textContent) || 0;
+  var calcName = document.getElementById('calc-name').value || '';
+  
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3>Add Standard Product to Catalog</h3>
+      <button class="btn btn-sm" onclick="document.getElementById('modal-overlay').classList.add('hidden')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="add-prod-form" onsubmit="saveNewCatalogProduct(event)">
+        <div class="form-group">
+          <label class="form-label required">Product Name</label>
+          <input type="text" id="new-prod-name" required value="${calcName}" placeholder="e.g. Premium Red Velvet Cake">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label required">Category</label>
+            <input type="text" id="new-prod-cat" required placeholder="e.g. Signature Cake">
+          </div>
+          <div class="form-group">
+            <label class="form-label required">Emoji Icon</label>
+            <input type="text" id="new-prod-emoji" required value="🎂" style="text-align:center;font-size:18px;">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label required">Cost Price (₹)</label>
+            <input type="number" id="new-prod-cost" required min="0" step="0.01" value="${calcCost}" placeholder="e.g. 350">
+          </div>
+          <div class="form-group">
+            <label class="form-label required">Selling Price (₹)</label>
+            <input type="number" id="new-prod-sell" required min="0" step="0.01" value="${calcSell}" placeholder="e.g. 600">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:10px;"><i class="ti ti-plus"></i> Add Product to Catalog</button>
+      </form>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+async function saveNewCatalogProduct(e) {
+  e.preventDefault();
+  var name = document.getElementById('new-prod-name').value;
+  var cat = document.getElementById('new-prod-cat').value;
+  var emoji = document.getElementById('new-prod-emoji').value;
+  var cost = parseFloat(document.getElementById('new-prod-cost').value) || 0;
+  var sell = parseFloat(document.getElementById('new-prod-sell').value) || 0;
+  var margin = cost > 0 ? Math.round(((sell - cost) / cost) * 100) : 100;
+  
+  catalogProducts.push({
+    id: Date.now(),
+    name: name,
+    cat: cat,
+    emoji: emoji,
+    cost: cost,
+    sell: sell,
+    margin: margin
+  });
+  
+  await BlissDB.saveCatalogProducts(catalogProducts);
+  renderProductCatalog();
+  renderDashboardTable();
+  document.getElementById('modal-overlay').classList.add('hidden');
+  showToast('Product added to catalog!');
+}
+
+// Smart Dropdown Search Key listeners
+var activeSuggestIndex = -1;
+var activeMatches = [];
+
+document.addEventListener('input', function(e) {
+  if (e.target.classList.contains('ing-search')) {
+    handleSearchInput(e.target, 'ingredient');
+  } else if (e.target.classList.contains('pack-search')) {
+    handleSearchInput(e.target, 'packaging');
+  } else if (e.target.classList.contains('deco-search')) {
+    handleSearchInput(e.target, 'decoration');
+  }
+});
+
+document.addEventListener('focusin', function(e) {
+  if (e.target.classList.contains('ing-search')) {
+    handleSearchInput(e.target, 'ingredient');
+  } else if (e.target.classList.contains('pack-search')) {
+    handleSearchInput(e.target, 'packaging');
+  } else if (e.target.classList.contains('deco-search')) {
+    handleSearchInput(e.target, 'decoration');
+  }
+});
+
+document.addEventListener('keydown', function(e) {
+  var target = e.target;
+  if (target.classList.contains('ing-search') || target.classList.contains('pack-search') || target.classList.contains('deco-search')) {
+    var type = target.classList.contains('ing-search') ? 'ingredient' : (target.classList.contains('pack-search') ? 'packaging' : 'decoration');
+    var idx = target.dataset.idx;
+    var prefix = type === 'ingredient' ? 'ing' : (type === 'packaging' ? 'pac' : 'dec');
+    var resultsEl = document.getElementById(prefix + '-results-' + idx);
+    if (!resultsEl || resultsEl.classList.contains('hidden')) return;
+    
+    var items = resultsEl.querySelectorAll('.autocomplete-item');
+    if (items.length === 0) return;
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeSuggestIndex = (activeSuggestIndex + 1) % items.length;
+      highlightSuggestItem(items, activeSuggestIndex);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeSuggestIndex = (activeSuggestIndex - 1 + items.length) % items.length;
+      highlightSuggestItem(items, activeSuggestIndex);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeSuggestIndex > -1 && activeSuggestIndex < activeMatches.length) {
+        selectSuggestion(idx, activeMatches[activeSuggestIndex], type);
+      }
+    } else if (e.key === 'Escape') {
+      resultsEl.classList.add('hidden');
+      activeSuggestIndex = -1;
+    }
+  }
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.autocomplete-wrapper')) {
+    document.querySelectorAll('.autocomplete-results').forEach(el => el.classList.add('hidden'));
+    activeSuggestIndex = -1;
+  }
+});
+
+function highlightSuggestItem(items, index) {
+  items.forEach((item, i) => {
+    if (i === index) {
+      item.classList.add('active');
+      item.scrollIntoView({ block: 'nearest' });
+    } else {
+      item.classList.remove('active');
+    }
+  });
+}
+
+function handleSearchInput(inputEl, type) {
+  var query = inputEl.value.toLowerCase().trim();
+  var idx = inputEl.dataset.idx;
+  var prefix = type === 'ingredient' ? 'ing' : (type === 'packaging' ? 'pac' : 'dec');
+  var resultsEl = document.getElementById(prefix + '-results-' + idx);
+  if (!resultsEl) return;
+  
+  var matches = [];
+  if (type === 'ingredient') {
+    matches = ingredientsMaster.filter(i => !i.deleted && i.name.toLowerCase().includes(query));
+  } else if (type === 'packaging') {
+    matches = packagingMaster.filter(p => !p.deleted && p.name.toLowerCase().includes(query));
+  } else if (type === 'decoration') {
+    var matchedIngs = ingredientsMaster.filter(i => !i.deleted && ['Dairy','Fruit','Spice','Flavour','Add-in','Nuts'].includes(i.cat) && i.name.toLowerCase().includes(query));
+    var matchedPacks = packagingMaster.filter(p => !p.deleted && ['Sticker','Card','Accessory','Filler','Box','Board'].includes(p.type) && p.name.toLowerCase().includes(query));
+    matches = [...matchedIngs, ...matchedPacks];
+  }
+  
+  matches = matches.slice(0, 8);
+  activeMatches = matches;
+  
+  if (matches.length === 0) {
+    resultsEl.innerHTML = '';
+    resultsEl.classList.add('hidden');
+    return;
+  }
+  
+  resultsEl.innerHTML = matches.map((m, i) => {
+    var rateStr = '₹' + m.rate + '/' + m.unit;
+    if (m.vendor) rateStr = '₹' + m.rate + ' (' + m.vendor + ')';
+    var label = m.cat || m.type || 'Deco';
+    return `
+      <div class="autocomplete-item" data-idx="${i}" onclick="selectSuggestion(${idx}, activeMatches[${i}], '${type}')">
+        <span>${m.name}</span>
+        <span class="details">${label} • ${rateStr}</span>
+      </div>`;
+  }).join('');
+  
+  resultsEl.classList.remove('hidden');
+}
+
+function selectSuggestion(idx, matched, type) {
+  if (type === 'ingredient') {
+    var ing = ingredients[idx];
+    ing.name = matched.name;
+    ing.masterId = matched.name;
+    ing.unit = determineDefaultUnit(matched.unit);
+    ing.rate = convertMasterRate(matched.rate, matched.unit, ing.unit);
+    ing.wastage = ing.wastage || 0;
+    renderIngredients();
+  } else if (type === 'packaging') {
+    var pack = packaging[idx];
+    pack.name = matched.name;
+    pack.qty = 1;
+    pack.unit = 'piece';
+    pack.rate = matched.rate;
+    renderPackaging();
+  } else if (type === 'decoration') {
+    var deco = decorations[idx];
+    deco.name = matched.name;
+    deco.qty = 1;
+    deco.unit = matched.unit || 'piece';
+    deco.rate = matched.rate;
+    renderDecorations();
+  }
+  
+  recalculate();
+  activeSuggestIndex = -1;
+  
+  document.querySelectorAll('.autocomplete-results').forEach(el => el.classList.add('hidden'));
+}
+
+// Smart Unit Conversion Utilities
+function getUnitConversionFactor(masterUnit, targetUnit) {
+  masterUnit = masterUnit.toLowerCase().trim();
+  targetUnit = targetUnit.toLowerCase().trim();
+  
+  if (masterUnit === targetUnit) return 1;
+  if (masterUnit === 'kg' && targetUnit === 'g') return 1 / 1000;
+  if (masterUnit === 'g' && targetUnit === 'kg') return 1000;
+  
+  if ((masterUnit === 'litre' || masterUnit === 'l') && targetUnit === 'ml') return 1 / 1000;
+  if (masterUnit === 'ml' && (targetUnit === 'litre' || targetUnit === 'l')) return 1000;
+  
+  if (masterUnit === '500g' && targetUnit === 'g') return 1 / 500;
+  if (masterUnit === '500g' && targetUnit === 'kg') return 2;
+  
+  if (masterUnit === '200g' && targetUnit === 'g') return 1 / 200;
+  if (masterUnit === '200g' && targetUnit === 'kg') return 5;
+  
+  if (masterUnit.includes('250g') && targetUnit === 'g') return 1 / 250;
+  if (masterUnit.includes('250g') && targetUnit === 'kg') return 4;
+  
+  if (masterUnit === '350g' && targetUnit === 'g') return 1 / 350;
+  if (masterUnit === '50g' && targetUnit === 'g') return 1 / 50;
+  if (masterUnit.includes('100g') && targetUnit === 'g') return 1 / 100;
+  if (masterUnit === '30ml' && targetUnit === 'ml') return 1 / 30;
+  
+  return 1;
+}
+
+function determineDefaultUnit(masterUnit) {
+  masterUnit = masterUnit.toLowerCase().trim();
+  if (masterUnit === 'kg') return 'g';
+  if (masterUnit === 'litre' || masterUnit === 'l') return 'ml';
+  if (masterUnit.includes('500g')) return 'g';
+  if (masterUnit.includes('200g')) return 'g';
+  if (masterUnit.includes('250g')) return 'g';
+  if (masterUnit.includes('350g')) return 'g';
+  if (masterUnit.includes('50g')) return 'g';
+  if (masterUnit.includes('100g')) return 'g';
+  if (masterUnit.includes('30ml')) return 'ml';
+  return masterUnit;
+}
+
+function convertMasterRate(rate, masterUnit, targetUnit) {
+  var factor = getUnitConversionFactor(masterUnit, targetUnit);
+  return +( (rate * factor).toFixed(4) );
+}
+
+function onIngredientUnitChange(idx, newUnit) {
+  var ing = ingredients[idx];
+  ing.unit = newUnit;
+  var matched = ingredientsMaster.find(m => m.name === ing.name);
+  if (matched) {
+    ing.rate = convertMasterRate(matched.rate, matched.unit, newUnit);
+  }
+  recalculate();
+}
+
+function onPackagingUnitChange(idx, newUnit) {
+  var pack = packaging[idx];
+  pack.unit = newUnit;
+  var matched = packagingMaster.find(m => m.name === pack.name);
+  if (matched) {
+    pack.rate = matched.rate;
+  }
+  recalculate();
+}
+
+function onDecorationUnitChange(idx, newUnit) {
+  var deco = decorations[idx];
+  deco.unit = newUnit;
+  var matched = packagingMaster.find(m => m.name === deco.name) || ingredientsMaster.find(m => m.name === deco.name);
+  if (matched) {
+    if (ingredientsMaster.includes(matched)) {
+      deco.rate = convertMasterRate(matched.rate, matched.unit, newUnit);
+    } else {
+      deco.rate = matched.rate;
+    }
+  }
+  recalculate();
+}
+
+// Ingredient management
+function addIngredient(name,qty,unit,rate){
+  var id='ing-'+Date.now()+'-'+Math.random();
+  ingredients.push({id,name:name||'',qty:qty||0,unit:unit||'g',rate:rate||0,wastage:0});
+  renderIngredients();
+  recalculate();
+}
+
+function addDecoItem(name){
+  var id='deco-'+Date.now()+'-'+Math.random();
+  decorations.push({id,name:name||'',qty:1,unit:'piece',rate:0});
+  renderDecorations();
+  recalculate();
+}
+
+function addPackItem(name){
+  var id='pack-'+Date.now()+'-'+Math.random();
+  packaging.push({id,name:name||'',qty:1,unit:'piece',rate:0});
+  renderPackaging();
+  recalculate();
+}
+
+function addDecoration(){addDecoItem('');}
+function addPackaging(){addPackItem('');}
+
+function renderIngredients(){
+  var el=document.getElementById('ingredient-list');
+  if(ingredients.length===0){el.innerHTML='<div style="color:var(--bo-muted);font-size:13px;padding:8px 0;">No ingredients added yet. Click + Add to start.</div>';return;}
+  el.innerHTML=ingredients.map((ing,i)=>`
+    <div class="ingredient-row" data-id="${ing.id}">
+      <div class="autocomplete-wrapper">
+        <input type="text" class="autocomplete-input ing-search" placeholder="Ingredient name" value="${ing.name}" data-idx="${i}" autocomplete="off" onchange="ingredients[${i}].name=this.value;recalculate()">
+        <div class="autocomplete-results hidden" id="ing-results-${i}"></div>
+      </div>
+      <input type="number" placeholder="Qty" value="${ing.qty||''}" min="0" step="0.01" onchange="ingredients[${i}].qty=+this.value;recalculate()">
+      <select onchange="onIngredientUnitChange(${i}, this.value)">
+        ${['g','kg','ml','l','tsp','tbsp','cup','piece','packet','box'].map(u=>`<option${ing.unit===u?' selected':''}>${u}</option>`).join('')}
+      </select>
+      <input type="number" placeholder="Rate ₹" value="${ing.rate||''}" min="0" step="0.0001" onchange="ingredients[${i}].rate=+this.value;recalculate()">
+      <input type="number" placeholder="0%" value="${ing.wastage||''}" min="0" max="50" step="1" onchange="ingredients[${i}].wastage=+this.value;recalculate()" style="width:60px;">
+      <button class="remove-btn" onclick="removeIngredient('${ing.id}')"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+
+function renderDecorations(){
+  var el=document.getElementById('decoration-list');
+  if(decorations.length===0){el.innerHTML='<div style="color:var(--bo-muted);font-size:13px;padding:8px 0;">No decoration items yet.</div>';return;}
+  el.innerHTML=decorations.map((d,i)=>`
+    <div class="ingredient-row" data-id="${d.id}">
+      <div class="autocomplete-wrapper">
+        <input type="text" class="autocomplete-input deco-search" placeholder="Decoration item" value="${d.name}" data-idx="${i}" autocomplete="off" onchange="decorations[${i}].name=this.value;recalculate()">
+        <div class="autocomplete-results hidden" id="dec-results-${i}"></div>
+      </div>
+      <input type="number" placeholder="Qty" value="${d.qty||''}" min="0" step="0.01" onchange="decorations[${i}].qty=+this.value;recalculate()">
+      <select onchange="onDecorationUnitChange(${i}, this.value)">
+        ${['piece','g','ml','sheet','packet','set'].map(u=>`<option${d.unit===u?' selected':''}>${u}</option>`).join('')}
+      </select>
+      <input type="number" placeholder="Rate ₹" value="${d.rate||''}" min="0" step="0.01" onchange="decorations[${i}].rate=+this.value;recalculate()">
+      <span style="font-size:13px;font-weight:500;color:var(--bo-gold-dark);">₹${((d.qty||0)*(d.rate||0)).toFixed(2)}</span>
+      <button class="remove-btn" onclick="removeDecoration('${d.id}')"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+
+function renderPackaging(){
+  var el=document.getElementById('packaging-list');
+  if(packaging.length===0){el.innerHTML='<div style="color:var(--bo-muted);font-size:13px;padding:8px 0;">No packaging items yet.</div>';return;}
+  el.innerHTML=packaging.map((p,i)=>`
+    <div class="ingredient-row" style="grid-template-columns:2fr 1fr 1fr 1fr auto;" data-id="${p.id}">
+      <div class="autocomplete-wrapper">
+        <input type="text" class="autocomplete-input pack-search" placeholder="Packaging item" value="${p.name}" data-idx="${i}" autocomplete="off" onchange="packaging[${i}].name=this.value;recalculate()">
+        <div class="autocomplete-results hidden" id="pac-results-${i}"></div>
+      </div>
+      <input type="number" placeholder="Qty" value="${p.qty||''}" min="0" step="1" onchange="packaging[${i}].qty=+this.value;recalculate()">
+      <select onchange="onPackagingUnitChange(${i}, this.value)">
+        ${['piece','pack','roll','set'].map(u=>`<option${p.unit===u?' selected':''}>${u}</option>`).join('')}
+      </select>
+      <input type="number" placeholder="Rate ₹" value="${p.rate||''}" min="0" step="0.01" onchange="packaging[${i}].rate=+this.value;recalculate()">
+      <button class="remove-btn" onclick="removePackaging('${p.id}')"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+
+function removeIngredient(id){ingredients=ingredients.filter(i=>i.id!==id);renderIngredients();recalculate();}
+function removeDecoration(id){decorations=decorations.filter(d=>d.id!==id);renderDecorations();recalculate();}
+function removePackaging(id){packaging=packaging.filter(p=>p.id!==id);renderPackaging();recalculate();}
+
+function recalculate(){
+  var rawTotal=ingredients.reduce((sum,i)=>{
+    var cost=(i.qty||0)*(i.rate||0);
+    var wasted=cost*(1+((i.wastage||0)/100));
+    return sum+wasted;
+  },0);
+  document.getElementById('raw-total').textContent=rawTotal.toFixed(2);
+  document.getElementById('r-raw').textContent=rawTotal.toFixed(2);
+
+  var decoTotal=decorations.reduce((sum,d)=>sum+(d.qty||0)*(d.rate||0),0);
+  document.getElementById('deco-total').textContent=decoTotal.toFixed(2);
+  document.getElementById('r-deco').textContent=decoTotal.toFixed(2);
+
+  var packTotal=packaging.reduce((sum,p)=>sum+(p.qty||0)*(p.rate||0),0);
+  document.getElementById('pack-total').textContent=packTotal.toFixed(2);
+  document.getElementById('r-pack').textContent=packTotal.toFixed(2);
+
+  var prep=+(document.getElementById('labour-prep').value)||0;
+  var bake=+(document.getElementById('labour-bake').value)||0;
+  var deco=+(document.getElementById('labour-deco').value)||0;
+  var pack=+(document.getElementById('labour-pack').value)||0;
+  var rate=+(document.getElementById('labour-rate').value)||0;
+  var totalMins=prep+bake+deco+pack;
+  var labourTotal=(totalMins/60)*rate;
+  document.getElementById('labour-hours').textContent=(totalMins/60).toFixed(1)+' hrs';
+  document.getElementById('labour-total').textContent=labourTotal.toFixed(2);
+  document.getElementById('r-labour').textContent=labourTotal.toFixed(2);
+
+  var elec=+(document.getElementById('oh-elec').value)||0;
+  var gas=+(document.getElementById('oh-gas').value)||0;
+  var water=+(document.getElementById('oh-water').value)||0;
+  var rent=+(document.getElementById('oh-rent').value)||0;
+  var admin=+(document.getElementById('oh-admin').value)||0;
+  var delivery=+(document.getElementById('oh-delivery').value)||0;
+  var overheadTotal=elec+gas+water+rent+admin+delivery;
+  document.getElementById('overhead-total').textContent=overheadTotal.toFixed(2);
+  document.getElementById('r-overhead').textContent=overheadTotal.toFixed(2);
+
+  var misc=+(document.getElementById('misc-cost').value)||0;
+  document.getElementById('r-misc').textContent=misc.toFixed(2);
+
+  var subtotal=rawTotal+decoTotal+packTotal+labourTotal+overheadTotal+misc;
+  var wastagePct=+(document.getElementById('wastage-pct').value)||0;
+  var bufferPct=+(document.getElementById('buffer-pct').value)||0;
+  var wastageAmt=subtotal*(wastagePct/100);
+  var bufferAmt=subtotal*(bufferPct/100);
+  var wastageTotal=wastageAmt+bufferAmt;
+  document.getElementById('wastage-total').textContent=wastageTotal.toFixed(2);
+  document.getElementById('r-wastage').textContent=wastageTotal.toFixed(2);
+
+  var grandCost=subtotal+wastageTotal;
+  document.getElementById('r-cost').textContent=grandCost.toFixed(2);
+
+  var servings=+(document.getElementById('calc-servings').value)||1;
+  var perServing=grandCost/servings;
+  document.getElementById('r-per-serving').textContent=perServing.toFixed(2);
+  document.getElementById('r-breakeven').textContent=grandCost.toFixed(2);
+
+  var marginPct=+(document.getElementById('margin-slider').value)||60;
+  var calcSell=grandCost*(1+marginPct/100);
+  var gstPct=+(document.getElementById('gst-pct').value)||0;
+  calcSell=calcSell*(1+gstPct/100);
+  var rule=document.getElementById('price-rule').value;
+  var finalSell=applyPriceRule(calcSell,rule);
+  document.getElementById('r-selling').textContent=finalSell;
+  var profit=finalSell-grandCost;
+  var profitPct=grandCost>0?(profit/grandCost*100):0;
+  document.getElementById('r-profit').textContent=profit.toFixed(0);
+  document.getElementById('r-profit-pct').textContent=profitPct.toFixed(1);
+  document.getElementById('r-wholesale').textContent=(finalSell*0.8).toFixed(0);
+
+  renderCompositionBars(grandCost,{
+    'Raw Materials':rawTotal,'Decoration':decoTotal,'Packaging':packTotal,
+    'Labour':labourTotal,'Overheads':overheadTotal,'Wastage/Buffer':wastageTotal,'Misc':misc
+  });
+}
+
+function applyPriceRule(price,rule){
+  if(rule==='round50')return Math.ceil(price/50)*50;
+  if(rule==='round100')return Math.ceil(price/100)*100;
+  if(rule==='end9'){var base=Math.ceil(price/10)*10;return base%10===0?base-1:base;}
+  if(rule==='end99'){var base=Math.ceil(price/100)*100;return base-1;}
+  return Math.round(price);
+}
+
+function renderCompositionBars(total,breakdown){
+  var el=document.getElementById('composition-bars');
+  if(total===0){el.innerHTML='<div style="font-size:12px;color:var(--bo-muted);">Enter costs to see breakdown.</div>';return;}
+  var colors={'Raw Materials':'var(--bo-gold)','Decoration':'var(--bo-rose-dark)','Packaging':'#5D8A5E','Labour':'#7A6BAD','Overheads':'#C47A3C','Wastage/Buffer':'#A0A090','Misc':'var(--bo-muted)'};
+  el.innerHTML=Object.entries(breakdown).filter(([k,v])=>v>0).map(([k,v])=>`
+    <div style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;">
+        <span style="color:var(--bo-muted);">${k}</span>
+        <span style="font-weight:500;">${(v/total*100).toFixed(1)}% <span style="color:var(--bo-muted);font-weight:400;">(₹${v.toFixed(0)})</span></span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,v/total*100)}%;background:${colors[k]||'var(--bo-gold)'};"></div></div>
+    </div>`).join('');
+}
+
+function onCategoryChange(){
+  var cat=document.getElementById('calc-category').value;
+  var df=document.getElementById('dynamic-fields');
+  df.innerHTML='';
+  if(cat==='fruit-cake'){
+    df.innerHTML=`
+      <div class="section-divider"><span>Fruit Cake Details</span></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Cake Size</label><select id="cat-fruit-size"><option>500g</option><option>1kg</option><option>1.5kg</option><option>2kg</option><option>Custom</option></select></div>
+      <div class="form-group"><label class="form-label">Sponge Type</label><select id="cat-fruit-sponge"><option>Vanilla</option><option>Chocolate</option><option>Butterscotch</option><option>Eggless Vanilla</option></select></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Cream Type</label><select id="cat-fruit-cream"><option>Fresh Whipped Cream</option><option>Butter Cream</option><option>Ganache</option></select></div>
+      <div class="form-group"><label class="form-label">Filling</label><select id="cat-fruit-filling"><option>Fruit Compote</option><option>Jam</option><option>Cream Only</option><option>Custard</option></select></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Fruits Used (check all)</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+        ${['Strawberry','Kiwi','Blueberry','Mango','Grapes','Pineapple','Cherry'].map((f,i)=>`<label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" class="cat-fruit-fruit" data-fruit="${f}"> ${f}</label>`).join('')}</div></div>
+      <div class="form-group"><label class="form-label">Glaze / Jelly</label><select id="cat-fruit-glaze"><option>None</option><option>Fruit Glaze</option><option>Piping Gel</option><option>Mirror Glaze</option></select></div></div>`;
+  } else if(cat==='theme-cake'){
+    df.innerHTML=`
+      <div class="section-divider"><span>Theme Cake Details</span></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Theme / Occasion</label><input type="text" id="cat-theme-occasion" placeholder="e.g. Unicorn, Birthday, Wedding"></div>
+      <div class="form-group"><label class="form-label">Fondant Weight</label><input type="number" id="cat-theme-fondant-weight" placeholder="Grams of fondant used" oninput="recalculate()"></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Color Scheme</label><input type="text" id="cat-theme-color-scheme" placeholder="e.g. Pink & Gold, Blue & White"></div>
+      <div class="form-group"><label class="form-label">Tiers</label><select id="cat-theme-tiers"><option>1 Tier</option><option>2 Tier</option><option>3 Tier</option></select></div></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Special Add-ons</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+        ${['Custom Topper','Edible Print','Sugar Flowers','Figurines','Luster Dust','LED Lights'].map((f,i)=>`<label style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" class="cat-theme-addon" data-addon="${f}"> ${f}</label>`).join('')}</div></div>
+      <div class="form-group"><label class="form-label">Decoration Hours</label><input type="number" id="cat-theme-hours" placeholder="Extra deco hours" oninput="recalculate()"></div></div>`;
+  } else if(cat==='fusion-cake'){
+    df.innerHTML=`
+      <div class="section-divider"><span>Fusion Cake Details</span></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Fusion Flavour</label><select id="cat-fusion-flavour"><option>Rasmalai</option><option>Gulab Jamun</option><option>Kesar Pista</option><option>Mango Alphonso</option><option>Thandai</option><option>Paan</option><option>Motichoor</option></select></div>
+      <div class="form-group"><label class="form-label">Main Mithai Quantity</label><input type="text" id="cat-fusion-quantity" placeholder="e.g. 6 pieces rasmalai"></div></div>`;
+  } else if(cat==='brownie'){
+    df.innerHTML=`
+      <div class="section-divider"><span>Brownie Details</span></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Box Size</label><select id="cat-brownie-size"><option>4 pieces</option><option>6 pieces</option><option>8 pieces</option><option>12 pieces</option><option>16 pieces</option></select></div>
+      <div class="form-group"><label class="form-label">Flavour Mix</label><input type="text" id="cat-brownie-mix" placeholder="e.g. 4 Fudgy, 4 Biscoff"></div></div>`;
+  } else if(cat==='bread'){
+    df.innerHTML=`
+      <div class="section-divider"><span>Bread Details</span></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Bread Type</label><select id="cat-bread-type"><option>White Sandwich</option><option>Whole Wheat</option><option>Multigrain</option><option>Sourdough</option><option>Garlic Herb</option></select></div>
+      <div class="form-group"><label class="form-label">Loaf Weight (g)</label><input type="number" id="cat-bread-weight" value="400" oninput="recalculate()"></div></div>`;
+  }
+}
+
+function getCategoryDetails() {
+  var cat = document.getElementById('calc-category').value;
+  if (!cat) return null;
+  var details = {};
+  if (cat === 'fruit-cake') {
+    var sizeSelect = document.getElementById('cat-fruit-size');
+    var spongeSelect = document.getElementById('cat-fruit-sponge');
+    var creamSelect = document.getElementById('cat-fruit-cream');
+    var fillingSelect = document.getElementById('cat-fruit-filling');
+    var glazeSelect = document.getElementById('cat-fruit-glaze');
+    var fruits = [];
+    document.querySelectorAll('.cat-fruit-fruit').forEach(cb => {
+      if (cb.checked) fruits.push(cb.dataset.fruit);
+    });
+    details = {
+      size: sizeSelect ? sizeSelect.value : '',
+      sponge: spongeSelect ? spongeSelect.value : '',
+      cream: creamSelect ? creamSelect.value : '',
+      filling: fillingSelect ? fillingSelect.value : '',
+      glaze: glazeSelect ? glazeSelect.value : '',
+      fruits: fruits
+    };
+  } else if (cat === 'theme-cake') {
+    var themeInput = document.getElementById('cat-theme-occasion');
+    var fondantInput = document.getElementById('cat-theme-fondant-weight');
+    var colorInput = document.getElementById('cat-theme-color-scheme');
+    var tiersSelect = document.getElementById('cat-theme-tiers');
+    var hoursInput = document.getElementById('cat-theme-hours');
+    var addons = [];
+    document.querySelectorAll('.cat-theme-addon').forEach(cb => {
+      if (cb.checked) addons.push(cb.dataset.addon);
+    });
+    details = {
+      theme: themeInput ? themeInput.value : '',
+      fondantWeight: fondantInput ? fondantInput.value : '',
+      colorScheme: colorInput ? colorInput.value : '',
+      tiers: tiersSelect ? tiersSelect.value : '',
+      hours: hoursInput ? hoursInput.value : '',
+      addons: addons
+    };
+  } else if (cat === 'fusion-cake') {
+    var flavourSelect = document.getElementById('cat-fusion-flavour');
+    var qtyInput = document.getElementById('cat-fusion-quantity');
+    details = {
+      flavour: flavourSelect ? flavourSelect.value : '',
+      mithaiQty: qtyInput ? qtyInput.value : ''
+    };
+  } else if (cat === 'brownie') {
+    var sizeSelect = document.getElementById('cat-brownie-size');
+    var mixInput = document.getElementById('cat-brownie-mix');
+    details = {
+      boxSize: sizeSelect ? sizeSelect.value : '',
+      flavourMix: mixInput ? mixInput.value : ''
+    };
+  } else if (cat === 'bread') {
+    var typeSelect = document.getElementById('cat-bread-type');
+    var weightInput = document.getElementById('cat-bread-weight');
+    details = {
+      breadType: typeSelect ? typeSelect.value : '',
+      loafWeight: weightInput ? weightInput.value : ''
+    };
+  }
+  return details;
+}
+
+function restoreCategoryDetails(cat, details) {
+  if (!cat || !details) return;
+  document.getElementById('calc-category').value = cat;
+  onCategoryChange();
+  setTimeout(() => {
+    if (cat === 'fruit-cake') {
+      var sizeSelect = document.getElementById('cat-fruit-size');
+      var spongeSelect = document.getElementById('cat-fruit-sponge');
+      var creamSelect = document.getElementById('cat-fruit-cream');
+      var fillingSelect = document.getElementById('cat-fruit-filling');
+      var glazeSelect = document.getElementById('cat-fruit-glaze');
+      if (sizeSelect) sizeSelect.value = details.size || '1kg';
+      if (spongeSelect) spongeSelect.value = details.sponge || 'Vanilla';
+      if (creamSelect) creamSelect.value = details.cream || 'Fresh Whipped Cream';
+      if (fillingSelect) fillingSelect.value = details.filling || 'Fruit Compote';
+      if (glazeSelect) glazeSelect.value = details.glaze || 'None';
+      if (details.fruits) {
+        document.querySelectorAll('.cat-fruit-fruit').forEach(cb => {
+          cb.checked = details.fruits.includes(cb.dataset.fruit);
+        });
+      }
+    } else if (cat === 'theme-cake') {
+      var themeInput = document.getElementById('cat-theme-occasion');
+      var fondantInput = document.getElementById('cat-theme-fondant-weight');
+      var colorInput = document.getElementById('cat-theme-color-scheme');
+      var tiersSelect = document.getElementById('cat-theme-tiers');
+      var hoursInput = document.getElementById('cat-theme-hours');
+      if (themeInput) themeInput.value = details.theme || '';
+      if (fondantInput) fondantInput.value = details.fondantWeight || '';
+      if (colorInput) colorInput.value = details.colorScheme || '';
+      if (tiersSelect) tiersSelect.value = details.tiers || '1 Tier';
+      if (hoursInput) hoursInput.value = details.hours || '';
+      if (details.addons) {
+        document.querySelectorAll('.cat-theme-addon').forEach(cb => {
+          cb.checked = details.addons.includes(cb.dataset.addon);
+        });
+      }
+    } else if (cat === 'fusion-cake') {
+      var flavourSelect = document.getElementById('cat-fusion-flavour');
+      var qtyInput = document.getElementById('cat-fusion-quantity');
+      if (flavourSelect) flavourSelect.value = details.flavour || 'Rasmalai';
+      if (qtyInput) qtyInput.value = details.mithaiQty || '';
+    } else if (cat === 'brownie') {
+      var sizeSelect = document.getElementById('cat-brownie-size');
+      var mixInput = document.getElementById('cat-brownie-mix');
+      if (sizeSelect) sizeSelect.value = details.boxSize || '8 pieces';
+      if (mixInput) mixInput.value = details.flavourMix || '';
+    } else if (cat === 'bread') {
+      var typeSelect = document.getElementById('cat-bread-type');
+      var weightInput = document.getElementById('cat-bread-weight');
+      if (typeSelect) typeSelect.value = details.breadType || 'White Sandwich';
+      if (weightInput) weightInput.value = details.loafWeight || 400;
+    }
+    recalculate();
+  }, 50);
+}
+
+function loadTemplate(type){
+  navigate('calculator');
+  setTimeout(()=>{
+    resetCalc();
+    var catMap={'fruit-cake':'fruit-cake','theme-cake':'theme-cake','brownie-box':'brownie','cookie-box':'cookie','fusion-cake':'fusion-cake','choco-box':'chocolate','bread':'bread','gift-box':'gift-box'};
+    document.getElementById('calc-category').value=catMap[type]||'custom';
+    onCategoryChange();
+    var templates={
+      'fruit-cake':{
+        name:'Fruit Cake (1kg) — Custom Order',
+        ings:[
+          {name:'Maida',qty:250,unit:'g',rate:0.04,wastage:3},
+          {name:'Butter (Amul)',qty:120,unit:'g',rate:0.24,wastage:2},
+          {name:'Sugar (Fine)',qty:180,unit:'g',rate:0.05,wastage:1},
+          {name:'Eggs',qty:3,unit:'piece',rate:8,wastage:0},
+          {name:'Whipping Cream',qty:300,unit:'ml',rate:0.28,wastage:5},
+          {name:'Strawberry (fresh)',qty:150,unit:'g',rate:0.2,wastage:10},
+          {name:'Kiwi',qty:2,unit:'piece',rate:30,wastage:8},
+        ],
+        deco:[
+          {name:'Fruit Glaze',qty:30,unit:'ml',rate:0.8},
+        ],
+        pack:[
+          {name:'Cake Box 1kg',qty:1,unit:'piece',rate:45},
+          {name:'Cake Board 8"',qty:1,unit:'piece',rate:12},
+          {name:'Carry Bag (small)',qty:1,unit:'piece',rate:15},
+          {name:'BlissOven Sticker',qty:2,unit:'piece',rate:3},
+          {name:'Message Card',qty:1,unit:'piece',rate:5},
+        ]
+      },
+      'theme-cake':{
+        name:'Custom Theme Cake (1kg)',
+        ings:[
+          {name:'Maida',qty:250,unit:'g',rate:0.04,wastage:3},
+          {name:'Butter (Amul)',qty:150,unit:'g',rate:0.24,wastage:2},
+          {name:'Sugar (Fine)',qty:200,unit:'g',rate:0.05,wastage:1},
+          {name:'Eggs',qty:3,unit:'piece',rate:8,wastage:0},
+          {name:'Fresh Cream (25% fat)',qty:250,unit:'ml',rate:0.18,wastage:5},
+        ],
+        deco:[
+          {name:'Fondant Weight',qty:400,unit:'g',rate:0.35},
+          {name:'Cake Topper',qty:1,unit:'piece',rate:80},
+          {name:'Candle Set',qty:1,unit:'set',rate:25},
+        ],
+        pack:[
+          {name:'Cake Box 1kg',qty:1,unit:'piece',rate:45},
+          {name:'Cake Board 8"',qty:1,unit:'piece',rate:12},
+          {name:'Carry Bag (large)',qty:1,unit:'piece',rate:22},
+          {name:'BlissOven Sticker',qty:2,unit:'piece',rate:3},
+          {name:'Ribbon',qty:1,unit:'piece',rate:8},
+          {name:'Message Card',qty:1,unit:'piece',rate:5},
+        ]
+      }
+    };
+    var tmpl=templates[type];
+    if(tmpl){
+      document.getElementById('calc-name').value=tmpl.name;
+      ingredients=[];decorations=[];packaging=[];
+      tmpl.ings.forEach(i=>ingredients.push({id:'ing-'+Date.now()+Math.random(),...i}));
+      (tmpl.deco||[]).forEach(d=>decorations.push({id:'deco-'+Date.now()+Math.random(),...d}));
+      (tmpl.pack||[]).forEach(p=>packaging.push({id:'pack-'+Date.now()+Math.random(),...p}));
+      renderIngredients();renderDecorations();renderPackaging();
+      document.getElementById('labour-prep').value=30;
+      document.getElementById('labour-bake').value=45;
+      document.getElementById('labour-deco').value=type==='theme-cake'?90:45;
+      document.getElementById('labour-pack').value=15;
+      document.getElementById('oh-elec').value=25;
+      document.getElementById('oh-gas').value=15;
+      document.getElementById('oh-rent').value=50;
+      recalculate();
+    }
+  },100);
+}
+
+function quickCalc(name){
+  var typeMap={'Rasmalai Cake':'fusion-cake','Fruit Cake':'fruit-cake','Brownie Box':'brownie-box','Cookie Box':'cookie-box'};
+  loadTemplate(typeMap[name]||'fruit-cake');
+}
+
+function resetCalc(){
+  ingredients=[];decorations=[];packaging=[];
+  currentEditingOrderId = null;
+  var banner = document.getElementById('calc-edit-banner');
+  if (banner) banner.remove();
+  
+  renderIngredients();renderDecorations();renderPackaging();
+  document.getElementById('calc-name').value='';
+  document.getElementById('calc-category').value='';
+  document.getElementById('dynamic-fields').innerHTML='';
+  recalculate();
+}
+
+async function saveOrder() {
+  var name = document.getElementById('calc-name').value || '';
+  if (!name.trim()) {
+    showToast('Please enter a product/order name first!', true);
+    return;
+  }
+  
+  var id = currentEditingOrderId || ('order-' + Date.now());
+  var cat = document.getElementById('calc-category').value;
+  
+  var ingsCopy = JSON.parse(JSON.stringify(ingredients));
+  var decosCopy = JSON.parse(JSON.stringify(decorations));
+  var packsCopy = JSON.parse(JSON.stringify(packaging));
+  
+  var snapshot = {};
+  ingredientsMaster.forEach(m => { snapshot[m.name] = { rate: m.rate, unit: m.unit }; });
+  packagingMaster.forEach(m => { snapshot[m.name] = { rate: m.rate }; });
+  
+  var order = {
+    id: id,
+    name: name,
+    category: cat,
+    date: new Date().toLocaleDateString(),
+    timestamp: Date.now(),
+    batchSize: +(document.getElementById('calc-batch').value) || 1,
+    servings: +(document.getElementById('calc-servings').value) || 8,
+    categoryDetails: getCategoryDetails(),
+    
+    ingredients: ingsCopy,
+    decorations: decosCopy,
+    packaging: packsCopy,
+    
+    labour: {
+      prep: +(document.getElementById('labour-prep').value) || 0,
+      bake: +(document.getElementById('labour-bake').value) || 0,
+      deco: +(document.getElementById('labour-deco').value) || 0,
+      pack: +(document.getElementById('labour-pack').value) || 0,
+      rate: +(document.getElementById('labour-rate').value) || 0,
+      hours: parseFloat(document.getElementById('labour-hours').textContent) || 0,
+      totalCost: parseFloat(document.getElementById('r-labour').textContent) || 0
+    },
+    
+    overheads: {
+      elec: +(document.getElementById('oh-elec').value) || 0,
+      gas: +(document.getElementById('oh-gas').value) || 0,
+      water: +(document.getElementById('oh-water').value) || 0,
+      rent: +(document.getElementById('oh-rent').value) || 0,
+      admin: +(document.getElementById('oh-admin').value) || 0,
+      delivery: +(document.getElementById('oh-delivery').value) || 0,
+      totalCost: parseFloat(document.getElementById('overhead-total').textContent) || 0
+    },
+    
+    wastage: {
+      pct: +(document.getElementById('wastage-pct').value) || 0,
+      bufferPct: +(document.getElementById('buffer-pct').value) || 0,
+      totalCost: parseFloat(document.getElementById('r-wastage').textContent) || 0
+    },
+    
+    misc: {
+      cost: +(document.getElementById('misc-cost').value) || 0,
+      notes: document.getElementById('misc-notes').value || ''
+    },
+    
+    summary: {
+      rawCost: parseFloat(document.getElementById('r-raw').textContent) || 0,
+      decoCost: parseFloat(document.getElementById('r-deco').textContent) || 0,
+      packCost: parseFloat(document.getElementById('r-pack').textContent) || 0,
+      totalCost: parseFloat(document.getElementById('r-cost').textContent) || 0,
+      perServing: parseFloat(document.getElementById('r-per-serving').textContent) || 0,
+      breakeven: parseFloat(document.getElementById('r-breakeven').textContent) || 0,
+      targetMargin: +(document.getElementById('margin-slider').value) || 60,
+      pricingRule: document.getElementById('price-rule').value,
+      gstPct: +(document.getElementById('gst-pct').value) || 0,
+      sellingPrice: parseFloat(document.getElementById('r-selling').textContent) || 0,
+      profitAmount: parseFloat(document.getElementById('r-profit').textContent) || 0,
+      profitPct: parseFloat(document.getElementById('r-profit-pct').textContent) || 0
+    },
+    
+    rateSnapshot: snapshot
+  };
+  
+  try {
+    await BlissDB.saveOrder(order);
+    savedOrders = await BlissDB.getOrders();
+    document.getElementById('dash-orders').textContent = savedOrders.filter(o=>!o.deleted).length;
+    
+    currentEditingOrderId = null;
+    var banner = document.getElementById('calc-edit-banner');
+    if (banner) banner.remove();
+    
+    renderSavedOrdersList();
+    showToast('Calculation saved successfully!');
+    navigate('orders');
+  } catch (err) {
+    showToast('Failed to save calculation!', true);
+  }
+}
+
+function loadOrderForEdit(orderId) {
+  var order = savedOrders.find(o => o.id === orderId);
+  if (!order) return;
+  
+  currentEditingOrderId = order.id;
+  navigate('calculator');
+  
+  var contentEl = document.querySelector('#page-calculator .content');
+  var oldBanner = document.getElementById('calc-edit-banner');
+  if (oldBanner) oldBanner.remove();
+  
+  var banner = document.createElement('div');
+  banner.id = 'calc-edit-banner';
+  banner.className = 'edit-banner';
+  banner.innerHTML = `
+    <div>
+      <span class="badge badge-gold" style="margin-right: 8px;">EDITING</span>
+      <span>You are currently editing <strong>${order.name}</strong> (Saved on ${order.date}).</span>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-sm" onclick="applyCurrentMasterRates('${order.id}')"><i class="ti ti-refresh"></i> Update to Current Rates</button>
+      <button class="btn btn-sm btn-danger" onclick="cancelEdit()"><i class="ti ti-x"></i> Cancel</button>
+    </div>
+  `;
+  contentEl.insertBefore(banner, contentEl.firstChild);
+  
+  document.getElementById('calc-name').value = order.name;
+  document.getElementById('calc-batch').value = order.batchSize || 1;
+  document.getElementById('calc-servings').value = order.servings || 8;
+  
+  restoreCategoryDetails(order.category, order.categoryDetails);
+  
+  ingredients = JSON.parse(JSON.stringify(order.ingredients));
+  decorations = JSON.parse(JSON.stringify(order.decorations));
+  packaging = JSON.parse(JSON.stringify(order.packaging));
+  
+  renderIngredients();
+  renderDecorations();
+  renderPackaging();
+  
+  if (order.labour) {
+    document.getElementById('labour-prep').value = order.labour.prep;
+    document.getElementById('labour-bake').value = order.labour.bake;
+    document.getElementById('labour-deco').value = order.labour.deco;
+    document.getElementById('labour-pack').value = order.labour.pack;
+    document.getElementById('labour-rate').value = order.labour.rate;
+  }
+  
+  if (order.overheads) {
+    document.getElementById('oh-elec').value = order.overheads.elec;
+    document.getElementById('oh-gas').value = order.overheads.gas;
+    document.getElementById('oh-water').value = order.overheads.water;
+    document.getElementById('oh-rent').value = order.overheads.rent;
+    document.getElementById('oh-admin').value = order.overheads.admin;
+    document.getElementById('oh-delivery').value = order.overheads.delivery || 0;
+  }
+  
+  if (order.wastage) {
+    document.getElementById('wastage-pct').value = order.wastage.pct;
+    document.getElementById('wastage-val').textContent = order.wastage.pct + '%';
+    document.getElementById('buffer-pct').value = order.wastage.bufferPct;
+    document.getElementById('buffer-val').textContent = order.wastage.bufferPct + '%';
+  }
+  
+  if (order.misc) {
+    document.getElementById('misc-cost').value = order.misc.cost;
+    document.getElementById('misc-notes').value = order.misc.notes;
+  }
+  
+  if (order.summary) {
+    document.getElementById('margin-slider').value = order.summary.targetMargin || 60;
+    document.getElementById('margin-pct-val').textContent = (order.summary.targetMargin || 60) + '%';
+    document.getElementById('price-rule').value = order.summary.pricingRule || 'exact';
+    document.getElementById('gst-pct').value = order.summary.gstPct || 0;
+  }
+  
+  recalculate();
+  showToast('Order loaded with historical rates!');
+}
+
+function cancelEdit() {
+  currentEditingOrderId = null;
+  var banner = document.getElementById('calc-edit-banner');
+  if (banner) banner.remove();
+  resetCalc();
+  showToast('Edit cancelled.');
+}
+
+function applyCurrentMasterRates(orderId) {
+  var updatedCount = 0;
+  ingredients.forEach(ing => {
+    var matched = ingredientsMaster.find(m => m.name === ing.name);
+    if (matched) {
+      var convertedRate = convertMasterRate(matched.rate, matched.unit, ing.unit);
+      if (ing.rate !== convertedRate) {
+        ing.rate = convertedRate;
+        updatedCount++;
+      }
+    }
+  });
+  
+  packaging.forEach(pack => {
+    var matched = packagingMaster.find(m => m.name === pack.name);
+    if (matched) {
+      if (pack.rate !== matched.rate) {
+        pack.rate = matched.rate;
+        updatedCount++;
+      }
+    }
+  });
+  
+  decorations.forEach(deco => {
+    var matched = packagingMaster.find(m => m.name === deco.name) || ingredientsMaster.find(m => m.name === deco.name);
+    if (matched) {
+      var matchedRate = matched.rate;
+      if (ingredientsMaster.includes(matched)) {
+        matchedRate = convertMasterRate(matched.rate, matched.unit, deco.unit);
+      }
+      if (deco.rate !== matchedRate) {
+        deco.rate = matchedRate;
+        updatedCount++;
+      }
+    }
+  });
+  
+  recalculate();
+  showToast(`Updated ${updatedCount} items to current master rates!`);
+}
+
+async function cloneOrder(orderId) {
+  var order = savedOrders.find(o => o.id === orderId);
+  if (!order) return;
+  var clone = JSON.parse(JSON.stringify(order));
+  clone.id = 'order-' + Date.now();
+  clone.name = clone.name + ' (Copy)';
+  clone.date = new Date().toLocaleDateString();
+  clone.timestamp = Date.now();
+  // Never clone a deleted state
+  delete clone.deleted; delete clone.deletedAt;
+  
+  try {
+    await BlissDB.saveOrder(clone);
+    savedOrders = await BlissDB.getOrders();
+    document.getElementById('dash-orders').textContent = savedOrders.filter(o=>!o.deleted).length;
+    renderSavedOrdersList();
+    showToast('Order cloned successfully!');
+  } catch (err) {
+    showToast('Failed to clone order!', true);
+  }
+}
+
+// =============================================
+// CONFIRMATION MODAL SYSTEM
+// =============================================
+var _confirmCallback = null;
+
+function showConfirm(opts) {
+  // opts: { title, body, actionLabel, actionClass, iconClass, callback }
+  document.getElementById('confirm-title').textContent = opts.title || 'Confirm action';
+  document.getElementById('confirm-body').innerHTML = opts.body || '';
+  var btn = document.getElementById('confirm-action-btn');
+  btn.className = 'btn btn-sm ' + (opts.actionClass || 'btn-danger-solid');
+  document.getElementById('confirm-btn-label').textContent = opts.actionLabel || 'Confirm';
+  document.getElementById('confirm-btn-icon').className = 'ti ' + (opts.btnIcon || 'ti-trash');
+  var icon = document.getElementById('confirm-icon');
+  icon.className = 'confirm-modal-icon' + (opts.iconRestore ? ' restore' : '');
+  document.getElementById('confirm-icon-i').className = 'ti ' + (opts.btnIcon || 'ti-trash');
+  _confirmCallback = opts.callback;
+  document.getElementById('confirm-overlay').classList.remove('hidden');
+}
+
+function cancelConfirm() {
+  document.getElementById('confirm-overlay').classList.add('hidden');
+  _confirmCallback = null;
+}
+
+function executeConfirm() {
+  document.getElementById('confirm-overlay').classList.add('hidden');
+  if (_confirmCallback) { _confirmCallback(); _confirmCallback = null; }
+}
+
+// =============================================
+// SAVED ORDERS — soft delete / restore / hard delete / bulk
+// =============================================
+
+function softDeleteOrderConfirm(orderId) {
+  var order = savedOrders.find(o => o.id === orderId);
+  if (!order) return;
+  showConfirm({
+    title: 'Delete this order?',
+    body: `<strong>"${order.name}"</strong> will be marked as deleted. You can restore it anytime from the Deleted view.`,
+    actionLabel: 'Delete',
+    btnIcon: 'ti-trash',
+    callback: async () => {
+      try {
+        order.deleted = true;
+        order.deletedAt = Date.now();
+        await BlissDB.saveOrder(order);
+        savedOrders = await BlissDB.getOrders();
+        document.getElementById('dash-orders').textContent = savedOrders.filter(o=>!o.deleted).length;
+        renderSavedOrdersList();
+        showToast('Order moved to deleted.');
+      } catch(e){ showToast('Failed to delete order!', true); }
+    }
+  });
+}
+
+async function restoreOrder(orderId) {
+  var order = savedOrders.find(o => o.id === orderId);
+  if (!order) return;
+  showConfirm({
+    title: 'Restore this order?',
+    body: `<strong>"${order.name}"</strong> will be made active again.`,
+    actionLabel: 'Restore',
+    actionClass: 'btn-success-solid',
+    btnIcon: 'ti-restore',
+    iconRestore: true,
+    callback: async () => {
+      try {
+        delete order.deleted; delete order.deletedAt;
+        await BlissDB.saveOrder(order);
+        savedOrders = await BlissDB.getOrders();
+        document.getElementById('dash-orders').textContent = savedOrders.filter(o=>!o.deleted).length;
+        renderSavedOrdersList();
+        showToast('Order restored successfully!');
+      } catch(e){ showToast('Failed to restore order!', true); }
+    }
+  });
+}
+
+function hardDeleteOrder(orderId) {
+  var order = savedOrders.find(o => o.id === orderId);
+  if (!order) return;
+  showConfirm({
+    title: 'Permanently delete?',
+    body: `<strong>"${order.name}"</strong> will be <strong>permanently removed</strong>. This cannot be undone.`,
+    actionLabel: 'Delete Forever',
+    btnIcon: 'ti-trash-x',
+    callback: async () => {
+      try {
+        await BlissDB.deleteOrder(orderId);
+        savedOrders = await BlissDB.getOrders();
+        document.getElementById('dash-orders').textContent = savedOrders.filter(o=>!o.deleted).length;
+        renderSavedOrdersList();
+        showToast('Order permanently deleted.');
+      } catch(e){ showToast('Failed to delete order!', true); }
+    }
+  });
+}
+
+// Keep old name as alias for any existing references
+function deleteOrderConfirm(orderId){ softDeleteOrderConfirm(orderId); }
+
+// =============================================
+// BULK DELETE — Saved Orders
+// =============================================
+
+function updateBulkBar() {
+  var checked = document.querySelectorAll('.order-check:checked');
+  var bar = document.getElementById('bulk-action-bar');
+  if (!bar) return;
+  if (checked.length > 0) {
+    bar.classList.remove('hidden');
+    document.getElementById('bulk-count').textContent = checked.length;
+  } else {
+    bar.classList.add('hidden');
+  }
+  var all = document.querySelectorAll('.order-check');
+  var selectAll = document.getElementById('select-all-orders');
+  if (selectAll) selectAll.checked = all.length > 0 && checked.length === all.length;
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.order-check').forEach(c => c.checked = cb.checked);
+  updateBulkBar();
+}
+
+function clearBulkSelection() {
+  document.querySelectorAll('.order-check').forEach(c => c.checked = false);
+  var bar = document.getElementById('bulk-action-bar');
+  if (bar) bar.classList.add('hidden');
+  var sa = document.getElementById('select-all-orders');
+  if (sa) sa.checked = false;
+}
+
+function bulkDeleteOrders() {
+  var checked = Array.from(document.querySelectorAll('.order-check:checked')).map(c => c.value);
+  if (!checked.length) return;
+  showConfirm({
+    title: `Delete ${checked.length} order(s)?`,
+    body: `These <strong>${checked.length} orders</strong> will be marked as deleted. You can restore them from the Deleted view.`,
+    actionLabel: `Delete ${checked.length} Orders`,
+    btnIcon: 'ti-trash',
+    callback: async () => {
+      try {
+        for (var id of checked) {
+          var o = savedOrders.find(x => x.id === id);
+          if (o) { o.deleted = true; o.deletedAt = Date.now(); await BlissDB.saveOrder(o); }
+        }
+        savedOrders = await BlissDB.getOrders();
+        document.getElementById('dash-orders').textContent = savedOrders.filter(o=>!o.deleted).length;
+        renderSavedOrdersList();
+        showToast(`${checked.length} orders deleted.`);
+      } catch(e){ showToast('Bulk delete failed!', true); }
+    }
+  });
+}
+
+// =============================================
+// INGREDIENTS MASTER — soft/hard delete / restore
+// =============================================
+
+function softDeleteIngredient(idx) {
+  var item = ingredientsMaster[idx];
+  if (!item) return;
+  showConfirm({
+    title: 'Delete this ingredient?',
+    body: `<strong>"${item.name}"</strong> will be marked as deleted. All historical saved orders will preserve their rates. You can restore this item later.`,
+    actionLabel: 'Delete',
+    btnIcon: 'ti-trash',
+    callback: async () => {
+      try {
+        item.deleted = true;
+        item.deletedAt = Date.now();
+        await BlissDB.saveIngredients(ingredientsMaster);
+        renderIngredientsMaster();
+        showToast(`"${item.name}" deleted from master list.`);
+      } catch(e){ showToast('Delete failed!', true); }
+    }
+  });
+}
+
+async function restoreIngredient(idx) {
+  var item = ingredientsMaster[idx];
+  if (!item) return;
+  showConfirm({
+    title: 'Restore ingredient?',
+    body: `<strong>"${item.name}"</strong> will be made active again and available in the calculator.`,
+    actionLabel: 'Restore',
+    actionClass: 'btn-success-solid',
+    btnIcon: 'ti-restore',
+    iconRestore: true,
+    callback: async () => {
+      try {
+        delete item.deleted; delete item.deletedAt;
+        await BlissDB.saveIngredients(ingredientsMaster);
+        renderIngredientsMaster();
+        showToast(`"${item.name}" restored!`);
+      } catch(e){ showToast('Restore failed!', true); }
+    }
+  });
+}
+
+function hardDeleteIngredient(idx) {
+  var item = ingredientsMaster[idx];
+  if (!item) return;
+  showConfirm({
+    title: 'Permanently delete ingredient?',
+    body: `<strong>"${item.name}"</strong> will be <strong>permanently removed</strong>. Historical saved orders are unaffected — they store their own ingredient snapshot. This cannot be undone.`,
+    actionLabel: 'Delete Forever',
+    btnIcon: 'ti-trash-x',
+    callback: async () => {
+      try {
+        ingredientsMaster.splice(idx, 1);
+        await BlissDB.saveIngredients(ingredientsMaster);
+        renderIngredientsMaster();
+        showToast(`"${item.name}" permanently deleted.`);
+      } catch(e){ showToast('Delete failed!', true); }
+    }
+  });
+}
+
+// =============================================
+// PACKAGING MASTER — soft/hard delete / restore
+// =============================================
+
+function softDeletePackaging(idx) {
+  var item = packagingMaster[idx];
+  if (!item) return;
+  showConfirm({
+    title: 'Delete this packaging item?',
+    body: `<strong>"${item.name}"</strong> will be marked as deleted. Historical orders are unaffected. You can restore it later.`,
+    actionLabel: 'Delete',
+    btnIcon: 'ti-trash',
+    callback: async () => {
+      try {
+        item.deleted = true;
+        item.deletedAt = Date.now();
+        await BlissDB.savePackaging(packagingMaster);
+        renderPackagingMaster();
+        showToast(`"${item.name}" deleted from packaging list.`);
+      } catch(e){ showToast('Delete failed!', true); }
+    }
+  });
+}
+
+async function restorePackaging(idx) {
+  var item = packagingMaster[idx];
+  if (!item) return;
+  showConfirm({
+    title: 'Restore packaging item?',
+    body: `<strong>"${item.name}"</strong> will be active again.`,
+    actionLabel: 'Restore',
+    actionClass: 'btn-success-solid',
+    btnIcon: 'ti-restore',
+    iconRestore: true,
+    callback: async () => {
+      try {
+        delete item.deleted; delete item.deletedAt;
+        await BlissDB.savePackaging(packagingMaster);
+        renderPackagingMaster();
+        showToast(`"${item.name}" restored!`);
+      } catch(e){ showToast('Restore failed!', true); }
+    }
+  });
+}
+
+function hardDeletePackaging(idx) {
+  var item = packagingMaster[idx];
+  if (!item) return;
+  showConfirm({
+    title: 'Permanently delete packaging item?',
+    body: `<strong>"${item.name}"</strong> will be <strong>permanently removed</strong>. This cannot be undone.`,
+    actionLabel: 'Delete Forever',
+    btnIcon: 'ti-trash-x',
+    callback: async () => {
+      try {
+        packagingMaster.splice(idx, 1);
+        await BlissDB.savePackaging(packagingMaster);
+        renderPackagingMaster();
+        showToast(`"${item.name}" permanently deleted.`);
+      } catch(e){ showToast('Delete failed!', true); }
+    }
+  });
+}
+
+// =============================================
+// PRODUCT CATALOG — soft/hard delete / restore
+// =============================================
+
+function softDeleteCatalogProduct(idx) {
+  var item = catalogProducts[idx];
+  if (!item) return;
+  showConfirm({
+    title: 'Delete this product?',
+    body: `<strong>"${item.name}"</strong> will be removed from the active catalog. You can restore it later.`,
+    actionLabel: 'Delete',
+    btnIcon: 'ti-trash',
+    callback: async () => {
+      try {
+        item.deleted = true;
+        item.deletedAt = Date.now();
+        await BlissDB.saveCatalogProducts(catalogProducts);
+        renderProductCatalog();
+        renderDashboardTable();
+        showToast(`"${item.name}" removed from catalog.`);
+      } catch(e){ showToast('Delete failed!', true); }
+    }
+  });
+}
+
+async function restoreCatalogProduct(idx) {
+  var item = catalogProducts[idx];
+  if (!item) return;
+  showConfirm({
+    title: 'Restore product?',
+    body: `<strong>"${item.name}"</strong> will be made active in the catalog again.`,
+    actionLabel: 'Restore',
+    actionClass: 'btn-success-solid',
+    btnIcon: 'ti-restore',
+    iconRestore: true,
+    callback: async () => {
+      try {
+        delete item.deleted; delete item.deletedAt;
+        await BlissDB.saveCatalogProducts(catalogProducts);
+        renderProductCatalog();
+        renderDashboardTable();
+        showToast(`"${item.name}" restored to catalog!`);
+      } catch(e){ showToast('Restore failed!', true); }
+    }
+  });
+}
+
+function hardDeleteCatalogProduct(idx) {
+  var item = catalogProducts[idx];
+  if (!item) return;
+  showConfirm({
+    title: 'Permanently delete product?',
+    body: `<strong>"${item.name}"</strong> will be <strong>permanently removed</strong> from the catalog. This cannot be undone.`,
+    actionLabel: 'Delete Forever',
+    btnIcon: 'ti-trash-x',
+    callback: async () => {
+      try {
+        catalogProducts.splice(idx, 1);
+        await BlissDB.saveCatalogProducts(catalogProducts);
+        renderProductCatalog();
+        renderDashboardTable();
+        showToast(`"${item.name}" permanently deleted.`);
+      } catch(e){ showToast('Delete failed!', true); }
+    }
+  });
+}
+
+function renderSavedOrdersList() {
+  var el = document.getElementById('saved-orders-content');
+  
+  var showDeleted = document.getElementById('order-show-deleted') && document.getElementById('order-show-deleted').checked;
+  var allVisible = showDeleted ? savedOrders : savedOrders.filter(o => !o.deleted);
+  
+  if (allVisible.length === 0 && savedOrders.length === 0) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:40px;color:var(--bo-muted);">
+        <i class="ti ti-receipt" style="font-size:40px;opacity:0.3;display:block;margin-bottom:12px;"></i>
+        No saved calculations yet. Use the Cost Calculator to create and save orders.
+      </div>`;
+    return;
+  }
+  
+  var searchQuery = document.getElementById('order-search').value.toLowerCase().trim();
+  var catFilter = document.getElementById('order-filter-category').value;
+  
+  var filtered = allVisible.filter(o => {
+    var matchesSearch = o.name.toLowerCase().includes(searchQuery);
+    var matchesCat = !catFilter || o.category === catFilter;
+    return matchesSearch && matchesCat;
+  });
+  
+  if (filtered.length === 0) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:40px;color:var(--bo-muted);">
+        <i class="ti ti-search" style="font-size:40px;opacity:0.3;display:block;margin-bottom:12px;"></i>
+        No orders match your search and filter criteria.
+      </div>`;
+    return;
+  }
+  
+  var activeOrders = filtered.filter(o => !o.deleted);
+  var hasActive = activeOrders.length > 0;
+  
+  el.innerHTML = `
+    <div id="bulk-action-bar" class="bulk-bar hidden">
+      <span><i class="ti ti-checkbox" style="margin-right:6px;"></i><span id="bulk-count">0</span> order(s) selected</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm btn-danger-solid" onclick="bulkDeleteOrders()"><i class="ti ti-trash"></i> Delete Selected</button>
+        <button class="btn btn-sm" onclick="clearBulkSelection()" style="color:var(--bo-warm);border-color:rgba(245,230,204,0.3);background:transparent;"><i class="ti ti-x"></i> Clear</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th class="checkbox-cell"><input type="checkbox" class="row-check" id="select-all-orders" onchange="toggleSelectAll(this)" title="Select all active orders"></th>
+          <th>Order Name</th>
+          <th>Category</th>
+          <th>Date</th>
+          <th>Cost Price</th>
+          <th>Selling Price</th>
+          <th>Profit</th>
+          <th style="text-align:right;padding-right:20px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(o => {
+          var catLabel = o.category ? getCategoryLabel(o.category) : 'General';
+          var costDisplay = o.summary ? parseFloat(o.summary.totalCost).toFixed(2) : parseFloat(o.cost).toFixed(2);
+          var sellDisplay = o.summary ? o.summary.sellingPrice : o.sell;
+          var profitDisplay = o.summary ? o.summary.profitAmount : o.profit;
+          var profitPctDisplay = o.summary ? o.summary.profitPct : '—';
+          var isDeleted = !!o.deleted;
+          return `
+            <tr class="${isDeleted?'soft-deleted':''}" data-order-id="${o.id}">
+              <td class="checkbox-cell">
+                ${!isDeleted ? `<input type="checkbox" class="row-check order-check" value="${o.id}" onchange="updateBulkBar()">` : ''}
+              </td>
+              <td style="font-weight:500;">${o.name}${isDeleted?'<span class="deleted-tag"><i class="ti ti-trash" style="font-size:9px;"></i> Deleted</span>':''}</td>
+              <td><span class="badge badge-gold">${catLabel}</span></td>
+              <td style="color:var(--bo-muted);font-size:12px;">${o.date}</td>
+              <td>₹${costDisplay}</td>
+              <td>₹${sellDisplay}</td>
+              <td style="color:var(--bo-success);font-weight:500;">₹${profitDisplay} <span style="font-size:11px;color:var(--bo-muted);font-weight:400;">(${profitPctDisplay}%)</span></td>
+              <td style="text-align:right;padding-right:20px;">
+                <div style="display:flex;gap:6px;justify-content:flex-end;">
+                  ${isDeleted
+                    ? `<button class="btn btn-sm btn-success-solid" onclick="restoreOrder('${o.id}')"><i class="ti ti-restore"></i> Restore</button>
+                       <button class="btn btn-sm btn-danger-solid" onclick="hardDeleteOrder('${o.id}')" title="Permanently Delete"><i class="ti ti-trash-x"></i></button>`
+                    : `<button class="btn btn-sm btn-gold" onclick="viewOrderReceipt('${o.id}')" title="View Receipt"><i class="ti ti-receipt"></i> View</button>
+                       <button class="btn btn-sm" onclick="loadOrderForEdit('${o.id}')" title="Edit Order"><i class="ti ti-edit"></i> Edit</button>
+                       <button class="btn btn-sm" onclick="cloneOrder('${o.id}')" title="Clone Order"><i class="ti ti-copy"></i> Clone</button>
+                       <button class="btn btn-sm btn-danger" onclick="softDeleteOrderConfirm('${o.id}')" title="Delete"><i class="ti ti-trash"></i></button>`
+                  }
+                </div>
+              </td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function clearSavedOrdersFilters() {
+  document.getElementById('order-search').value = '';
+  document.getElementById('order-filter-category').value = '';
+  renderSavedOrdersList();
+}
+
+function getCategoryLabel(cat) {
+  var map = {
+    'cake': 'Celebration Cake',
+    'fruit-cake': 'Fruit Cake',
+    'theme-cake': 'Custom Theme Cake',
+    'fusion-cake': 'Fusion Cake',
+    'cupcake': 'Cupcakes',
+    'brownie': 'Brownies',
+    'cookie': 'Cookies',
+    'bread': 'Homemade Bread',
+    'chocolate': 'Chocolate',
+    'cheesecake': 'Cheesecake',
+    'muffin': 'Muffins',
+    'pastry': 'Pastries',
+    'gift-box': 'Gift Box',
+    'custom': 'Custom'
+  };
+  return map[cat] || cat;
+}
+
+// Receipt Invoice Modal views
+function viewOrderReceipt(orderId) {
+  var order = savedOrders.find(o => o.id === orderId);
+  if (!order) return;
+  
+  var modal = document.getElementById('modal-content');
+  var catLabel = order.category ? getCategoryLabel(order.category) : 'General';
+  
+  var ingRows = (order.ingredients || []).map(ing => `
+    <tr>
+      <td>${ing.name}</td>
+      <td>${ing.qty}${ing.unit}</td>
+      <td>₹${(ing.rate || 0).toFixed(4)}</td>
+      <td>₹${(ing.cost || (ing.qty * ing.rate * (1 + (ing.wastage || 0)/100))).toFixed(2)}</td>
+    </tr>
+  `).join('');
+  
+  var decoRows = (order.decorations || []).map(deco => `
+    <tr>
+      <td>${deco.name}</td>
+      <td>${deco.qty}${deco.unit}</td>
+      <td>₹${(deco.rate || 0).toFixed(2)}</td>
+      <td>₹${((deco.qty || 0) * (deco.rate || 0)).toFixed(2)}</td>
+    </tr>
+  `).join('');
+  
+  var packRows = (order.packaging || []).map(pack => `
+    <tr>
+      <td>${pack.name}</td>
+      <td>${pack.qty}${pack.unit}</td>
+      <td>₹${(pack.rate || 0).toFixed(2)}</td>
+      <td>₹${((pack.qty || 0) * (pack.rate || 0)).toFixed(2)}</td>
+    </tr>
+  `).join('');
+  
+  var extraDetailsHtml = '';
+  if (order.categoryDetails) {
+    extraDetailsHtml = `<div class="invoice-section-title">Product Details</div><div style="font-size:12px;color:var(--bo-text);display:grid;grid-template-columns:repeat(2,1fr);gap:6px;">`;
+    Object.entries(order.categoryDetails).forEach(([k, v]) => {
+      if (Array.isArray(v)) {
+        if (v.length > 0) extraDetailsHtml += `<div><strong>${k.toUpperCase()}:</strong> ${v.join(', ')}</div>`;
+      } else if (v) {
+        extraDetailsHtml += `<div><strong>${k.toUpperCase()}:</strong> ${v}</div>`;
+      }
+    });
+    extraDetailsHtml += `</div>`;
+  }
+  
+  var summaryObj = order.summary || {
+    rawCost: parseFloat(order.cost) || 0,
+    decoCost: 0,
+    packCost: 0,
+    totalCost: parseFloat(order.cost) || 0,
+    perServing: parseFloat(order.cost) / (order.servings || 8),
+    breakeven: parseFloat(order.cost) || 0,
+    targetMargin: 60,
+    pricingRule: 'exact',
+    gstPct: 0,
+    sellingPrice: order.sell,
+    profitAmount: order.profit,
+    profitPct: '—'
+  };
+  
+  var labourCost = order.labour ? order.labour.totalCost : 0;
+  var overheadCost = order.overheads ? order.overheads.totalCost : 0;
+  var wastageCost = order.wastage ? order.wastage.totalCost : 0;
+  
+  modal.innerHTML = `
+    <div class="modal-header">
+      <h3>BlissOven Calculation Receipt</h3>
+      <button class="btn btn-sm" onclick="document.getElementById('modal-overlay').classList.add('hidden')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="invoice-container" id="invoice-print-area">
+        <div class="invoice-header">
+          <div>
+            <div class="invoice-title">BlissOven</div>
+            <div style="font-size:11px;color:var(--bo-muted);letter-spacing:1px;text-transform:uppercase;">Artisanal Bakery Costings</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:600;color:var(--bo-gold-dark);">CALCULATION SHEET</div>
+            <div style="font-size:11px;color:var(--bo-muted);">ID: ${order.id}</div>
+          </div>
+        </div>
+        
+        <div class="invoice-details">
+          <div>
+            <strong>Product Name:</strong> ${order.name}<br>
+            <strong>Category:</strong> ${catLabel}<br>
+            <strong>Date Generated:</strong> ${order.date}
+          </div>
+          <div style="text-align:right;">
+            <strong>Batch Size:</strong> ${order.batchSize} batch(es)<br>
+            <strong>Servings:</strong> ${order.servings} serving(s)<br>
+            <strong>Per Serving:</strong> ₹${parseFloat(summaryObj.perServing).toFixed(2)}
+          </div>
+        </div>
+        
+        ${extraDetailsHtml}
+        
+        <div class="invoice-section-title">Raw Materials & Ingredients</div>
+        <table style="font-size:12px;margin-bottom:12px;">
+          <thead>
+            <tr>
+              <th>Ingredient</th>
+              <th>Qty Used</th>
+              <th>Unit Rate</th>
+              <th>Total Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ingRows || '<tr><td colspan="4" style="color:var(--bo-muted);">No raw materials used.</td></tr>'}
+          </tbody>
+        </table>
+        
+        ${decoRows ? `
+          <div class="invoice-section-title">Decoration & Finishing</div>
+          <table style="font-size:12px;margin-bottom:12px;">
+            <thead>
+              <tr>
+                <th>Decoration Item</th>
+                <th>Qty Used</th>
+                <th>Rate</th>
+                <th>Total Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${decoRows}
+            </tbody>
+          </table>
+        ` : ''}
+        
+        ${packRows ? `
+          <div class="invoice-section-title">Packaging & Presentation</div>
+          <table style="font-size:12px;margin-bottom:12px;">
+            <thead>
+              <tr>
+                <th>Packaging Item</th>
+                <th>Qty Used</th>
+                <th>Rate</th>
+                <th>Total Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${packRows}
+            </tbody>
+          </table>
+        ` : ''}
+        
+        <div class="invoice-section-title">Cost Composition Breakdown</div>
+        <div style="font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;">
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(232,213,190,0.15);">
+            <span style="color:var(--bo-muted);">Raw Materials:</span><span>₹${parseFloat(summaryObj.rawCost).toFixed(2)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(232,213,190,0.15);">
+            <span style="color:var(--bo-muted);">Decoration:</span><span>₹${parseFloat(summaryObj.decoCost).toFixed(2)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(232,213,190,0.15);">
+            <span style="color:var(--bo-muted);">Packaging:</span><span>₹${parseFloat(summaryObj.packCost).toFixed(2)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(232,213,190,0.15);">
+            <span style="color:var(--bo-muted);">Labour:</span><span>₹${parseFloat(labourCost).toFixed(2)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(232,213,190,0.15);">
+            <span style="color:var(--bo-muted);">Overheads:</span><span>₹${parseFloat(overheadCost).toFixed(2)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(232,213,190,0.15);">
+            <span style="color:var(--bo-muted);">Wastage & Buffer:</span><span>₹${parseFloat(wastageCost).toFixed(2)}</span>
+          </div>
+          ${order.misc && order.misc.cost ? `
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(232,213,190,0.15);">
+              <span style="color:var(--bo-muted);">Miscellaneous:</span><span>₹${order.misc.cost.toFixed(2)}</span>
+            </div>
+          ` : ''}
+        </div>
+        
+        <div class="invoice-summary-grid">
+          <div>
+            <div class="invoice-total-row">
+              <span style="color:var(--bo-muted);">Break-even Cost:</span>
+              <strong>₹${parseFloat(summaryObj.totalCost).toFixed(0)}</strong>
+            </div>
+            <div class="invoice-total-row">
+              <span style="color:var(--bo-muted);">Target Margin:</span>
+              <strong>${summaryObj.targetMargin}%</strong>
+            </div>
+            <div class="invoice-total-row">
+              <span style="color:var(--bo-muted);">GST Allocation:</span>
+              <strong>${summaryObj.gstPct}%</strong>
+            </div>
+          </div>
+          
+          <div style="border-left:1px dashed var(--bo-border);padding-left:14px;">
+            <div class="invoice-total-row grand">
+              <span>Selling Price:</span>
+              <span>₹${summaryObj.sellingPrice}</span>
+            </div>
+            <div class="invoice-total-row" style="color:var(--bo-success);font-weight:600;font-size:13.5px;padding-top:4px;">
+              <span>Net Profit:</span>
+              <span>₹${summaryObj.profitAmount} (${summaryObj.profitPct}%)</span>
+            </div>
+          </div>
+        </div>
+        
+        ${order.misc && order.misc.notes ? `
+          <div style="margin-top:14px;padding:8px 12px;background:#fefefe;border:1px solid var(--bo-border);border-radius:6px;font-size:11.5px;">
+            <strong>Notes & Instructions:</strong><br>
+            <span style="color:var(--bo-muted);">${order.misc.notes}</span>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="printReceipt()"><i class="ti ti-printer"></i> Print / Save PDF</button>
+      <button class="btn btn-primary" onclick="document.getElementById('modal-overlay').classList.add('hidden')">Close</button>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function printReceipt() {
+  window.print();
+}
+
+function calcDailyOverhead(){
+  var rent=+(document.getElementById('monthly-rent').value)||0;
+  var elec=+(document.getElementById('monthly-elec').value)||0;
+  var gas=+(document.getElementById('monthly-gas').value)||0;
+  var clean=+(document.getElementById('monthly-clean').value)||0;
+  var days=+(document.getElementById('working-days').value)||25;
+  var orders=+(document.getElementById('daily-orders').value)||3;
+  var total=rent+elec+gas+clean;
+  var perOrder=total/(days*orders);
+  document.getElementById('oh-per-order').textContent=perOrder.toFixed(0);
+}
+
+function saveLabour(){}
+
+function showToast(msg, isError) {
+  var t = document.getElementById('toast');
+  var icon = t.querySelector('i');
+  
+  if (isError) {
+    t.style.background = 'var(--bo-danger)';
+    t.style.color = '#fff';
+    if (icon) icon.className = 'ti ti-alert-triangle';
+  } else {
+    t.style.background = 'var(--bo-brown)';
+    t.style.color = 'var(--bo-warm)';
+    if (icon) icon.className = 'ti ti-check';
+  }
+  
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function closeModal(e){if(e.target.id==='modal-overlay'){document.getElementById('modal-overlay').classList.add('hidden');}}
+
+// Init
+initApp();
+</script>
+</body>
+</html>
