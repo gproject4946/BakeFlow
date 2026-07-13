@@ -2270,10 +2270,11 @@ async function sendSaleWhatsApp() {
   showToast('Saving invoice…');
   const saleId = await doSaveSale();
   if (!saleId) return;
+  await depleteInventoryForSaleItems(currentSaleItems);
   try {
     await API.sendSaleWhatsApp(saleId);
     salesInvoices = await API.getSales();
-    showToast('✅ WhatsApp sent!');
+    showToast('✅ WhatsApp sent & stock depleted!');
   } catch(e) { showToast('WhatsApp failed: ' + e.message, true); }
 }
 
@@ -2282,9 +2283,125 @@ async function saveSaleInvoice() {
   if (currentSaleItems.length === 0) { showToast('Please add at least one item', true); return; }
   const id = await doSaveSale();
   if (id) {
-    showToast('✅ Invoice saved!');
+    await depleteInventoryForSaleItems(currentSaleItems);
+    showToast('✅ Invoice saved & stock depleted!');
     salesInvoices = await API.getSales();
     initSalesPage();
+  }
+}
+
+async function depleteInventoryForSaleItems(items) {
+  if (!items || items.length === 0) return;
+  let depletedCount = 0;
+
+  // Helper to normalize strings for exact matching
+  function cleanStr(s) {
+    return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+  }
+
+  for (const item of items) {
+    if (!item.name) continue;
+
+    // Find the saved recipe calculation matching this catalog product name
+    const recipe = savedOrders.find(o => !o.deleted && cleanStr(o.name) === cleanStr(item.name));
+    if (!recipe) {
+      console.log('[Depletion] No recipe calculation found for item:', item.name);
+      continue;
+    }
+
+    const qtySold = Number(item.qty) || 0;
+    const batchSize = Number(recipe.batchSize) || 1;
+    const multiplier = qtySold / batchSize;
+
+    // 1. Deplete recipe ingredients
+    if (recipe.ingredients && recipe.ingredients.length > 0) {
+      for (const ing of recipe.ingredients) {
+        if (!ing.name) continue;
+        const normName = cleanStr(ing.name);
+        const masterIng = ingredientsMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
+
+        if (masterIng) {
+          const factor = getConversionFactorV2(ing.name, masterIng.unit, ing.unit);
+          const totalUsed = ing.qty * factor * multiplier;
+          const newStock = Math.max(0, (Number(masterIng.stockQty) || 0) - totalUsed);
+          try {
+            await API.updateIngredientStock(masterIng.id, newStock, Number(masterIng.minAlert) || 0);
+            masterIng.stockQty = newStock;
+            depletedCount++;
+          } catch (e) {
+            console.warn('[Depletion] Failed for ingredient:', ing.name, e.message);
+          }
+        }
+      }
+    }
+
+    // 2. Deplete packaging items
+    if (recipe.packaging && recipe.packaging.length > 0) {
+      for (const pack of recipe.packaging) {
+        if (!pack.name) continue;
+        const normName = cleanStr(pack.name);
+        const masterPack = packagingMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
+
+        if (masterPack) {
+          const factor = getConversionFactorV2(pack.name, masterPack.unit, pack.unit);
+          const totalUsed = pack.qty * factor * multiplier;
+          const newStock = Math.max(0, (Number(masterPack.stockQty) || 0) - totalUsed);
+          try {
+            await API.updatePackagingStock(masterPack.id, newStock, Number(masterPack.minAlert) || 0);
+            masterPack.stockQty = newStock;
+            depletedCount++;
+          } catch (e) {
+            console.warn('[Depletion] Failed for packaging:', pack.name, e.message);
+          }
+        }
+      }
+    }
+
+    // 3. Deplete decoration items
+    if (recipe.decorations && recipe.decorations.length > 0) {
+      for (const deco of recipe.decorations) {
+        if (!deco.name) continue;
+        const normName = cleanStr(deco.name);
+
+        const masterIng = ingredientsMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
+        const masterPack = packagingMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
+
+        if (masterIng) {
+          const factor = getConversionFactorV2(deco.name, masterIng.unit, deco.unit);
+          const totalUsed = deco.qty * factor * multiplier;
+          const newStock = Math.max(0, (Number(masterIng.stockQty) || 0) - totalUsed);
+          try {
+            await API.updateIngredientStock(masterIng.id, newStock, Number(masterIng.minAlert) || 0);
+            masterIng.stockQty = newStock;
+            depletedCount++;
+          } catch (e) {
+            console.warn('[Depletion] Failed for deco ingredient:', deco.name, e.message);
+          }
+        } else if (masterPack) {
+          const factor = getConversionFactorV2(deco.name, masterPack.unit, deco.unit);
+          const totalUsed = deco.qty * factor * multiplier;
+          const newStock = Math.max(0, (Number(masterPack.stockQty) || 0) - totalUsed);
+          try {
+            await API.updatePackagingStock(masterPack.id, newStock, Number(masterPack.minAlert) || 0);
+            masterPack.stockQty = newStock;
+            depletedCount++;
+          } catch (e) {
+            console.warn('[Depletion] Failed for deco packaging:', deco.name, e.message);
+          }
+        }
+      }
+    }
+  }
+
+  if (depletedCount > 0) {
+    try {
+      const [freshIngs, freshPacks] = await Promise.all([API.getIngredients(), API.getPackaging()]);
+      ingredientsMaster = freshIngs;
+      packagingMaster   = freshPacks;
+      renderMaterialsMaster();
+    } catch (e) {
+      console.warn('[Depletion] Reload master items failed:', e.message);
+    }
   }
 }
 
