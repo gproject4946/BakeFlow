@@ -1,146 +1,472 @@
-# 🎂 BakeFlow ERP — Setup & User Guide
+# 🎂 BakeFlow ERP — Complete Guide
 
-BakeFlow is a premium, end-to-end Enterprise Resource Planning (ERP) and Cost Calculator software designed specifically for bakery businesses. It combines advanced recipe-cost calculation, automated inventory/stock management, Google Sign-in with role-based access control, Gemini AI-powered purchase invoice scanning, and real-time customer sales invoicing with automatic WhatsApp delivery via Twilio. 
+> **The all-in-one bakery management system** — Cost Calculator · Inventory · Sales Invoicing · WhatsApp Receipts · AI Invoice Scanning · Analytics
 
-All persistent data (audit logs, customer profiles, product catalogs, order files, staff credentials) is synced in real-time to a **Google Sheet**, giving bakery owners a zero-cost, cloud-accessible, and highly reliable database.
+[![Live Demo](https://img.shields.io/badge/Live%20App-bakeflow--spo4.onrender.com-gold?style=for-the-badge)](https://bakeflow-spo4.onrender.com)
+[![Built With](https://img.shields.io/badge/Built%20With-Node.js%20%7C%20Google%20Sheets%20%7C%20Gemini%20AI-brown?style=for-the-badge)]()
 
 ---
 
-## ✨ Features & Architecture
+## 📖 What is BakeFlow?
+
+BakeFlow is a **complete, cloud-based ERP (Enterprise Resource Planning) system** built exclusively for bakery businesses. It replaces spreadsheets, paper notebooks, and disconnected apps with one elegant, web-based platform that your entire team can access from any device, anywhere.
+
+**Built for bakery owners who want to:**
+- Know exactly what every cake, pastry, or bread costs to make.
+- Track raw material stock and get alerts before you run out.
+- Generate professional sales invoices in seconds.
+- Send invoices directly to customers on WhatsApp automatically.
+- Scan paper supplier invoices with AI — no manual data entry.
+- Monitor all business activity with a full audit trail.
+
+**Zero monthly database fees.** Your entire business data is stored securely in a **Google Sheet** you own — giving you full control, zero vendor lock-in, and the ability to view your data directly in a familiar spreadsheet at any time.
+
+---
+
+## ✨ Feature Overview
+
+| Module | What it does |
+|---|---|
+| 🔑 **Role-Based Login** | Google Sign-In with Admin/Employee access levels and password verification |
+| 📊 **Dashboard** | Live KPIs — revenue, margins, low stock alerts, recent invoices |
+| 🧮 **Cost Calculator** | Recipe-based cost breakdown per product with live margin calculation |
+| 📦 **Raw Materials Master** | Full ingredient & packaging inventory with stock tracking and alerts |
+| 🤖 **AI Invoice Scanner** | Scan paper supplier invoices with Gemini AI — auto-imports items into inventory |
+| 🛒 **Product Catalog** | Pre-defined products with calculated selling prices for quick invoice creation |
+| 🧾 **Sales Invoicing** | Professional invoice builder with live PDF-quality preview and auto-numbering |
+| 💬 **WhatsApp Receipts** | One-click send of formatted invoice receipts to customer WhatsApp via Twilio |
+| 👥 **Customer Database** | Complete customer profiles with order history, total spend, and last order date |
+| 📈 **Analytics** | Revenue charts, profit margins, best-selling products — Admin only |
+| 🗂️ **Audit Log** | Tamper-proof chronological log of every action taken by every employee |
+| ⚙️ **Settings** | Labour costs, overhead configuration, and staff management |
+
+---
+
+## 🏗️ System Architecture
 
 ```
-                               ┌────────────────────────────────┐
-                               │     Google Sheets Database     │
-                               │  (Staff, AuditLog, Customers,  │
-                               │   SalesInvoices, Inventory)    │
-                               └───────────────┬────────────────┘
-                                               │
-                                               ▼  (sheetsClient.js)
-┌──────────────────┐            ┌────────────────────────────────┐            ┌──────────────────┐
-│   Gemini 1.5     ├───────────►│       BakeFlow ERP Server      │◄───────────┤   Twilio API     │
-│   Flash AI       │ (Scan base64│        (Express Node.js)       │ (WhatsApp  │  (WhatsApp SMS)  │
-│ (Invoice Scan)   │   invoice) │                                │  receipts) │                  │
-└──────────────────┘            └───────────────▲────────────────┘            └──────────────────┘
-                                                │ (API Endpoints + Auth)
-                                                │
-                                                ▼
-                                ┌────────────────────────────────┐
-                                │     BakeFlow SPA Frontend      │
-                                │    (Tailored HSL Design, UX,   │
-                                │   Google Sign-In, Live Calc)   │
-                                └────────────────────────────────┘
+                         ┌──────────────────────────────────┐
+                         │       Google Sheets Database      │
+                         │  Staff · AuditLog · Customers    │
+                         │  SalesInvoices · Ingredients     │
+                         │  Packaging · Products · Settings │
+                         └───────────────┬──────────────────┘
+                                         │ (sheetsClient.js — live R/W)
+                                         ▼
+ ┌─────────────────┐      ┌──────────────────────────────────┐      ┌─────────────────┐
+ │   Gemini AI     │─────►│      BakeFlow ERP Server         │◄─────│   Twilio API    │
+ │  (v1 REST API)  │      │     (Express.js · Node.js)       │      │  (WhatsApp SMS) │
+ │  Invoice OCR    │      │   REST API · Auth · Business     │      │  Invoice Send   │
+ └─────────────────┘      └───────────────▲──────────────────┘      └─────────────────┘
+                                          │
+                                          │ (HTTPS API Calls)
+                                          ▼
+                          ┌──────────────────────────────────┐
+                          │      BakeFlow SPA Frontend        │
+                          │  Vanilla HTML · CSS · JavaScript  │
+                          │  Google Sign-In · Live Calculator │
+                          │  Responsive · Dark Brown Theme    │
+                          └──────────────────────────────────┘
 ```
 
-### 1. 🔑 Google Sign-In & Secure Role Selection
-* **Single Sign-On:** Staff can sign in using their official Google accounts.
-* **Role Modal:** After Google auth, employees select their role: **Admin** or **Employee**.
-* **Password Verification:** Passwords for Admin and Employee positions are defined securely in the server's `.env` configuration file.
-* **Access Control:** Employees only have access to day-to-day screens (Dashboard, Calculator, Materials, Sales, Invoices, Customers). Settings, full Analytics, and Audit Logs are hidden and blocked behind server-side and client-side guards for **Admin only**.
+---
 
-### 2. 📊 Merged Raw Materials & Stock Management
-* **Single UI Screen:** Ingredients and Packaging are combined into a clean, tabbed Materials Master.
-* **Inventory Control:** Track current stock quantity (`stockQty`) and set a minimum alert threshold (`minAlert`).
-* **Live Badging:** Auto-displays stock level indicators:
-  * 🔴 `Out of Stock` (0 qty)
-  * 🟡 `Low Stock` (qty <= threshold)
-  * 🟢 `In Stock` (qty > threshold)
-* **Inline Updates:** Edit rates, current stock quantities, and alert thresholds directly from the table.
+## 🔑 Module 1 — Role-Based Login & Access Control
 
-### 3. 🤖 AI Supplier Invoice Scanner
-* **Drag-and-Drop:** Upload or drop an image (JPG, PNG, WebP) of any raw material supplier purchase invoice.
-* **Gemini 1.5 Flash:** Automatically processes and extracts line items: name, quantity, unit, price, and item type.
-* **Editable Preview:** Review the scanned items in an interactive table, modify categories, and import them directly into your database. Stock quantities are automatically incremented!
+### How it works:
+1. Visit the BakeFlow URL in any browser.
+2. Click **"Sign in with Google"** — uses your existing Google account (no new password needed).
+3. After sign-in, a modal appears asking you to select your **role** (Admin or one of up to 5 named employees) and enter your designated **role password**.
+4. Access is granted based on your role.
 
-### 4. 🧾 Sales Invoice Generator
-* **Interactive Builder:** Search and select existing customers (or add new ones) to auto-fill details.
-* **Catalog Integration:** Add items directly from your pre-calculated product catalog with a single click.
-* **Live Printer Preview:** The right side of the screen updates in real-time, matching standard receipt formatting. Prints beautifully with native browser print styling (`@media print`).
-* **Auto-Numbering:** Auto-generates sequential, year-prefixed invoice numbers (e.g. `INV-2026-0001`).
-
-### 5. 💬 Twilio WhatsApp Integration
-* **Instant Receipts:** After saving an invoice, click a single button to dispatch a beautifully formatted receipt directly to the customer's WhatsApp number.
-* **Audit Stamped:** Automatically tracks who sent the receipt and updates the sent status badge (✅ Sent) in your invoice logs.
+### Access Levels:
+| Feature | Employee | Admin |
+|---|---|---|
+| Dashboard (basic stats) | ✅ | ✅ |
+| Cost Calculator | ✅ | ✅ |
+| Raw Materials | ✅ | ✅ |
+| Product Catalog | ✅ | ✅ |
+| New Invoice | ✅ | ✅ |
+| All Invoices | ✅ | ✅ |
+| Customers | ✅ | ✅ |
+| Full Analytics | ❌ | ✅ |
+| Labour & Overhead Settings | ❌ | ✅ |
+| Audit Log | ❌ | ✅ |
+| Financial KPIs on Dashboard | ❌ | ✅ |
 
 ---
 
-## 🛠️ Step-by-Step Google & Twilio Setup
+## 📊 Module 2 — Dashboard
 
-To deploy and host BakeFlow ERP, you must configure three external integrations:
+The dashboard is your **business health check** — it loads instantly when you log in and shows:
 
-### 1. Google Sheets Database (Service Account)
-1. Go to [Google Cloud Console](https://console.cloud.google.com).
-2. Create a new project called `BakeFlow`.
-3. Search for **Google Sheets API** in the API Library and **Enable** it.
-4. Go to **APIs & Services** -> **Credentials** -> Click **+ Create Credentials** -> **Service Account**.
-5. Name it `bakeflow-db` and click **Create and Continue**, then click **Done**.
-6. Click on the email of the new service account -> Go to the **Keys** tab -> Click **Add Key** -> **Create new key** -> **JSON** -> Click **Create**.
-7. Keep the downloaded JSON file. Paste its entire contents into `GOOGLE_CREDENTIALS` in your `.env`.
-8. Create a new Google Sheet. Copy the Spreadsheet ID from the URL.
-9. **Share** your Google Sheet with the Service Account email as an **Editor**.
-
-### 2. Google Sign-In (OAuth Client ID)
-1. Go back to **APIs & Services** -> **Credentials**.
-2. Click **+ Create Credentials** -> **OAuth client ID**.
-3. Select **Web application** as the application type.
-4. Name it `BakeFlow Web Login`.
-5. Under **Authorized JavaScript origins**, click **+ Add URI** and add your domain (e.g., `http://localhost:3000` or your production server domain).
-6. Click **Create** and copy the Client ID. Paste it into `GOOGLE_CLIENT_ID` in your `.env`.
-
-### 3. Twilio API (WhatsApp)
-1. Sign up for a free account on [Twilio](https://www.twilio.com).
-2. Set up the **Twilio Sandbox for WhatsApp** in the Twilio Console.
-3. Obtain your **Account SID**, **Auth Token**, and your Sandbox WhatsApp sender number (usually `whatsapp:+14155238886`).
-4. Paste these values into the Twilio variables in your `.env` file.
+- **This Month Revenue** — total sales generated this month.
+- **Total Customers** — number of customers in your database.
+- **Total Invoices** — number of sales invoices created.
+- **Avg. Profit Margin** — average margin across all products in your catalog.
+- **Total Products** — number of products in your catalog.
+- **Saved Orders** — number of cost calculations saved for reference.
+- **Highest Margin Product** — your most profitable product.
+- **Low Stock Alerts** — number of raw materials that have fallen below their minimum threshold.
+- **Quick Calculations** — one-click jump to your most recently used product calculators.
+- **Recent Invoices** — your last few sales at a glance.
 
 ---
 
-## ⚙️ Environment Variables (`.env`)
+## 🧮 Module 3 — Cost Calculator
 
-Create a `.env` file inside the `backend/` folder. Use the following template:
+The **heart of BakeFlow** — built specifically for bakeries to calculate the exact cost of making any product.
+
+### How to use it:
+1. Type your product name (e.g., "Rasmalai Cake").
+2. Select the **category** (Fusion Cake, Signature Cake, Brownie, etc.).
+3. Set the **batch size** (how many units per recipe).
+4. Add **ingredients** — search by name, enter quantity and unit. The rate is auto-filled from your Raw Materials Master.
+5. Add **packaging** — boxes, ribbons, bags, etc.
+6. Add **decorations** if needed.
+7. Enter the **selling price** you plan to charge.
+8. The calculator shows in real-time:
+   - **Total Ingredient Cost**
+   - **Packaging Cost**
+   - **Labour Cost** (based on your configured hourly rate × hours)
+   - **Overhead Cost** (electricity, rent share per batch)
+   - **Total Cost Price**
+   - **Profit Amount & Margin %**
+
+> 💡 **Tip:** If your margin is below 30%, the app warns you in orange. Below 10%, it shows red.
+
+### Saving & Loading:
+- Click **Save Order** to store a calculation for future reference.
+- Saved orders appear in the **Saved Orders** section and on the Dashboard quick panel.
+- Click **Add to Catalog** to permanently add the product to your catalog for quick invoice creation.
+
+---
+
+## 📦 Module 4 — Raw Materials Master
+
+Your **complete inventory management system** for both ingredients and packaging materials.
+
+### The two tabs:
+- **🥛 Ingredients tab** — Flour, butter, sugar, cream, chocolate, fruits, spices, etc.
+- **📦 Packaging tab** — Boxes, bags, ribbons, labels, stickers, etc.
+
+### Each item shows:
+| Column | Description |
+|---|---|
+| Name | Item name |
+| Category / Type | e.g. Dairy, Dry, Fruit / Box, Bag |
+| Unit | kg, g, litre, ml, piece, packet, etc. |
+| Rate (₹) | Current purchase price per unit |
+| Stock Qty | How much you currently have in stock |
+| Min Alert | Minimum threshold — warns you when stock falls below this |
+| Status | 🔴 Out of Stock · 🟡 Low Stock · 🟢 In Stock |
+| Last Updated | Date of last rate or stock update |
+
+### Key actions:
+- **Update** button — Edit rate, stock quantity, or minimum alert threshold inline.
+- **Delete** button — Soft-deletes the item (can be recovered using the "Show deleted" toggle).
+- **+ Add Item** — Manually add a new ingredient or packaging item.
+- **🤖 Scan Invoice** — AI-powered scanner (see Module 5 below).
+
+### Stock Alerts:
+Low stock items automatically appear in the **Dashboard** under "Low Stock Alerts" so you never run out of a critical ingredient mid-production.
+
+---
+
+## 🤖 Module 5 — AI Supplier Invoice Scanner
+
+One of BakeFlow's most powerful features — **scan a paper purchase invoice with your phone camera** and let Gemini AI extract all the line items automatically.
+
+### Step-by-step:
+1. Go to **Raw Materials** → click **🤖 Scan Invoice** (top right corner).
+2. The scan modal opens. Drag and drop or click to upload a photo of your supplier's invoice.
+   - Supported formats: **JPG, JPEG, PNG, WebP, HEIC**
+   - Maximum size: **10 MB**
+   - You'll see an **upload progress animation** and a live status message ("Uploading image to Gemini AI…", "Reading your invoice…", etc.)
+3. Once processed, the detected items appear in an editable table:
+   - **Name** — Auto-extracted item name
+   - **Qty** — Quantity purchased
+   - **Unit** — kg, packet, piece, etc.
+   - **Rate (₹)** — Price per unit
+   - **Type** — Ingredient or Packaging (you can change this)
+   - **Checkbox** — Uncheck any item you don't want to import
+4. Check **"Also update stock quantity from invoice quantities"** (checked by default) to automatically add the purchased quantity to your current stock.
+5. Click **Import Selected Items**.
+
+### Smart duplicate detection:
+- If an item **already exists** in your inventory, BakeFlow will **add the purchased quantity to the existing stock** instead of creating a duplicate entry.
+- If an item is **new**, a fresh entry is created.
+- The final toast notification tells you exactly: **"X new items added, Y restocked"**.
+
+> 💡 **Tip:** The AI works best with clear, well-lit photos. Flat invoices on a table photograph better than crumpled ones held in hand.
+
+---
+
+## 🛒 Module 6 — Product Catalog
+
+A library of your **standard products** that you sell regularly.
+
+Each product in the catalog stores:
+- Product name and category
+- Calculated cost price (from the Cost Calculator)
+- Suggested selling price and profit margin
+- Emoji icon for visual identification
+
+### Adding products to the catalog:
+1. Run a calculation in the **Cost Calculator**.
+2. Click **Add to Catalog** at the bottom of the calculator screen.
+3. Set a selling price → the product is saved permanently.
+
+### Using the catalog in invoices:
+When creating a **New Invoice**, click **"From Catalog"** to search and insert a product with its price pre-filled — no typing needed.
+
+---
+
+## 🧾 Module 7 — Sales Invoice Generator
+
+Create **professional, print-ready sales invoices** in under 30 seconds.
+
+### The 3-step invoice builder:
+
+**Step 1 — Customer:**
+- Search your customer database by name or phone number.
+- Click to select → customer name, phone, and city are auto-filled.
+- Or click **+ New** to add a new customer on the fly.
+
+**Step 2 — Items:**
+- Click **From Catalog** to add a catalog product (price pre-filled).
+- Or click **Custom Item** to type a one-off item name and price.
+- Adjust quantity for each item.
+- Add as many items as needed.
+
+**Step 3 — Totals & Options:**
+- Set **GST %** (0%, 5%, 12%, 18%, 28%).
+- Enter **Discount (₹)** if applicable.
+- Select **Payment Method** (Cash, UPI, Card, Credit).
+- Add a **Note** (e.g., "Birthday cake", "Wedding order").
+
+The **live invoice preview** on the right updates in real-time, showing exactly what the printed invoice will look like.
+
+### Saving & actions:
+| Button | What it does |
+|---|---|
+| **Save Invoice** | Saves to Google Sheets, auto-assigns invoice number (INV-2026-0001) |
+| **WhatsApp** | Sends formatted receipt to customer's WhatsApp before saving |
+| **Print / PDF** | Opens browser print dialog — invoice is formatted for A4/receipt paper |
+| **Reset** | Clears the form to start fresh |
+
+---
+
+## 💬 Module 8 — WhatsApp Receipts (Twilio)
+
+After creating an invoice, send a **professionally formatted receipt** directly to the customer's WhatsApp number with one click.
+
+### The message the customer receives:
+```
+🎂 BakeFlow
+
+Hello Kartik! 👋
+
+Thank you for your order. Here's your invoice:
+
+🧾 INV-2026-0005
+📅 13/07/2026
+
+📦 Items:
+• Rasmalai Cake × 1 — ₹950.00
+
+💰 Subtotal: ₹950.00
+🏷 GST (5%): ₹47.50
+🎁 Discount: − ₹25.00
+──────────────────
+✅ Total: ₹972.50
+💳 Cash
+
+📝 Birthday order
+
+We hope you love it! 🙏
+See you again soon ✨
+
+— BakeFlow
+📞 +91 98765 43210
+
+_Invoice by: Admin_
+```
+
+### Requirements:
+- **Twilio account** (free sandbox available for testing).
+- Customer phone number must include country code (Indian numbers: `+91XXXXXXXXXX`). BakeFlow automatically formats 10-digit numbers.
+- For the **sandbox (testing):** each recipient must once send `join <code>` to your Twilio sandbox number on WhatsApp.
+- For **production (live customers):** apply for a Twilio WhatsApp Business number — any customer can then receive messages without any opt-in step.
+
+---
+
+## 👥 Module 9 — Customer Database
+
+Maintain a complete database of all your customers.
+
+### Each customer profile stores:
+- Name, Phone Number, City
+- Email and Address (optional)
+- Notes (e.g., "Prefers eggless", "Corporate client")
+- **Total Orders** — auto-calculated from active invoices (self-heals if data ever gets out of sync)
+- **Total Spent** — cumulative amount spent by this customer
+- **Last Order Date** — date of most recent invoice
+
+### Auto-sync:
+- When you **create an invoice**, the customer's order count and total spend update automatically.
+- When you **delete an invoice**, the stats roll back correctly.
+- When you visit the Customers page, the system **re-verifies all stats** from live invoice data and self-corrects any discrepancies.
+
+---
+
+## 📈 Module 10 — Analytics (Admin Only)
+
+A full business intelligence dashboard for the bakery owner.
+
+- **Revenue Charts** — monthly and weekly revenue trends.
+- **Profit Margin Analysis** — which products have the best margin.
+- **Best Sellers** — most frequently invoiced products.
+- **Customer Insights** — your highest-value customers.
+
+> Only accessible to users logged in as **Admin**.
+
+---
+
+## 🗂️ Module 11 — Audit Log (Admin Only)
+
+Every action taken in BakeFlow is **permanently recorded** in the Google Sheet's AuditLog tab with:
+- **Timestamp** — exact date and time
+- **Action type** — e.g., `LOGIN`, `CREATE_SALE`, `UPDATE_STOCK`, `SCAN_INVOICE`, `SEND_WHATSAPP`
+- **Employee name and email** — who did it
+- **Details** — what was changed (e.g., "Flour stock: 5 → 10 kg")
+- **Entity** — which record was affected
+
+This gives you complete **accountability** for all business operations.
+
+---
+
+## ⚙️ Module 12 — Settings
+
+### Labour Settings (Admin only):
+Configure staff costs that flow into the Cost Calculator:
+- Hourly labour rate (₹ per hour)
+- Number of workers per batch
+- Hours per batch
+
+### Overhead Settings (Admin only):
+Configure fixed business costs spread across batches:
+- Electricity cost per month
+- Rent per month
+- Number of batches produced per month
+- The system divides these across batches automatically.
+
+---
+
+## 🛠️ Technical Setup Guide
+
+### Prerequisites
+- Node.js v18 or higher
+- A Google account
+- A Twilio account (free sandbox is fine for testing)
+- A Google AI Studio API key (free at [aistudio.google.com](https://aistudio.google.com))
+
+---
+
+### Step 1 — Google Sheets Database
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com) and create a new project (name it `BakeFlow`).
+2. Enable the **Google Sheets API**:
+   - Go to **APIs & Services → Library** → search "Google Sheets API" → click **Enable**.
+3. Create a **Service Account**:
+   - Go to **APIs & Services → Credentials → + Create Credentials → Service Account**.
+   - Name it `bakeflow-db` → click **Create and Continue → Done**.
+4. Generate a **JSON key**:
+   - Click the service account email → go to the **Keys** tab → **Add Key → Create new key → JSON** → Download.
+   - Paste the entire JSON contents into `GOOGLE_CREDENTIALS` in your `.env`.
+5. Create a blank **Google Sheet**. Copy the Spreadsheet ID from the URL (the long string between `/d/` and `/edit`).
+6. **Share** the sheet with your service account email address (format: `bakeflow-db@your-project.iam.gserviceaccount.com`) as an **Editor**.
+
+---
+
+### Step 2 — Google Sign-In (OAuth)
+
+1. In Google Cloud Console → **APIs & Services → Credentials → + Create Credentials → OAuth Client ID**.
+2. Select **Web Application**. Name it `BakeFlow Web Login`.
+3. Under **Authorized JavaScript Origins**, add your server URL (e.g., `https://bakeflow-spo4.onrender.com`).
+4. Click **Create** → copy the **Client ID** → paste into `GOOGLE_CLIENT_ID` in `.env`.
+
+---
+
+### Step 3 — Gemini AI API Key (Invoice Scanner)
+
+1. Visit [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+2. Click **Create API key → Create API key in new project**.
+3. Copy the generated key → paste into `GEMINI_API_KEY` in `.env`.
+
+> **Note:** The Gemini API (free tier) allows 1,500 invoice scans per day — more than enough for any bakery.
+
+---
+
+### Step 4 — Twilio WhatsApp (Invoice Receipts)
+
+1. Sign up at [twilio.com](https://www.twilio.com).
+2. From the Console Dashboard, copy your **Account SID** and **Auth Token**.
+3. Go to **Messaging → Try it out → Send a WhatsApp message** to get the sandbox number and join code.
+4. Add to Render environment:
+   - `TWILIO_ACCOUNT_SID` — starts with `AC...`
+   - `TWILIO_AUTH_TOKEN` — 32-character hex string
+   - `TWILIO_WHATSAPP_FROM` — `whatsapp:+14155238886` (sandbox) or your registered number
+
+---
+
+### Step 5 — Environment Variables
+
+Create a `backend/.env` file with the following:
 
 ```env
-# App Identity
-BUSINESS_NAME=BakeFlow
+# ── Business Identity ────────────────────────────
+BUSINESS_NAME=Your Bakery Name
 BUSINESS_PHONE=+91 98765 43210
-OWNER_NAME=User
+OWNER_NAME=Owner Name
 
-# Server Configuration
+# ── Server ───────────────────────────────────────
 PORT=3000
 
-# Google Sheets Database
-SPREADSHEET_ID=your_google_sheets_spreadsheet_id
-GOOGLE_CREDENTIALS={"type":"service_account","project_id":"...","private_key":"..."}
+# ── Google Sheets ─────────────────────────────────
+SPREADSHEET_ID=your_google_sheets_id_here
+GOOGLE_CREDENTIALS={"type":"service_account","project_id":"...","private_key":"...","client_email":"..."}
 
-# Google Sign-In
-GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
+# ── Google Sign-In ────────────────────────────────
+GOOGLE_CLIENT_ID=your_oauth_client_id.apps.googleusercontent.com
 
-# Role Passwords (matching employees)
-ADMIN_PASSWORD=admin123
+# ── Role Passwords ────────────────────────────────
+ADMIN_PASSWORD=your_secure_admin_password
 EMPLOYEE_1_PASSWORD=emp1pass
 EMPLOYEE_2_PASSWORD=emp2pass
 EMPLOYEE_3_PASSWORD=emp3pass
 EMPLOYEE_4_PASSWORD=emp4pass
 EMPLOYEE_5_PASSWORD=emp5pass
 
-# Employee Names
-EMPLOYEE_1_NAME=Employee 1
-EMPLOYEE_2_NAME=Employee 2
-EMPLOYEE_3_NAME=Employee 3
-EMPLOYEE_4_NAME=Employee 4
-EMPLOYEE_5_NAME=Employee 5
+# ── Employee Names ────────────────────────────────
+EMPLOYEE_1_NAME=Employee Name 1
+EMPLOYEE_2_NAME=Employee Name 2
+EMPLOYEE_3_NAME=Employee Name 3
+EMPLOYEE_4_NAME=Employee Name 4
+EMPLOYEE_5_NAME=Employee Name 5
 
-# Gemini AI (For Invoice Scanning)
+# ── Gemini AI (Invoice Scanner) ───────────────────
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Twilio WhatsApp Configuration
-TWILIO_ACCOUNT_SID=your_twilio_sid_here
-TWILIO_AUTH_TOKEN=your_twilio_token_here
+# ── Twilio WhatsApp ───────────────────────────────
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_32_char_auth_token
 TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 ```
 
 ---
 
-## 🏃 Installation & Running
+### Step 6 — Install & Run Locally
 
 ```bash
 # Clone the repository
@@ -151,54 +477,119 @@ cd BakeFlow
 cd backend
 npm install
 
-# Start the server
+# Start the server (with .env loaded)
 npm start
 ```
-BakeFlow will run at **http://localhost:3000**!
+
+Open **http://localhost:3000** in your browser — BakeFlow is running!
 
 ---
 
-## 📘 End-to-End User Experience & Use Cases
+### Step 7 — Deploy to Render (Production)
 
-Here is how different actors interact with BakeFlow ERP:
+1. Push your code to GitHub.
+2. Go to [render.com](https://render.com) → **New → Web Service → Connect your GitHub repo**.
+3. Set:
+   - **Root Directory:** `backend`
+   - **Build Command:** `npm install`
+   - **Start Command:** `node server.js`
+4. Under **Environment**, add all the variables from your `.env` file.
+5. Click **Deploy**. Render auto-deploys on every GitHub push.
 
-### Use Case 1: Employee Logs In & Checks Low Stock
-1. **Google Auth:** Employee (e.g. Employee 1) visits the web app, clicks "Sign in with Google", and signs in.
-2. **Role Verification:** They select "Employee" in the modal and type their designated password (`emp1pass`).
-3. **Dashboard Load:** The greeting changes to "Good morning, Employee 1 ✦". The simplified dashboard reveals no financial logs but flags **2 Low Stock Alerts** in the inventory widget.
-4. **Restock Check:** The employee navigates to the **Raw Materials** tab. They see that "Whipped Cream" is flagged yellow (`⚠️ Low (2 kg)`). They manually add 10 kg to the stock, which triggers an audit log entry.
+---
 
-### Use Case 2: Scanning a Supplier Purchase Invoice
-1. **Purchase Arrival:** A delivery of flour and butter arrives from the supplier with a paper invoice.
-2. **AI Upload:** The employee goes to **Raw Materials** -> clicks **🤖 Scan Invoice**.
-3. **Image Process:** They drop the photo of the invoice. Gemini reads the image, identifies line items, parses their quantities/prices, and outputs them as a clean table.
-4. **Confirm Stock:** The employee verifies the values, checks "Update stock quantities", and clicks **Import**. The system inserts the items into the sheets database and updates the stock, creating an `UPDATE_STOCK` audit log entry.
+## 📱 Real-World Use Cases
 
-### Use Case 3: Creating a Customer Sales Invoice & Sending WhatsApp
-1. **Customer Order:** A customer named "Karan" walks in to buy a "Rasmalai Cake" (₹1,200).
-2. **Invoice Builder:** Employee 1 clicks **New Invoice**.
-3. **Select Customer:** They search for "Karan". His profile pops up with his phone number and city. They click to select.
-4. **Catalog Selection:** They click **Add from Catalog**, select "Rasmalai Cake". The unit price ₹1,200 is loaded.
-5. **WhatsApp Dispatch:** The employee clicks **Send WhatsApp & Save**.
-   * The invoice is written to the `SalesInvoices` sheet as `INV-2026-0001`.
-   * Karan receives a formatted WhatsApp message from BakeFlow details:
-     ```
-     🎂 BakeFlow
-     Hello Karan! 👋
-     Thank you for your order. Here's your invoice:
-     🧾 INV-2026-0001
-     📅 13-Jul-2026
-     • Rasmalai Cake × 1 — ₹1200.00
-     ✅ Total: ₹1200.00
-     Invoice by: Employee 1
-     ```
+### Use Case 1 — Daily Stock Check
+> An employee logs in each morning, views the Dashboard, and sees "3 Low Stock Alerts". They navigate to Raw Materials and restock whipped cream (10 litres), eggs (24 pieces), and butter (5 kg). Each update is logged with their name and timestamp.
 
-### Use Case 4: Admin Audit Log Review
-1. **Admin Login:** The bakery owner logs in using Google, selects "Admin", and types the admin password.
-2. **Full Analytics:** The Admin Dashboard loads, showing sensitive financial details: Monthly Revenue (₹42,500), average profit margins, and recent transactions.
-3. **Security Check:** The Admin goes to the **Audit Log** page. They see a complete, chronological history of actions:
-   * `LOGIN` (Employee 1, 10:45 AM)
-   * `UPDATE_STOCK` (Employee 1, whipped cream, 10:48 AM)
-   * `SCAN_INVOICE` (Employee 1, 2 items detected, 10:50 AM)
-   * `CREATE_SALE` (Employee 1, INV-2026-0001, Karan, 10:53 AM)
-   This logs exact employee accountability for all business operations.
+### Use Case 2 — Supplier Delivery (AI Scan)
+> A delivery arrives from the supplier with a paper invoice. The employee opens BakeFlow on their phone, taps **🤖 Scan Invoice**, and photos the invoice. Within seconds, 12 line items appear on screen with names, quantities, and prices. The employee clicks **Import Selected Items** — all 12 items are added to inventory and stock quantities are updated automatically.
+
+### Use Case 3 — Custom Cake Order
+> A customer walks in and orders a "Dark Chocolate Truffle Cake" for a wedding. The employee opens the Cost Calculator, enters all ingredients and packaging, sets 20 servings as batch size. The cost comes to ₹850. They set a selling price of ₹1,800 (a 112% margin). They save it to the catalog and create an invoice — the customer receives a WhatsApp receipt immediately.
+
+### Use Case 4 — End-of-Day Review (Admin)
+> The bakery owner logs in as Admin at the end of the day. The Dashboard shows ₹14,500 in revenue, 12 invoices, and an average margin of 68%. They check the Audit Log to see all activity by each employee, verify no unexpected actions occurred, and export the Google Sheet for their accountant.
+
+---
+
+## 🔒 Security & Data Privacy
+
+- **No custom database server** — all data lives in your own Google Sheet. You own it entirely.
+- **Google OAuth** — authentication is handled by Google's infrastructure. BakeFlow never stores your Google password.
+- **Role passwords** are stored in your server's environment variables — never in the database or client-side code.
+- **Audit log** captures every action, making it easy to trace any discrepancy.
+- **HTTPS** enforced on Render deployments by default.
+
+---
+
+## 🆘 Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| "Scan failed" / Gemini AI error | Ensure `GEMINI_API_KEY` is from [aistudio.google.com](https://aistudio.google.com), not Google Cloud Console. The correct model is `gemini-3.5-flash`. |
+| WhatsApp not delivered | Verify credentials in Render (no spaces in SID/Token). For sandbox, ensure the recipient has sent the join code to the Twilio number. |
+| Google Sign-In fails | Add your Render deployment URL to "Authorized JavaScript Origins" in your OAuth Client ID settings. |
+| Customer stats wrong (e.g. old order count) | Visit the Customers page — the system automatically self-heals stats by recalculating from live invoice data. |
+| Items duplicated after scan | Use the "Show deleted" toggle to find soft-deleted items and permanently delete them, then rescan. |
+| Page loads but data is empty | Check that the Google Sheet is shared with your service account email as Editor. |
+| Server crashes on startup | Confirm all required environment variables are set in Render, especially `GOOGLE_CREDENTIALS` (must be valid JSON). |
+
+---
+
+## 🗂️ Project Structure
+
+```
+BakeFlow/
+├── backend/
+│   ├── server.js              # Express entry point, static file serving
+│   ├── package.json           # Node.js dependencies
+│   ├── .env                   # Environment variables (not committed to git)
+│   ├── routes/
+│   │   ├── auth.js            # Google OAuth verification & role auth
+│   │   ├── ingredients.js     # Ingredient CRUD & stock management
+│   │   ├── packaging.js       # Packaging CRUD & stock management
+│   │   ├── products.js        # Product catalog CRUD
+│   │   ├── orders.js          # Saved orders / calculations
+│   │   ├── sales.js           # Sales invoices + WhatsApp sending
+│   │   ├── customers.js       # Customer database with self-healing stats
+│   │   ├── invoice.js         # Gemini AI invoice scanner
+│   │   └── settings.js        # Labour & overhead settings
+│   └── sheets/
+│       └── sheetsClient.js    # Google Sheets API wrapper (read/write/append)
+├── frontend/
+│   ├── index.html             # Single-page application shell (all pages)
+│   ├── css/
+│   │   └── style.css          # Complete design system (dark brown theme)
+│   └── js/
+│       ├── api.js             # Frontend API client (all endpoint wrappers)
+│       └── app.js             # Complete frontend logic (SPA routing, state, UI)
+└── README.md                  # This file
+```
+
+---
+
+## 📦 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Backend** | Node.js + Express.js |
+| **Frontend** | Vanilla HTML, CSS, JavaScript (no framework) |
+| **Database** | Google Sheets (via Google Sheets API v4) |
+| **Authentication** | Google OAuth 2.0 (Sign in with Google) |
+| **AI** | Google Gemini 3.5 Flash (invoice OCR via REST API v1) |
+| **WhatsApp** | Twilio Programmable Messaging |
+| **Hosting** | Render.com (auto-deploy from GitHub) |
+| **Icons** | Tabler Icons |
+| **Fonts** | System sans-serif (optimised for load speed) |
+
+---
+
+## 📞 Support
+
+For questions, customisations, or enterprise deployment support, contact the BakeFlow development team.
+
+---
+
+*BakeFlow ERP — Baked with ❤️ for bakery businesses.*
