@@ -1853,7 +1853,13 @@ async function confirmScanImport() {
   }
 
   const updateStock = document.getElementById('scan-update-stock') && document.getElementById('scan-update-stock').checked;
-  let imported = 0;
+  let imported = 0, updated = 0;
+
+  // Helper: normalize name for fuzzy matching (lowercase, strip special chars/spaces)
+  function normalizeName(n) {
+    return (n || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
   for (let i = 0; i < _scanItems.length; i++) {
     if (!document.getElementById(`scan-check-${i}`).checked) continue;
     const name  = document.getElementById(`scan-name-${i}`).value.trim();
@@ -1862,24 +1868,59 @@ async function confirmScanImport() {
     const price = parseFloat(document.getElementById(`scan-price-${i}`).value) || 0;
     const type  = document.getElementById(`scan-type-${i}`).value;
     if (!name) continue;
+
+    const normScanned = normalizeName(name);
+
     try {
       if (type === 'ingredient') {
-        const saved = await API.addIngredient({ name, cat: 'Other', unit, rate: price });
-        if (updateStock) await API.updateIngredientStock(saved.id, qty, 0);
-        saved.stockQty = qty; saved.minAlert = 0;
-        ingredientsMaster.push(saved);
+        // Check if already exists in master list
+        const existing = ingredientsMaster.find(m => normalizeName(m.name) === normScanned);
+
+        if (existing) {
+          // Top-up existing stock
+          if (updateStock) {
+            const newQty = (Number(existing.stockQty) || 0) + qty;
+            await API.updateIngredientStock(existing.id, newQty, existing.minAlert || 0);
+            existing.stockQty = newQty;
+          }
+          updated++;
+        } else {
+          // Create new entry
+          const saved = await API.addIngredient({ name, cat: 'Other', unit, rate: price });
+          if (updateStock) await API.updateIngredientStock(saved.id, qty, 0);
+          saved.stockQty = qty; saved.minAlert = 0;
+          ingredientsMaster.push(saved);
+          imported++;
+        }
       } else {
-        const saved = await API.addPackaging({ name, type: 'Other', size: 'Standard', rate: price, vendor: 'Supplier' });
-        if (updateStock) await API.updatePackagingStock(saved.id, qty, 0);
-        saved.stockQty = qty; saved.minAlert = 0;
-        packagingMaster.push(saved);
+        // Packaging
+        const existing = packagingMaster.find(m => normalizeName(m.name) === normScanned);
+
+        if (existing) {
+          if (updateStock) {
+            const newQty = (Number(existing.stockQty) || 0) + qty;
+            await API.updatePackagingStock(existing.id, newQty, existing.minAlert || 0);
+            existing.stockQty = newQty;
+          }
+          updated++;
+        } else {
+          const saved = await API.addPackaging({ name, type: 'Other', size: 'Standard', rate: price, vendor: 'Supplier' });
+          if (updateStock) await API.updatePackagingStock(saved.id, qty, 0);
+          saved.stockQty = qty; saved.minAlert = 0;
+          packagingMaster.push(saved);
+          imported++;
+        }
       }
-      imported++;
     } catch(e) { console.warn('Import item failed:', e.message); }
   }
+
   closeModalBtn();
   renderMaterialsMaster();
-  showToast(`✅ Imported ${imported} item${imported !== 1 ? 's' : ''} successfully!`);
+
+  const parts = [];
+  if (imported > 0) parts.push(`${imported} new item${imported !== 1 ? 's' : ''} added`);
+  if (updated > 0)  parts.push(`${updated} existing item${updated !== 1 ? 's' : ''} restocked`);
+  showToast(`✅ ${parts.join(', ')}!`);
 }
 
 // ── Customer Database ────────────────────────────────────────
