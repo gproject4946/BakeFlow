@@ -183,9 +183,10 @@ Low stock items automatically appear in the **Dashboard** under "Low Stock Alert
 ### 📦 Stock Tracking & Fractional Depletion
 Because ingredients can be purchased as packets/bottles but used in precise recipe measurements, stock levels support fractional quantities:
 * **Automated Recipe Depletion on Sale:** When a sales invoice is saved or sent via WhatsApp, BakeFlow automatically locates the matching recipe in your saved calculations, calculates the exact quantities of ingredients, packaging, and decorations used (scaled by the number of units sold and batch size), and automatically deducts them from your inventory in real-time.
+* **Auto-Restoration on Invoice Delete:** If you delete a sales invoice, BakeFlow automatically performs the reverse calculation and returns all consumed ingredients, packaging, and decorations back to your inventory stock. This ensures perfect accountability for trial sales or invoice errors.
 * **Decimal Stock Tracking:** If you consume `20g` of a `100g` packet of butter, the system calculates that as `0.2` pieces consumed, and deducts exactly `0.2` from your stock count.
-* **Perpetual Quantities:** Stock goes up automatically via the **AI Supplier Invoice Scanner** and goes down automatically when items are sold. You can also manually audit/correct quantities in the inventory table to maintain a real-time record.
-* **Audit Trail:** Every manual, scanned, or sale-depleted stock adjustment creates a corresponding log entry in the Admin Audit Log for full accountability.
+* **Perpetual Quantities:** Stock goes up automatically via the **AI Supplier Invoice Scanner**, down automatically on sales, and is restored automatically on deletions. You can also manually audit/correct quantities in the inventory table to maintain a real-time record.
+* **Audit Trail:** Every manual, scanned, depleted, or restored stock adjustment creates a corresponding log entry in the Admin Audit Log for full accountability.
 
 ---
 
