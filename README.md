@@ -140,6 +140,15 @@ The **heart of BakeFlow** — built specifically for bakeries to calculate the e
 - Saved orders appear in the **Saved Orders** section and on the Dashboard quick panel.
 - Click **Add to Catalog** to permanently add the product to your catalog for quick invoice creation.
 
+### ⚖️ Smart Name-Based Unit Conversion
+BakeFlow features a highly advanced, automated unit conversion engine. When you buy raw materials as packages (e.g. packets, pieces, boxes) but use them in recipes by weight or volume (e.g. grams, milliliters), BakeFlow automatically handles the math:
+* **Automatic Name Parsing:** The system parses package weights/volumes directly from item names (e.g. matching `"100 GM."`, `"2 KG."`, `"30ML"`).
+* **Smart Defaults:** When you add an ingredient to a recipe (like `"AMUL BUTTER UNSALTED 100 GM."` which has a master unit of `piece`), the calculator automatically senses the weight in the name and defaults the dropdown unit to `g` (grams).
+* **Dynamic Rate Scaling:** When switching units:
+  * **Piece to Grams:** ₹62 per 100g piece automatically scales to **₹0.62 per gram**.
+  * **Piece to Kilograms:** Automatically scales to **₹620 per kg**.
+  * **Piece to Milliliters:** A ₹30 extract of 30ml automatically scales to **₹1.00 per ml**.
+
 ---
 
 ## 📦 Module 4 — Raw Materials Master
@@ -170,6 +179,12 @@ Your **complete inventory management system** for both ingredients and packaging
 
 ### Stock Alerts:
 Low stock items automatically appear in the **Dashboard** under "Low Stock Alerts" so you never run out of a critical ingredient mid-production.
+
+### 📦 Stock Tracking & Fractional Depletion
+Because ingredients can be purchased as packets/bottles but used in precise recipe measurements, stock levels support fractional quantities:
+* **Decimal Stock Tracking:** If you consume `20g` of a `100g` packet of butter, the system calculates that as `0.2` pieces consumed.
+* **Perpetual Quantities:** Stock goes up automatically via the **AI Supplier Invoice Scanner** and is updated or audited manually in the inventory table to maintain a real-time record.
+* **Audit Trail:** Every manual or scanned stock adjustment creates a corresponding log entry in the Admin Audit Log for full accountability.
 
 ---
 
