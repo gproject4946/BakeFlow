@@ -4,12 +4,10 @@
 // Employee name/email sent as headers on every request
 // ============================================================
 
-const PROD_BACKEND_API_URL = 'https://blissoven-calculator.onrender.com/api';
+const PROD_BACKEND_API_URL = ''; // Left empty to automatically use the same origin (relative path)
 
 const API = {
-  _base: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? '/api'
-    : (PROD_BACKEND_API_URL || '/api'),
+  _base: '/api',
 
   async _req(path, opts = {}) {
     // Always attach employee identity headers for audit log
