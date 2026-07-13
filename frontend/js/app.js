@@ -1713,7 +1713,7 @@ function showScanInvoice() {
         <div style="font-weight:500;margin-bottom:8px;font-size:13.5px;">Detected Items — review &amp; confirm:</div>
         <div id="scan-items-list"></div>
         <div style="margin-top:8px;"><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="scan-update-stock" checked> Also update stock quantity from invoice quantities</label></div>
-        <button class="btn btn-gold" style="margin-top:12px;width:100%;justify-content:center;" onclick="confirmScanImport()"><i class="ti ti-check"></i> Import Selected Items</button>
+        <button id="scan-import-btn" class="btn btn-gold" style="margin-top:12px;width:100%;justify-content:center;" onclick="confirmScanImport()"><i class="ti ti-check"></i> Import Selected Items</button>
       </div>
     </div>`);
 }
@@ -1838,6 +1838,12 @@ function renderScanResults(items) {
 }
 
 async function confirmScanImport() {
+  const btn = document.getElementById('scan-import-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<div style="display:inline-block;width:12px;height:12px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;margin-right:6px;vertical-align:middle;"></div> Importing...`;
+  }
+
   const updateStock = document.getElementById('scan-update-stock') && document.getElementById('scan-update-stock').checked;
   let imported = 0;
   for (let i = 0; i < _scanItems.length; i++) {
