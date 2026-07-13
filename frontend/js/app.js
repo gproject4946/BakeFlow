@@ -1873,7 +1873,7 @@ async function confirmScanImport() {
 
     try {
       if (type === 'ingredient') {
-        const existing = ingredientsMaster.find(m => normalizeName(m.name) === normScanned);
+        const existing = ingredientsMaster.find(m => !m.deleted && normalizeName(m.name) === normScanned);
         if (existing) {
           if (updateStock) {
             const newQty = (Number(existing.stockQty) || 0) + qty;
@@ -1897,7 +1897,7 @@ async function confirmScanImport() {
           imported++;
         }
       } else {
-        const existing = packagingMaster.find(m => normalizeName(m.name) === normScanned);
+        const existing = packagingMaster.find(m => !m.deleted && normalizeName(m.name) === normScanned);
         if (existing) {
           if (updateStock) {
             const newQty = (Number(existing.stockQty) || 0) + qty;
