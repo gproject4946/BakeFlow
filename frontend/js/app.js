@@ -517,7 +517,6 @@ function renderReports() {
     const sum = raw + labour + pack + overhead + deco;
     const cats = ['Raw Materials', 'Labour', 'Packaging', 'Overheads', 'Decoration'];
     const colors = ['var(--bo-gold)', 'var(--bo-rose)', '#B4C4A8', '#F5C4A8', '#C4B4E8'];
-    
     if (sum === 0) {
       el2.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:20px;text-align:center;">All calculations have zero costs.</div>';
     } else {
@@ -542,13 +541,20 @@ function renderReports() {
   }
 }
 
-// ── Add Ingredient Modal ──────────────────────────────────────
+// ── Canonical name helper (strips trailing weight like 100GM, 500G, 1KG) ────
+function extractCanonicalName(name) {
+  if (!name) return '';
+  // Remove trailing weight patterns: 100GM, 500GMS, 1KG, 200G, 250 GM, 100 GMS, 500ML, 1LTR, etc.
+  return name.replace(/\s*(\d+(?:\.\d+)?)\s*(kg|gm|gms|grams|gram|g|ml|l|ltr|litre|litres|oz|lb|lbs|pcs|pc|piece|pieces|pack|pkt|packet)s?\s*\.?$/i, '').trim();
+}
+
+// ── Add Ingredient Modal — redesigned with package size ───────────────────────
 function showAddIngredient() {
   openModal(`
     <div class="modal-header"><h3>Add New Ingredient</h3><button class="btn btn-sm" onclick="closeModalBtn()"><i class="ti ti-x"></i></button></div>
     <div class="modal-body">
       <form id="add-ing-form" onsubmit="saveNewMasterIngredient(event)">
-        <div class="form-group"><label class="form-label required">Ingredient Name</label><input type="text" id="new-ing-name" required placeholder="e.g. Cocoa Powder (Callebaut)"></div>
+        <div class="form-group"><label class="form-label required">Ingredient Name <span style="font-size:11px;color:var(--bo-muted);">(include brand &amp; size, e.g. AMUL BUTTER 100GM)</span></label><input type="text" id="new-ing-name" required placeholder="e.g. AMUL BUTTER UNSALTED 100GM" oninput="_updateIngRatePreview()"></div>
         <div class="form-row">
           <div class="form-group"><label class="form-label required">Category</label>
             <select id="new-ing-cat" required>
@@ -557,37 +563,112 @@ function showAddIngredient() {
               <option value="Add-in">Add-ins</option><option value="Nuts">Nuts &amp; Seeds</option><option value="Other">Other</option>
             </select>
           </div>
-          <div class="form-group"><label class="form-label required">Base Unit</label>
-            <select id="new-ing-unit" required>
-              <option value="kg">kg</option><option value="g">g</option><option value="litre">litre</option><option value="ml">ml</option>
-              <option value="piece">piece</option><option value="500g">500g</option><option value="200g">200g</option>
-              <option value="250g pack">250g pack</option><option value="350g">350g</option><option value="30ml">30ml</option><option value="gram">gram</option>
+          <div class="form-group"><label class="form-label required">Standard Unit</label>
+            <select id="new-ing-unit" required onchange="_updateIngRatePreview()">
+              <option value="g">g (grams)</option>
+              <option value="kg">kg</option>
+              <option value="ml">ml</option>
+              <option value="litre">litre</option>
+              <option value="piece">piece (eggs, whole fruits, etc.)</option>
             </select>
           </div>
         </div>
-        <div class="form-group"><label class="form-label required">Purchase Rate (₹)</label><input type="number" id="new-ing-rate" required min="0" step="0.01" placeholder="e.g. 350"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label required">Package Size <span style="font-size:11px;color:var(--bo-muted);">How much is in this pack?</span></label>
+            <input type="number" id="new-ing-pkg-size" required min="0.01" step="0.01" placeholder="e.g. 100" oninput="_updateIngRatePreview()">
+          </div>
+          <div class="form-group"><label class="form-label required">Total Purchase Price (₹) <span style="font-size:11px;color:var(--bo-muted);">for this pack</span></label>
+            <input type="number" id="new-ing-rate" required min="0" step="0.01" placeholder="e.g. 62" oninput="_updateIngRatePreview()">
+          </div>
+        </div>
+        <div id="new-ing-rate-preview" style="background:rgba(196,154,60,0.08);border:1px solid rgba(196,154,60,0.25);border-radius:6px;padding:8px 12px;font-size:12.5px;margin-bottom:10px;display:none;">
+          <div><span style="color:var(--bo-muted);">Computed rate: </span><strong id="new-ing-rate-val" style="color:var(--bo-gold-dark);">—</strong></div>
+          <div id="new-ing-canonical-warn" style="display:none;margin-top:6px;padding:6px 8px;background:rgba(196,154,60,0.12);border-radius:4px;font-size:11.5px;color:var(--bo-gold-dark);"></div>
+        </div>
         <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:10px;"><i class="ti ti-plus"></i> Add to Master List</button>
       </form>
     </div>`);
 }
 
+function _updateIngRatePreview() {
+  const pkgSizeEl = document.getElementById('new-ing-pkg-size');
+  const priceEl   = document.getElementById('new-ing-rate');
+  const unitEl    = document.getElementById('new-ing-unit');
+  const nameEl    = document.getElementById('new-ing-name');
+  const preview   = document.getElementById('new-ing-rate-preview');
+  const val       = document.getElementById('new-ing-rate-val');
+  const warn      = document.getElementById('new-ing-canonical-warn');
+  if (!pkgSizeEl || !priceEl || !unitEl) return;
+  const pkgSize    = parseFloat(pkgSizeEl.value)  || 0;
+  const totalPrice = parseFloat(priceEl.value)    || 0;
+  const unit = unitEl.value || 'g';
+  if (pkgSize > 0 && totalPrice > 0) {
+    const ratePerUnit = totalPrice / pkgSize;
+    if (preview) preview.style.display = 'block';
+    if (val) val.textContent = '₹' + ratePerUnit.toFixed(4) + ' per ' + unit;
+    if (nameEl && warn) {
+      const canonical = extractCanonicalName(nameEl.value);
+      const matches = canonical.length > 3
+        ? ingredientsMaster.filter(i => !i.deleted && extractCanonicalName(i.name).toLowerCase() === canonical.toLowerCase() && i.name.toLowerCase() !== nameEl.value.toLowerCase())
+        : [];
+      if (matches.length > 0) {
+        warn.style.display = 'block';
+        warn.textContent = '⚠️ Similar items: ' + matches.map(m => m.name).join(', ') + '. A weighted average rate will be computed.';
+      } else {
+        warn.style.display = 'none';
+      }
+    }
+  } else {
+    if (preview) preview.style.display = 'none';
+  }
+}
+
+
 async function saveNewMasterIngredient(e) {
   e.preventDefault();
-  var name = document.getElementById('new-ing-name').value;
-  var cat  = document.getElementById('new-ing-cat').value;
-  var unit = document.getElementById('new-ing-unit').value;
-  var rate = parseFloat(document.getElementById('new-ing-rate').value) || 0;
-  if (ingredientsMaster.some(i => i.name.toLowerCase() === name.toLowerCase())) {
-    alert('An ingredient with this name already exists!'); return;
+  var name    = document.getElementById('new-ing-name').value.trim();
+  var cat     = document.getElementById('new-ing-cat').value;
+  var unit    = document.getElementById('new-ing-unit').value;
+  var pkgSize = parseFloat(document.getElementById('new-ing-pkg-size').value) || 0;
+  var totalPrice = parseFloat(document.getElementById('new-ing-rate').value) || 0;
+
+  if (pkgSize <= 0) { showToast('Package size must be greater than 0!', true); return; }
+
+  // Compute rate per standard unit
+  var ratePerUnit = totalPrice / pkgSize;
+
+  // Check for exact name duplicate
+  if (ingredientsMaster.some(i => !i.deleted && i.name.toLowerCase() === name.toLowerCase())) {
+    showToast('An ingredient with this exact name already exists!', true); return;
   }
+
+  // Check for canonical name matches (same product, different pack size)
+  var canonical = extractCanonicalName(name);
+  var canonicalMatches = canonical.length > 3
+    ? ingredientsMaster.filter(i => !i.deleted && extractCanonicalName(i.name).toLowerCase() === canonical.toLowerCase())
+    : [];
+
+  if (canonicalMatches.length > 0) {
+    // Weighted average: combine stock quantities and costs
+    var existingTotalQty = canonicalMatches.reduce((s, m) => s + (Number(m.stockQty) || 0), 0);
+    var existingTotalCost = canonicalMatches.reduce((s, m) => s + (Number(m.stockQty) || 0) * (Number(m.rate) || 0), 0);
+    // Add new pack: pkgSize units at ratePerUnit
+    var newWeightedRate = (existingTotalCost + pkgSize * ratePerUnit) / (existingTotalQty + pkgSize);
+    var displayRate = isFinite(newWeightedRate) ? newWeightedRate : ratePerUnit;
+    var existingNames = canonicalMatches.map(m => m.name).join(', ');
+    var doAdd = confirm(`Found similar item(s): ${existingNames}\n\nAdding "${name}" as a new pack size.\nWeighted average rate across all pack sizes: \u20b9${displayRate.toFixed(4)} per ${unit}\n\nClick OK to add this new pack size.`);
+    if (!doAdd) return;
+  }
+
   try {
-    var saved = await API.addIngredient({ name, cat, unit, rate });
+    var saved = await API.addIngredient({ name, cat, unit, rate: ratePerUnit, packageSize: pkgSize, totalPurchasePrice: totalPrice });
     ingredientsMaster.push(saved);
-    renderIngredientsMaster();
+    renderMaterialsMaster();
     closeModalBtn();
-    showToast('Ingredient added successfully!');
+    showToast(`Ingredient added! Rate: \u20b9${ratePerUnit.toFixed(4)} per ${unit}`);
   } catch (err) { showToast('Failed to add ingredient!', true); }
 }
+
 
 // ── Add Packaging Modal ───────────────────────────────────────
 function showAddPackaging() {
@@ -852,7 +933,7 @@ function renderIngredients(){
       </div>
       <input type="number" placeholder="Qty" value="${ing.qty||''}" min="0" step="0.01" onchange="ingredients[${i}].qty=+this.value;recalculate()">
       <select onchange="onIngredientUnitChange(${i},this.value)">
-        ${['g','kg','ml','l','tsp','tbsp','cup','piece','packet','box'].map(u=>`<option${ing.unit===u?' selected':''}>${u}</option>`).join('')}
+        ${['g','kg','ml','litre','piece'].map(u=>`<option${ing.unit===u?' selected':''}>${u}</option>`).join('')}
       </select>
       <input type="number" placeholder="Rate ₹" value="${ing.rate||''}" min="0" step="0.0001" onchange="ingredients[${i}].rate=+this.value;recalculate()">
       <input type="number" placeholder="0%" value="${ing.wastage||''}" min="0" max="50" step="1" onchange="ingredients[${i}].wastage=+this.value;recalculate()" style="width:60px;">
@@ -915,28 +996,42 @@ function recalculate(){
   document.getElementById('pack-total').textContent=packTotal.toFixed(2);
   document.getElementById('r-pack').textContent=packTotal.toFixed(2);
 
+  // Labour — Direct COGS with oven sharing logic
   var prep=+(document.getElementById('labour-prep').value)||0;
   var bake=+(document.getElementById('labour-bake').value)||0;
   var deco=+(document.getElementById('labour-deco').value)||0;
   var pack=+(document.getElementById('labour-pack').value)||0;
   var rate=+(document.getElementById('labour-rate').value)||0;
-  var totalMins=prep+bake+deco+pack;
-  var labourTotal=(totalMins/60)*rate;
-  document.getElementById('labour-hours').textContent=(totalMins/60).toFixed(1)+' hrs';
+  var ovenBatches=Math.max(1,+(document.getElementById('labour-oven-batches')?.value)||1);
+  // Baker actively works during prep/deco/pack; baking is shared across oven batches
+  var activeMins=prep+deco+pack+(bake/ovenBatches);
+  var labourTotal=(activeMins/60)*rate;
+  document.getElementById('labour-hours').textContent=(activeMins/60).toFixed(1)+' hrs';
   document.getElementById('labour-total').textContent=labourTotal.toFixed(2);
   document.getElementById('r-labour').textContent=labourTotal.toFixed(2);
 
+  // Overheads — Operating cost (optional inclusion in cost price)
   var ohRate = +(document.getElementById('overhead-rate').value) || 0;
-  var overheadTotal = (totalMins / 60) * ohRate;
+  var includeOverhead = document.getElementById('overhead-include-toggle')?.checked !== false;
+  var overheadTotal = (activeMins / 60) * ohRate;
+  var overheadInCost = includeOverhead ? overheadTotal : 0;
   document.getElementById('overhead-total').textContent = overheadTotal.toFixed(2);
   document.getElementById('r-overhead').textContent = overheadTotal.toFixed(2);
   var ohTimeDisplay = document.getElementById('overhead-time-display');
-  if (ohTimeDisplay) ohTimeDisplay.textContent = (totalMins / 60).toFixed(1) + ' hrs';
+  if (ohTimeDisplay) ohTimeDisplay.textContent = (activeMins / 60).toFixed(1) + ' hrs';
+  // Dim the overhead row if not included in cost
+  var ohRow = document.getElementById('overhead-breakdown-row');
+  if (ohRow) ohRow.style.opacity = includeOverhead ? '1' : '0.4';
+
+  // COGS subtotal (Direct only)
+  var cogsTotal = rawTotal + decoTotal + packTotal + labourTotal;
+  var cogsTotalEl = document.getElementById('r-cogs');
+  if (cogsTotalEl) cogsTotalEl.textContent = cogsTotal.toFixed(2);
 
   var misc=+(document.getElementById('misc-cost').value)||0;
   document.getElementById('r-misc').textContent=misc.toFixed(2);
 
-  var subtotal=rawTotal+decoTotal+packTotal+labourTotal+overheadTotal+misc;
+  var subtotal=rawTotal+decoTotal+packTotal+labourTotal+overheadInCost+misc;
   var wastagePct=+(document.getElementById('wastage-pct').value)||0;
   var bufferPct=+(document.getElementById('buffer-pct').value)||0;
   var wastageTotal=subtotal*(wastagePct/100)+subtotal*(bufferPct/100);
@@ -950,10 +1045,9 @@ function recalculate(){
   document.getElementById('r-per-serving').textContent=(grandCost/servings).toFixed(2);
   document.getElementById('r-breakeven').textContent=grandCost.toFixed(2);
 
+  // Selling price — GST-inclusive already, no separate GST markup
   var marginPct=+(document.getElementById('margin-slider').value)||60;
   var calcSell=grandCost*(1+marginPct/100);
-  var gstPct=+(document.getElementById('gst-pct').value)||0;
-  calcSell*=(1+gstPct/100);
   var finalSell=applyPriceRule(calcSell,document.getElementById('price-rule').value);
   document.getElementById('r-selling').textContent=finalSell;
   var profit=finalSell-grandCost;
@@ -962,7 +1056,7 @@ function recalculate(){
   document.getElementById('r-profit-pct').textContent=profitPct.toFixed(1);
   document.getElementById('r-wholesale').textContent=(finalSell*0.8).toFixed(0);
 
-  renderCompositionBars(grandCost,{'Raw Materials':rawTotal,'Decoration':decoTotal,'Packaging':packTotal,'Labour':labourTotal,'Overheads':overheadTotal,'Wastage/Buffer':wastageTotal,'Misc':misc});
+  renderCompositionBars(grandCost,{'Raw Materials':rawTotal,'Decoration':decoTotal,'Packaging':packTotal,'Direct Labour':labourTotal,'Overheads (Op.)':overheadInCost,'Wastage/Buffer':wastageTotal,'Misc':misc});
 }
 
 function applyPriceRule(price,rule){
@@ -1081,6 +1175,10 @@ function resetCalc(){
   document.getElementById('calc-name').value='';
   document.getElementById('calc-category').value='';
   document.getElementById('dynamic-fields').innerHTML='';
+  var owEl=document.getElementById('calc-output-weight');if(owEl)owEl.value='';
+  var ouEl=document.getElementById('calc-output-unit');if(ouEl)ouEl.value='g';
+  var obEl=document.getElementById('labour-oven-batches');if(obEl)obEl.value=1;
+  var ohToggle=document.getElementById('overhead-include-toggle');if(ohToggle)ohToggle.checked=true;
   recalculate();
 }
 
@@ -1109,7 +1207,11 @@ async function saveOrder(){
     overheads:{elec:0,gas:0,water:0,rent:0,admin:0,delivery:0,rate:parseFloat(document.getElementById('overhead-rate').value)||0,totalCost:parseFloat(document.getElementById('overhead-total').textContent)||0},
     wastage:{pct:+(document.getElementById('wastage-pct').value)||0,bufferPct:+(document.getElementById('buffer-pct').value)||0,totalCost:parseFloat(document.getElementById('r-wastage').textContent)||0},
     misc:{cost:+(document.getElementById('misc-cost').value)||0,notes:document.getElementById('misc-notes').value||''},
-    summary:{rawCost:parseFloat(document.getElementById('r-raw').textContent)||0,decoCost:parseFloat(document.getElementById('r-deco').textContent)||0,packCost:parseFloat(document.getElementById('r-pack').textContent)||0,totalCost:parseFloat(document.getElementById('r-cost').textContent)||0,perServing:parseFloat(document.getElementById('r-per-serving').textContent)||0,breakeven:parseFloat(document.getElementById('r-breakeven').textContent)||0,targetMargin:+(document.getElementById('margin-slider').value)||60,pricingRule:document.getElementById('price-rule').value,gstPct:+(document.getElementById('gst-pct').value)||0,sellingPrice:parseFloat(document.getElementById('r-selling').textContent)||0,profitAmount:parseFloat(document.getElementById('r-profit').textContent)||0,profitPct:parseFloat(document.getElementById('r-profit-pct').textContent)||0},
+    outputWeight:+(document.getElementById('calc-output-weight')?.value)||0,
+    outputUnit:document.getElementById('calc-output-unit')?.value||'g',
+    ovenBatches:+(document.getElementById('labour-oven-batches')?.value)||1,
+    includeOverhead:document.getElementById('overhead-include-toggle')?.checked!==false,
+    summary:{rawCost:parseFloat(document.getElementById('r-raw').textContent)||0,decoCost:parseFloat(document.getElementById('r-deco').textContent)||0,packCost:parseFloat(document.getElementById('r-pack').textContent)||0,cogsTotal:parseFloat(document.getElementById('r-cogs')?.textContent)||0,totalCost:parseFloat(document.getElementById('r-cost').textContent)||0,perServing:parseFloat(document.getElementById('r-per-serving').textContent)||0,breakeven:parseFloat(document.getElementById('r-breakeven').textContent)||0,targetMargin:+(document.getElementById('margin-slider').value)||60,pricingRule:document.getElementById('price-rule').value,sellingPrice:parseFloat(document.getElementById('r-selling').textContent)||0,profitAmount:parseFloat(document.getElementById('r-profit').textContent)||0,profitPct:parseFloat(document.getElementById('r-profit-pct').textContent)||0},
     rateSnapshot:snapshot
   };
 
@@ -1147,7 +1249,10 @@ function loadOrderForEdit(orderId){
   if(order.overheads){document.getElementById('overhead-rate').value=order.overheads.rate||order.overheads.hourlyRate||0;}
   if(order.wastage){document.getElementById('wastage-pct').value=order.wastage.pct;document.getElementById('wastage-val').textContent=order.wastage.pct+'%';document.getElementById('buffer-pct').value=order.wastage.bufferPct;document.getElementById('buffer-val').textContent=order.wastage.bufferPct+'%';}
   if(order.misc){document.getElementById('misc-cost').value=order.misc.cost;document.getElementById('misc-notes').value=order.misc.notes;}
-  if(order.summary){document.getElementById('margin-slider').value=order.summary.targetMargin||60;document.getElementById('margin-pct-val').textContent=(order.summary.targetMargin||60)+'%';document.getElementById('price-rule').value=order.summary.pricingRule||'exact';document.getElementById('gst-pct').value=order.summary.gstPct||0;}
+  if(order.outputWeight){var owEl=document.getElementById('calc-output-weight');if(owEl)owEl.value=order.outputWeight;var ouEl=document.getElementById('calc-output-unit');if(ouEl)ouEl.value=order.outputUnit||'g';}
+  if(order.ovenBatches){var obEl=document.getElementById('labour-oven-batches');if(obEl)obEl.value=order.ovenBatches;}
+  if(order.includeOverhead!==undefined){var ohToggle=document.getElementById('overhead-include-toggle');if(ohToggle)ohToggle.checked=order.includeOverhead;}
+  if(order.summary){document.getElementById('margin-slider').value=order.summary.targetMargin||60;document.getElementById('margin-pct-val').textContent=(order.summary.targetMargin||60)+'%';document.getElementById('price-rule').value=order.summary.pricingRule||'exact';}
   recalculate();
   showToast('Order loaded with historical rates!');
 }
@@ -1356,6 +1461,7 @@ function viewOrderInvoice(orderId){
           <div><strong>Category:</strong> ${catLabel}</div>
           <div><strong>Batch Size:</strong> ${order.batchSize||1}</div>
           <div><strong>Servings:</strong> ${order.servings||8}</div>
+          ${order.outputWeight?`<div><strong>Output Weight:</strong> ${order.outputWeight} ${order.outputUnit||'g'}</div>`:''}
         </div>
         <div class="invoice-section-title">Raw Materials</div>
         <table><thead><tr><th>Ingredient</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Amount</th></tr></thead>
@@ -2099,7 +2205,7 @@ function renderCustomerList() {
     <tr>
       <td style="font-weight:500;">${c.name}</td>
       <td>${c.phone || '—'}</td>
-      <td>${c.city || '—'}</td>
+      <td>${c.city || '—'}${c.pincode?' <span style="font-size:11px;color:var(--bo-muted);">('+c.pincode+')</span>':''}</td>
       <td>${c.totalOrders || 0}</td>
       <td>₹${Number(c.totalValue || 0).toLocaleString('en-IN')}</td>
       <td style="font-size:12px;color:var(--bo-muted);">${c.lastOrderDate || '—'}</td>
@@ -2122,8 +2228,10 @@ function showAddCustomer() {
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">City</label><input type="text" id="nc-city" placeholder="e.g. Mumbai"></div>
-          <div class="form-group"><label class="form-label">Notes</label><input type="text" id="nc-notes" placeholder="Preferences, allergies, etc."></div>
+          <div class="form-group"><label class="form-label">Pincode <span style="font-size:11px;color:var(--bo-muted);">(6 digits)</span></label><input type="text" id="nc-pincode" placeholder="e.g. 282001" maxlength="6" pattern="[0-9]{6}"></div>
         </div>
+        <div class="form-group"><label class="form-label">Delivery Address <span style="font-size:11px;color:var(--bo-muted);">(for delivery coordination)</span></label><textarea id="nc-address" rows="2" placeholder="e.g. Flat 5B, Rose Apartments, MG Road, Near City Park" style="width:100%;resize:vertical;"></textarea></div>
+        <div class="form-group"><label class="form-label">Notes</label><input type="text" id="nc-notes" placeholder="Preferences, allergies, special instructions, etc."></div>
         <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:8px;"><i class="ti ti-plus"></i> Add Customer</button>
       </form>
     </div>`);
@@ -2133,11 +2241,13 @@ async function saveNewCustomer(e) {
   e.preventDefault();
   try {
     const data = {
-      name:  document.getElementById('nc-name').value.trim(),
-      phone: document.getElementById('nc-phone').value.trim(),
-      email: document.getElementById('nc-email').value.trim(),
-      city:  document.getElementById('nc-city').value.trim(),
-      notes: document.getElementById('nc-notes').value.trim(),
+      name:    document.getElementById('nc-name').value.trim(),
+      phone:   document.getElementById('nc-phone').value.trim(),
+      email:   document.getElementById('nc-email').value.trim(),
+      city:    document.getElementById('nc-city').value.trim(),
+      pincode: document.getElementById('nc-pincode').value.trim(),
+      address: document.getElementById('nc-address').value.trim(),
+      notes:   document.getElementById('nc-notes').value.trim(),
     };
     const saved = await API.addCustomer(data);
     customersDB.push(saved);
@@ -2204,7 +2314,7 @@ function selectSaleCustomer(id) {
   const srch = document.getElementById('sale-cust-search'); if (srch) srch.value = '';
   const sel = document.getElementById('sale-selected-cust'); if (sel) sel.style.display = 'block';
   const sName = document.getElementById('sale-cust-name'); if (sName) sName.textContent = c.name;
-  const sDet  = document.getElementById('sale-cust-detail'); if (sDet) sDet.textContent = [c.phone, c.city].filter(Boolean).join(' · ');
+  const sDet  = document.getElementById('sale-cust-detail'); if (sDet) sDet.textContent = [c.phone, c.city, c.pincode].filter(Boolean).join(' · ');
   updateInvoicePreview();
 }
 
@@ -2308,7 +2418,10 @@ function updateInvoicePreview() {
 
   // Customer
   elSet('inv-cust-name',   currentSaleCustomer ? currentSaleCustomer.name : '—');
-  elSet('inv-cust-detail', currentSaleCustomer ? [currentSaleCustomer.phone, currentSaleCustomer.city].filter(Boolean).join(' · ') : 'Select a customer above');
+  const custDetailParts = currentSaleCustomer ? [currentSaleCustomer.phone, currentSaleCustomer.city, currentSaleCustomer.pincode].filter(Boolean) : [];
+  const custAddressLine = currentSaleCustomer && currentSaleCustomer.address ? currentSaleCustomer.address : '';
+  const custDetailStr = currentSaleCustomer ? (custDetailParts.join(' · ') + (custAddressLine ? ' | ' + custAddressLine : '')) : 'Select a customer above';
+  elSet('inv-cust-detail', custDetailStr);
 
   // Items table
   const tbody = document.getElementById('inv-items-body');
@@ -2604,8 +2717,10 @@ async function doSaveSale() {
     const sale = await API.createSale({
       customerId:    currentSaleCustomer ? currentSaleCustomer.id   : '',
       customerName:  currentSaleCustomer ? currentSaleCustomer.name : '',
-      customerPhone: currentSaleCustomer ? currentSaleCustomer.phone: '',
-      customerCity:  currentSaleCustomer ? currentSaleCustomer.city : '',
+      customerPhone:   currentSaleCustomer ? currentSaleCustomer.phone   : '',
+      customerCity:    currentSaleCustomer ? currentSaleCustomer.city    : '',
+      customerPincode: currentSaleCustomer ? currentSaleCustomer.pincode : '',
+      customerAddress: currentSaleCustomer ? currentSaleCustomer.address : '',
       items: currentSaleItems,
       subtotal, discountAmt: discount, gstPct, gstAmt, totalAmount: total,
       paymentMethod: (document.getElementById('sale-payment') && document.getElementById('sale-payment').value) || 'Cash',

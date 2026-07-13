@@ -252,6 +252,19 @@
             <div class="form-group"><label class="form-label">Batch Size</label><input type="number" id="calc-batch" value="1" min="1" oninput="recalculate()"></div>
             <div class="form-group"><label class="form-label">Servings per Batch</label><input type="number" id="calc-servings" value="8" min="1" oninput="recalculate()"></div>
           </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label required">Output Weight / Size <span style="font-size:11px;color:var(--bo-muted);">(resultant product)</span></label><input type="number" id="calc-output-weight" placeholder="e.g. 500" min="0" step="0.1" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Weight Unit</label>
+              <select id="calc-output-unit" onchange="recalculate()">
+                <option value="g">g (grams)</option>
+                <option value="kg">kg</option>
+                <option value="ml">ml</option>
+                <option value="litre">litre</option>
+                <option value="pieces">pieces</option>
+                <option value="dozen">dozen</option>
+              </select>
+            </div>
+          </div>
           <div id="dynamic-fields"></div>
         </div>
         <div class="card" style="margin-bottom:16px;">
@@ -315,35 +328,54 @@
           </div>
         </div>
         <div class="card" style="margin-bottom:16px;">
-          <div class="card-title">Labour Cost</div>
+          <div class="card-title">Labour Cost <span style="font-size:11px;font-weight:400;color:var(--bo-muted);font-family:'DM Sans',sans-serif;">(Direct — COGS)</span></div>
           <div class="form-row-3">
-            <div class="form-group"><label class="form-label">Prep Time (mins)</label><input type="number" id="labour-prep" value="30" min="0" oninput="recalculate()"></div>
-            <div class="form-group"><label class="form-label">Baking Time (mins)</label><input type="number" id="labour-bake" value="45" min="0" oninput="recalculate()"></div>
+            <div class="form-group"><label class="form-label">Prep / Mixing (mins)</label><input type="number" id="labour-prep" value="30" min="0" oninput="recalculate()"></div>
+            <div class="form-group">
+              <label class="form-label">Baking / Oven Time (mins)</label>
+              <input type="number" id="labour-bake" value="45" min="0" oninput="recalculate()">
+            </div>
             <div class="form-group"><label class="form-label">Decoration (mins)</label><input type="number" id="labour-deco" value="60" min="0" oninput="recalculate()"></div>
           </div>
-          <div class="form-row">
+          <div class="form-row-3">
             <div class="form-group"><label class="form-label">Packing Time (mins)</label><input type="number" id="labour-pack" value="15" min="0" oninput="recalculate()"></div>
+            <div class="form-group">
+              <label class="form-label">Simultaneous Oven Batches <span style="font-size:10px;color:var(--bo-gold-dark);">⚡</span></label>
+              <input type="number" id="labour-oven-batches" value="1" min="1" max="20" oninput="recalculate()" title="How many batches bake at the same time in your oven? Baking time cost is shared equally among them.">
+            </div>
             <div class="form-group"><label class="form-label">Hourly Wage (₹/hr) <span style="font-size:11px;color:var(--bo-muted);">(Derived)</span></label><input type="number" id="labour-rate" value="150" min="0" disabled style="background-color: var(--bo-bg-alt); cursor: not-allowed; opacity: 0.85;" title="Configure globally in Labour Settings"></div>
           </div>
+          <div style="background:rgba(196,154,60,0.07);border:1px solid rgba(196,154,60,0.2);border-radius:6px;padding:8px 12px;font-size:11.5px;color:var(--bo-muted);margin-bottom:8px;">
+            💡 <strong>Oven time is shared</strong>: If 5 cakes bake together, each cake bears only 1/5 of the oven time cost. Prep, decoration &amp; packing are <strong>full cost</strong> as the baker is actively working.
+          </div>
           <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--bo-border);">
-            <span style="color:var(--bo-muted);">Total labour time: <span id="labour-hours">2.5 hrs</span></span>
+            <span style="color:var(--bo-muted);">Active labour time (this product): <span id="labour-hours">2.5 hrs</span></span>
             <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="labour-total">375.00</span></span>
           </div>
         </div>
         <div class="card" style="margin-bottom:16px;">
-          <div class="card-title">Overheads &amp; Utilities</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div class="card-title" style="margin:0;">Overheads &amp; Utilities <span style="font-size:11px;font-weight:400;color:var(--bo-muted);font-family:'DM Sans',sans-serif;">(Operating Cost)</span></div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--bo-muted);">
+              <input type="checkbox" id="overhead-include-toggle" checked onchange="recalculate()" style="accent-color:var(--bo-gold);width:14px;height:14px;">
+              Include in Cost Price
+            </label>
+          </div>
+          <div style="background:rgba(58,90,64,0.06);border:1px solid rgba(58,90,64,0.15);border-radius:6px;padding:8px 12px;font-size:11.5px;color:var(--bo-muted);margin-bottom:10px;">
+            📊 In accounting, overheads (rent, electricity, gas) are <strong>operating expenses</strong> deducted after Gross Profit to get Net Profit/EBITDA — not part of COGS. Toggle on if you want to amortise them directly into product cost.
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Hourly Overhead Rate (₹/hr) <span style="font-size:11px;color:var(--bo-muted);">(Derived)</span></label>
               <input type="number" id="overhead-rate" value="100" min="0" disabled style="background-color: var(--bo-bg-alt); cursor: not-allowed; opacity: 0.85;" title="Configure globally in Overhead Settings">
             </div>
             <div class="form-group">
-              <label class="form-label">Total Time Utilized</label>
+              <label class="form-label">Total Active Time</label>
               <span id="overhead-time-display" style="display:inline-block; margin-top:8px; font-weight:500; font-size:13.5px;">2.5 hrs</span>
             </div>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--bo-border);">
-            <span style="color:var(--bo-muted);">Total overhead cost</span>
+            <span style="color:var(--bo-muted);">Overhead cost (this product's share)</span>
             <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="overhead-total">0.00</span></span>
           </div>
         </div>
@@ -379,14 +411,20 @@
       <div style="position:sticky;top:72px;">
         <div class="highlight-box" style="margin-bottom:16px;">
           <div style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;margin-bottom:14px;">Live Cost Breakdown</div>
+          <!-- COGS Section -->
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--bo-gold-dark);margin-bottom:6px;font-weight:600;">COGS (Cost of Goods Sold)</div>
           <div class="cost-row"><span class="cost-label">Raw Materials</span><span class="cost-val">₹<span id="r-raw">0.00</span></span></div>
           <div class="cost-row"><span class="cost-label">Decoration &amp; Finishing</span><span class="cost-val">₹<span id="r-deco">0.00</span></span></div>
           <div class="cost-row"><span class="cost-label">Packaging</span><span class="cost-val">₹<span id="r-pack">0.00</span></span></div>
-          <div class="cost-row"><span class="cost-label">Labour</span><span class="cost-val">₹<span id="r-labour">0.00</span></span></div>
-          <div class="cost-row"><span class="cost-label">Overheads &amp; Utilities</span><span class="cost-val">₹<span id="r-overhead">0.00</span></span></div>
+          <div class="cost-row"><span class="cost-label">Direct Labour</span><span class="cost-val">₹<span id="r-labour">0.00</span></span></div>
+          <div class="cost-row" style="border-top:1px dashed rgba(196,154,60,0.3);margin-top:4px;padding-top:6px;"><span class="cost-label" style="font-weight:600;">Total COGS</span><span class="cost-val" style="font-weight:600;">₹<span id="r-cogs">0.00</span></span></div>
+          <!-- Operating Costs Section -->
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--bo-muted);margin:10px 0 6px;font-weight:600;">Operating Costs (Non-COGS)</div>
+          <div class="cost-row" id="overhead-breakdown-row"><span class="cost-label">Overheads &amp; Utilities</span><span class="cost-val">₹<span id="r-overhead">0.00</span></span></div>
           <div class="cost-row"><span class="cost-label">Wastage &amp; Buffer</span><span class="cost-val">₹<span id="r-wastage">0.00</span></span></div>
           <div class="cost-row"><span class="cost-label">Miscellaneous</span><span class="cost-val">₹<span id="r-misc">0.00</span></span></div>
-          <div class="cost-row total"><span>Total Cost Price</span><span class="cost-val">₹<span id="r-cost">0.00</span></span></div>
+          <!-- Grand Total -->
+          <div class="cost-row total" style="margin-top:6px;"><span>Total Cost Price</span><span class="cost-val">₹<span id="r-cost">0.00</span></span></div>
           <div class="cost-row"><span class="cost-label" style="font-size:12px;">Per Serving</span><span style="font-size:12px;color:var(--bo-muted);">₹<span id="r-per-serving">0.00</span></span></div>
           <div class="cost-row"><span class="cost-label" style="font-size:12px;">Break-even Price</span><span style="font-size:12px;color:var(--bo-muted);">₹<span id="r-breakeven">0.00</span></span></div>
         </div>
@@ -407,8 +445,8 @@
               <option value="end99">End in ₹99 (e.g. ₹599)</option>
             </select>
           </div>
-          <div class="form-group"><label class="form-label">GST (%)</label><input type="number" id="gst-pct" value="0" min="0" max="28" oninput="recalculate()"></div>
-          <div class="cost-row selling" style="margin-top:12px;border-top:2px solid rgba(45,106,79,0.3);padding-top:12px;">
+          <div style="font-size:11px;color:var(--bo-muted);background:rgba(45,106,79,0.05);border-radius:6px;padding:6px 10px;margin-bottom:8px;">ℹ️ Selling price is GST-inclusive. No separate GST markup needed here.</div>
+          <div class="cost-row selling" style="margin-top:8px;border-top:2px solid rgba(45,106,79,0.3);padding-top:12px;">
             <span>Suggested Selling Price</span><span class="cost-val" style="color:var(--bo-success);">₹<span id="r-selling">0</span></span>
           </div>
           <div class="cost-row profit"><span class="cost-label">Profit Amount</span><span class="cost-val" style="color:var(--bo-success);">₹<span id="r-profit">0</span></span></div>
@@ -543,14 +581,8 @@
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Step 3 — Totals &amp; Options</div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">GST (%)</label>
-              <select id="sale-gst" onchange="updateSaleTotals()">
-                <option value="0">No GST (0%)</option>
-                <option value="5">5%</option><option value="12">12%</option>
-                <option value="18">18%</option><option value="28">28%</option>
-              </select>
-            </div>
             <div class="form-group"><label class="form-label">Discount (₹)</label><input type="number" id="sale-discount" value="0" min="0" oninput="updateSaleTotals()"></div>
+            <div class="form-group"><label class="form-label" style="display:none;"></label><input type="hidden" id="sale-gst" value="0"></div>
           </div>
           <div class="form-row">
             <div class="form-group"><label class="form-label">Payment Method</label>
