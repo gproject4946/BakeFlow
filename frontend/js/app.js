@@ -2266,6 +2266,7 @@ async function deleteSaleEntry(id) {
   try {
     await API.deleteSale(id);
     salesInvoices = salesInvoices.filter(i => i.id !== id);
+    await loadCustomers(); // Reload customer database to sync totals
     renderInvoiceList();
     showToast('Invoice deleted');
   } catch(err) { showToast('Delete failed', true); }

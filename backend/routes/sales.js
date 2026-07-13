@@ -84,6 +84,30 @@ router.delete('/:id', async (req, res) => {
     const e = emp(req);
     row.deleted = true; row.deletedAt = Date.now();
     await db.updateRow('SalesInvoices', row._rowIndex, row);
+
+    // Rollback customer stats
+    if (row.customerId) {
+      try {
+        const customers = await db.getAll('Customers');
+        const cust = customers.find(c => c.id === row.customerId);
+        if (cust) {
+          cust.totalOrders = Math.max(0, (Number(cust.totalOrders) || 0) - 1);
+          cust.totalValue = Math.max(0, (Number(cust.totalValue) || 0) - Number(row.totalAmount));
+
+          // Re-calculate lastOrderDate from remaining active invoices
+          const activeInvoices = rows.filter(i => i.customerId === row.customerId && !i.deleted && i.id !== row.id);
+          if (activeInvoices.length > 0) {
+            activeInvoices.sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
+            cust.lastOrderDate = activeInvoices[0].date || '';
+          } else {
+            cust.lastOrderDate = '';
+          }
+
+          await db.updateRow('Customers', cust._rowIndex, cust);
+        }
+      } catch(custErr) { console.error('Customer stats rollback failed:', custErr.message); }
+    }
+
     await db.addLog('DELETE_SALE', row.invoiceNumber, e.name, e.email, 'SalesInvoice', row.id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
