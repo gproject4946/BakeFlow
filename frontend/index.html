@@ -445,6 +445,7 @@
     <div class="page-title">Raw Materials Master</div>
     <div style="display:flex;gap:8px;align-items:center;">
       <label class="select-all-wrap" style="margin:0;"><input type="checkbox" id="mat-show-deleted" onchange="renderMaterialsMaster()"> Show deleted</label>
+      <button class="btn btn-sm" onclick="showScanInvoice()"><i class="ti ti-scan"></i> 🤖 Scan Invoice</button>
       <button class="btn btn-gold btn-sm" onclick="showAddMaterialModal()"><i class="ti ti-plus"></i> Add Item</button>
     </div>
   </div>
@@ -463,14 +464,14 @@
     <!-- Ingredients table -->
     <div id="mat-ingredients-section" class="card">
       <table>
-        <thead><tr><th>Name</th><th>Category</th><th>Unit</th><th>Rate (₹)</th><th>Last Updated</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Name</th><th>Category</th><th>Unit</th><th>Rate (₹)</th><th>Stock Qty</th><th>Min Alert</th><th>Status</th><th>Last Updated</th><th>Actions</th></tr></thead>
         <tbody id="mat-ing-body"></tbody>
       </table>
     </div>
     <!-- Packaging table -->
     <div id="mat-packaging-section" class="card hidden">
       <table>
-        <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Rate (₹)</th><th>Vendor</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Rate (₹)</th><th>Stock Qty</th><th>Min Alert</th><th>Status</th><th>Vendor</th><th>Actions</th></tr></thead>
         <tbody id="mat-pack-body"></tbody>
       </table>
     </div>
