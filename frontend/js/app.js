@@ -1853,7 +1853,7 @@ async function confirmScanImport() {
   }
 
   const updateStock = document.getElementById('scan-update-stock') && document.getElementById('scan-update-stock').checked;
-  let imported = 0, updated = 0;
+  let imported = 0, updated = 0, errors = 0;
 
   // Helper: normalize name for fuzzy matching (lowercase, strip special chars/spaces)
   function normalizeName(n) {
@@ -1873,54 +1873,74 @@ async function confirmScanImport() {
 
     try {
       if (type === 'ingredient') {
-        // Check if already exists in master list
         const existing = ingredientsMaster.find(m => normalizeName(m.name) === normScanned);
-
         if (existing) {
-          // Top-up existing stock
           if (updateStock) {
             const newQty = (Number(existing.stockQty) || 0) + qty;
-            await API.updateIngredientStock(existing.id, newQty, existing.minAlert || 0);
-            existing.stockQty = newQty;
+            const result = await API.updateIngredientStock(existing.id, newQty, Number(existing.minAlert) || 0);
+            // Update local array using the server-confirmed value
+            existing.stockQty = result && result.stockQty !== undefined ? Number(result.stockQty) : newQty;
+            updated++;
+          } else {
+            updated++;
           }
-          updated++;
         } else {
-          // Create new entry
           const saved = await API.addIngredient({ name, cat: 'Other', unit, rate: price });
-          if (updateStock) await API.updateIngredientStock(saved.id, qty, 0);
-          saved.stockQty = qty; saved.minAlert = 0;
+          if (updateStock) {
+            await API.updateIngredientStock(saved.id, qty, 0);
+            saved.stockQty = qty;
+          } else {
+            saved.stockQty = 0;
+          }
+          saved.minAlert = 0;
           ingredientsMaster.push(saved);
           imported++;
         }
       } else {
-        // Packaging
         const existing = packagingMaster.find(m => normalizeName(m.name) === normScanned);
-
         if (existing) {
           if (updateStock) {
             const newQty = (Number(existing.stockQty) || 0) + qty;
-            await API.updatePackagingStock(existing.id, newQty, existing.minAlert || 0);
-            existing.stockQty = newQty;
+            const result = await API.updatePackagingStock(existing.id, newQty, Number(existing.minAlert) || 0);
+            existing.stockQty = result && result.stockQty !== undefined ? Number(result.stockQty) : newQty;
+            updated++;
+          } else {
+            updated++;
           }
-          updated++;
         } else {
           const saved = await API.addPackaging({ name, type: 'Other', size: 'Standard', rate: price, vendor: 'Supplier' });
-          if (updateStock) await API.updatePackagingStock(saved.id, qty, 0);
-          saved.stockQty = qty; saved.minAlert = 0;
+          if (updateStock) {
+            await API.updatePackagingStock(saved.id, qty, 0);
+            saved.stockQty = qty;
+          } else {
+            saved.stockQty = 0;
+          }
+          saved.minAlert = 0;
           packagingMaster.push(saved);
           imported++;
         }
       }
-    } catch(e) { console.warn('Import item failed:', e.message); }
+    } catch(e) {
+      console.warn('Import item failed:', name, e.message);
+      errors++;
+    }
   }
+
+  // Reload from server to guarantee UI reflects true state
+  try {
+    const [freshIngs, freshPacks] = await Promise.all([API.getIngredients(), API.getPackaging()]);
+    ingredientsMaster = freshIngs;
+    packagingMaster   = freshPacks;
+  } catch(e) { console.warn('Refresh after import failed:', e.message); }
 
   closeModalBtn();
   renderMaterialsMaster();
 
   const parts = [];
   if (imported > 0) parts.push(`${imported} new item${imported !== 1 ? 's' : ''} added`);
-  if (updated > 0)  parts.push(`${updated} existing item${updated !== 1 ? 's' : ''} restocked`);
-  showToast(`✅ ${parts.join(', ')}!`);
+  if (updated > 0)  parts.push(`${updated} restocked`);
+  if (errors > 0)   parts.push(`${errors} failed`);
+  showToast(`✅ ${parts.length ? parts.join(', ') : 'Done'}!`);
 }
 
 // ── Customer Database ────────────────────────────────────────
