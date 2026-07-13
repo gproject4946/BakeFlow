@@ -1678,18 +1678,39 @@ function showScanInvoice() {
   openModal(`
     <div class="modal-header"><h3>🤖 Scan Supplier Invoice</h3><button class="btn btn-sm" onclick="closeModalBtn()"><i class="ti ti-x"></i></button></div>
     <div class="modal-body">
-      <div id="scan-dropzone" style="border:2px dashed var(--bo-gold);border-radius:10px;padding:36px;text-align:center;cursor:pointer;" onclick="document.getElementById('scan-file-input').click()" ondragover="event.preventDefault();this.style.background='rgba(196,154,60,0.06)';" ondrop="handleScanDrop(event)">
-        <i class="ti ti-photo-scan" style="font-size:36px;color:var(--bo-gold);display:block;margin-bottom:8px;"></i>
-        <div style="font-weight:500;margin-bottom:4px;">Drop invoice image here or click to upload</div>
-        <div style="font-size:12px;color:var(--bo-muted);">Supports JPG, PNG, HEIC, WebP</div>
+      <div id="scan-dropzone" style="border:2px dashed var(--bo-gold);border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:all 0.2s;" onclick="document.getElementById('scan-file-input').click()" ondragover="event.preventDefault();this.style.background='rgba(196,154,60,0.08)';this.style.borderColor='var(--bo-gold-dark)';" ondragleave="this.style.background='';this.style.borderColor='var(--bo-gold)';" ondrop="handleScanDrop(event)">
+        <i class="ti ti-photo-scan" style="font-size:42px;color:var(--bo-gold);display:block;margin-bottom:10px;"></i>
+        <div style="font-weight:500;margin-bottom:4px;font-size:14px;">Drop invoice image here or click to upload</div>
+        <div style="font-size:12px;color:var(--bo-muted);">Supports JPG, PNG, WebP</div>
       </div>
-      <input type="file" id="scan-file-input" accept="image/*" style="display:none;" onchange="handleScanFile(this.files[0])">
-      <div id="scan-preview-wrap" style="display:none;margin-top:14px;text-align:center;">
-        <img id="scan-preview" style="max-height:120px;border-radius:6px;border:1px solid var(--bo-border);max-width:100%;">
-        <div style="margin-top:10px;"><button class="btn btn-gold" onclick="runScan()"><i class="ti ti-sparkles"></i> Scan with Gemini AI</button></div>
+      <input type="file" id="scan-file-input" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handleScanFile(this.files[0])">
+
+      <!-- Upload confirmation + preview (hidden until file selected) -->
+      <div id="scan-preview-wrap" style="display:none;margin-top:16px;">
+        <div style="background:rgba(45,106,79,0.07);border:1px solid rgba(45,106,79,0.25);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <span style="font-size:24px;">✅</span>
+          <div style="flex:1;min-width:0;">
+            <div id="scan-filename" style="font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Image uploaded</div>
+            <div id="scan-filesize" style="font-size:11px;color:var(--bo-muted);margin-top:2px;"></div>
+          </div>
+          <button onclick="document.getElementById('scan-file-input').click()" class="btn btn-sm" style="flex-shrink:0;"><i class="ti ti-refresh"></i> Change</button>
+        </div>
+        <div style="text-align:center;border-radius:8px;overflow:hidden;margin-bottom:14px;background:var(--bo-cream);">
+          <img id="scan-preview" style="max-height:160px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
+        </div>
+        <button id="scan-btn" class="btn btn-gold" style="width:100%;justify-content:center;font-size:14px;padding:12px;" onclick="runScan()">
+          <i class="ti ti-sparkles"></i> Scan with Gemini AI
+        </button>
+        <div id="scan-status" style="display:none;text-align:center;padding:14px;font-size:13px;color:var(--bo-muted);">
+          <div style="display:inline-block;width:18px;height:18px;border:2px solid var(--bo-gold);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:8px;"></div>
+          <span id="scan-status-text">Uploading image to Gemini AI…</span>
+          <div style="font-size:11px;margin-top:6px;color:var(--bo-muted);">⏱ Usually takes 5–15 seconds</div>
+        </div>
       </div>
+
+      <!-- Results (hidden until scan complete) -->
       <div id="scan-results" style="display:none;margin-top:16px;">
-        <div style="font-weight:500;margin-bottom:8px;font-size:13.5px;">Detected Items — review & confirm:</div>
+        <div style="font-weight:500;margin-bottom:8px;font-size:13.5px;">Detected Items — review &amp; confirm:</div>
         <div id="scan-items-list"></div>
         <div style="margin-top:8px;"><label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="scan-update-stock" checked> Also update stock quantity from invoice quantities</label></div>
         <button class="btn btn-gold" style="margin-top:12px;width:100%;justify-content:center;" onclick="confirmScanImport()"><i class="ti ti-check"></i> Import Selected Items</button>
@@ -1699,6 +1720,16 @@ function showScanInvoice() {
 
 function handleScanFile(file) {
   if (!file) return;
+
+  // Check if file is HEIC/HEIF
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'heic' || ext === 'heif') {
+    alert("⚠️ Apple HEIC format is not supported natively by web browsers.\n\nPlease convert this image to a standard JPG, PNG, or WebP format first, then upload it.");
+    // Reset inputs
+    document.getElementById('scan-file-input').value = "";
+    return;
+  }
+
   _scanFile = file;
 
   // Show preview wrap
@@ -1766,7 +1797,8 @@ async function runScan() {
       reader.onload = async (ev) => {
         try {
           const base64 = ev.target.result.split(',')[1];
-          const result = await API.scanInvoice(base64);
+          const mimeType = _scanFile.type || 'image/jpeg';
+          const result = await API.scanInvoice(base64, mimeType);
           _scanItems = result.items || [];
           clearInterval(msgTimer);
           if (statusEl) statusEl.style.display = 'none';

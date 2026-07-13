@@ -152,10 +152,10 @@ const API = {
   },
 
   // ── AI Invoice Scanner (Gemini) ───────────────────────────────
-  scanInvoice(base64Image) {
+  scanInvoice(base64Image, mimeType = 'image/jpeg') {
     return this._req('/invoice/scan', {
       method: 'POST',
-      body: JSON.stringify({ image: base64Image }),
+      body: JSON.stringify({ image: base64Image, mimeType }),
     });
   },
 };

@@ -5,7 +5,7 @@ const db = require('../sheets/sheetsClient');
 // POST /api/invoice/scan - scan supplier invoice with Gemini Vision
 router.post('/scan', async (req, res) => {
   try {
-    const { image } = req.body;
+    const { image, mimeType } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided' });
     if (!process.env.GEMINI_API_KEY) return res.status(400).json({ error: 'GEMINI_API_KEY not configured' });
 
@@ -20,7 +20,7 @@ If unit is missing, infer from context (kg, g, litre, ml, piece, packet, box).
 Return ONLY the JSON array with no explanation, no markdown, no extra text.`;
 
     const result = await model.generateContent([
-      { inlineData: { mimeType: 'image/jpeg', data: image } },
+      { inlineData: { mimeType: mimeType || 'image/jpeg', data: image } },
       { text: prompt }
     ]);
 
