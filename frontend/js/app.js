@@ -2405,6 +2405,119 @@ async function depleteInventoryForSaleItems(items) {
   }
 }
 
+async function restoreInventoryForSaleItems(items) {
+  if (!items || items.length === 0) return;
+  let restoredCount = 0;
+
+  function cleanStr(s) {
+    return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+  }
+
+  for (const item of items) {
+    if (!item.name) continue;
+
+    const recipe = savedOrders.find(o => !o.deleted && cleanStr(o.name) === cleanStr(item.name));
+    if (!recipe) {
+      console.log('[Restoration] No recipe calculation found for item:', item.name);
+      continue;
+    }
+
+    const qtySold = Number(item.qty) || 0;
+    const batchSize = Number(recipe.batchSize) || 1;
+    const multiplier = qtySold / batchSize;
+
+    // 1. Restore recipe ingredients
+    if (recipe.ingredients && recipe.ingredients.length > 0) {
+      for (const ing of recipe.ingredients) {
+        if (!ing.name) continue;
+        const normName = cleanStr(ing.name);
+        const masterIng = ingredientsMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
+
+        if (masterIng) {
+          const factor = getConversionFactorV2(ing.name, masterIng.unit, ing.unit);
+          const totalUsed = ing.qty * factor * multiplier;
+          const newStock = (Number(masterIng.stockQty) || 0) + totalUsed;
+          try {
+            await API.updateIngredientStock(masterIng.id, newStock, Number(masterIng.minAlert) || 0);
+            masterIng.stockQty = newStock;
+            restoredCount++;
+          } catch (e) {
+            console.warn('[Restoration] Failed for ingredient:', ing.name, e.message);
+          }
+        }
+      }
+    }
+
+    // 2. Restore packaging items
+    if (recipe.packaging && recipe.packaging.length > 0) {
+      for (const pack of recipe.packaging) {
+        if (!pack.name) continue;
+        const normName = cleanStr(pack.name);
+        const masterPack = packagingMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
+
+        if (masterPack) {
+          const factor = getConversionFactorV2(pack.name, masterPack.unit, pack.unit);
+          const totalUsed = pack.qty * factor * multiplier;
+          const newStock = (Number(masterPack.stockQty) || 0) + totalUsed;
+          try {
+            await API.updatePackagingStock(masterPack.id, newStock, Number(masterPack.minAlert) || 0);
+            masterPack.stockQty = newStock;
+            restoredCount++;
+          } catch (e) {
+            console.warn('[Restoration] Failed for packaging:', pack.name, e.message);
+          }
+        }
+      }
+    }
+
+    // 3. Restore decoration items
+    if (recipe.decorations && recipe.decorations.length > 0) {
+      for (const deco of recipe.decorations) {
+        if (!deco.name) continue;
+        const normName = cleanStr(deco.name);
+
+        const masterIng = ingredientsMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
+        const masterPack = packagingMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
+
+        if (masterIng) {
+          const factor = getConversionFactorV2(deco.name, masterIng.unit, deco.unit);
+          const totalUsed = deco.qty * factor * multiplier;
+          const newStock = (Number(masterIng.stockQty) || 0) + totalUsed;
+          try {
+            await API.updateIngredientStock(masterIng.id, newStock, Number(masterIng.minAlert) || 0);
+            masterIng.stockQty = newStock;
+            restoredCount++;
+          } catch (e) {
+            console.warn('[Restoration] Failed for deco ingredient:', deco.name, e.message);
+          }
+        } else if (masterPack) {
+          const factor = getConversionFactorV2(deco.name, masterPack.unit, deco.unit);
+          const totalUsed = deco.qty * factor * multiplier;
+          const newStock = (Number(masterPack.stockQty) || 0) + totalUsed;
+          try {
+            await API.updatePackagingStock(masterPack.id, newStock, Number(masterPack.minAlert) || 0);
+            masterPack.stockQty = newStock;
+            restoredCount++;
+          } catch (e) {
+            console.warn('[Restoration] Failed for deco packaging:', deco.name, e.message);
+          }
+        }
+      }
+    }
+  }
+
+  if (restoredCount > 0) {
+    try {
+      const [freshIngs, freshPacks] = await Promise.all([API.getIngredients(), API.getPackaging()]);
+      ingredientsMaster = freshIngs;
+      packagingMaster   = freshPacks;
+      renderMaterialsMaster();
+    } catch (e) {
+      console.warn('[Restoration] Reload master items failed:', e.message);
+    }
+  }
+}
+
 async function doSaveSale() {
   const subtotal = currentSaleItems.reduce((s, i) => s + (i.qty * i.unitPrice), 0);
   const discount = parseFloat((document.getElementById('sale-discount') && document.getElementById('sale-discount').value) || 0) || 0;
@@ -2501,12 +2614,16 @@ async function resendWhatsApp(id) {
 }
 
 async function deleteSaleEntry(id) {
+  const sale = salesInvoices.find(i => i.id === id);
   try {
     await API.deleteSale(id);
+    if (sale && sale.items) {
+      await restoreInventoryForSaleItems(sale.items);
+    }
     salesInvoices = salesInvoices.filter(i => i.id !== id);
     await loadCustomers(); // Reload customer database to sync totals
     renderInvoiceList();
-    showToast('Invoice deleted');
+    showToast('Invoice deleted & stock restored');
   } catch(err) { showToast('Delete failed', true); }
 }
 
