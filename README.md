@@ -126,12 +126,12 @@ The **heart of BakeFlow** — built specifically for bakeries to calculate the e
 6. Add **decorations** if needed.
 7. Enter the **selling price** you plan to charge.
 8. The calculator shows in real-time:
-   - **Total Ingredient Cost**
-   - **Packaging Cost**
-   - **Labour Cost** (based on your configured hourly rate × hours)
-   - **Overhead Cost** (electricity, rent share per batch)
-   - **Total Cost Price**
-   - **Profit Amount & Margin %**
+    - **Total Ingredient Cost**
+    - **Packaging Cost**
+    - **Labour Cost** (calculated automatically based on total production time and your derived business hourly labour rate)
+    - **Overhead Cost** (calculated automatically based on total production time and your derived business hourly overhead rate)
+    - **Total Cost Price**
+    - **Profit Amount & Margin %**
 
 > 💡 **Tip:** If your margin is below 30%, the app warns you in orange. Below 10%, it shows red.
 
@@ -366,17 +366,18 @@ This gives you complete **accountability** for all business operations.
 ## ⚙️ Module 12 — Settings
 
 ### Labour Settings (Admin only):
-Configure staff costs that flow into the Cost Calculator:
-- Hourly labour rate (₹ per hour)
-- Number of workers per batch
-- Hours per batch
+Configure your monthly staff costs to derive your hourly labor pool rate:
+- **Number of Employees:** Total number of staff members.
+- **Total Monthly Salaries:** Sum of all monthly salaries paid.
+- **Operating Hours & Days:** Hours open per day and days open per month.
+- **Derived Hourly Rate:** Automatically calculated as `Salaries / (Days * Hours)` and used in the Cost Calculator.
+- **Default Time Estimates:** Configure baseline prep, baking, decorating, and packaging times.
 
 ### Overhead Settings (Admin only):
-Configure fixed business costs spread across batches:
-- Electricity cost per month
-- Rent per month
-- Number of batches produced per month
-- The system divides these across batches automatically.
+Configure fixed monthly operating costs to derive your hourly overhead rate:
+- **Monthly Rent, Electricity, Gas, Cleaning & Misc:** Fixed expenses paid monthly.
+- **Derived Hourly Overhead Rate:** Automatically calculated using your operational hours and days as `Total Overheads / (Days * Hours)`.
+- **Bakery Operating Cost Summary:** High-level dashboard displaying your total monthly expense, daily running cost, and hourly running cost.
 
 ---
 
