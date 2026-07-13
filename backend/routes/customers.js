@@ -8,9 +8,44 @@ function emp(req) { return { name: req.headers['x-employee-name']||'Unknown', em
 // GET all customers
 router.get('/', async (req, res) => {
   try {
-    const items = await db.getAll('Customers');
-    res.json(items.filter(c => !c.deleted).map(strip));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    const customers = await db.getAll('Customers');
+    const invoices = await db.getAll('SalesInvoices');
+
+    // Filter active customers
+    const activeCustomers = customers.filter(c => !c.deleted);
+
+    // Re-calculate statistics dynamically to resolve historical data mismatches
+    for (const cust of activeCustomers) {
+      const custInvoices = invoices.filter(inv => inv.customerId === cust.id && !inv.deleted);
+      
+      const actualOrders = custInvoices.length;
+      const actualValue = custInvoices.reduce((sum, inv) => sum + (Number(inv.totalAmount) || 0), 0);
+      
+      let actualLastOrder = '';
+      if (custInvoices.length > 0) {
+        // Sort by timestamp descending
+        const sortedInvoices = [...custInvoices].sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
+        actualLastOrder = sortedInvoices[0].date || '';
+      }
+
+      // Check if values in database are different, and update them if needed to self-heal
+      if (Number(cust.totalOrders) !== actualOrders || Number(cust.totalValue) !== actualValue || cust.lastOrderDate !== actualLastOrder) {
+        cust.totalOrders = actualOrders;
+        cust.totalValue = actualValue;
+        cust.lastOrderDate = actualLastOrder;
+        try {
+          await db.updateRow('Customers', cust._rowIndex, cust);
+        } catch (updateErr) {
+          console.warn(`Self-heal update failed for customer ${cust.name}:`, updateErr.message);
+        }
+      }
+    }
+
+    res.json(activeCustomers.map(strip));
+  } catch (err) {
+    console.error('[customers] GET:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST - add customer
