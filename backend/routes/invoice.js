@@ -2,6 +2,20 @@ const express = require('express');
 const router = express.Router();
 const db = require('../sheets/sheetsClient');
 
+// GET /api/invoice/models - list available Gemini models (debug)
+router.get('/models', async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(400).json({ error: 'GEMINI_API_KEY not set' });
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1/models?pageSize=50&key=${apiKey}`);
+    const data = await r.json();
+    const names = (data.models || []).map(m => m.name);
+    res.json({ count: names.length, models: names });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/invoice/scan - scan supplier invoice with Gemini Vision
 // Uses direct REST API call to v1 endpoint (bypasses npm package version issues)
 router.post('/scan', async (req, res) => {
