@@ -1010,18 +1010,17 @@ function recalculate(){
   document.getElementById('labour-total').textContent=labourTotal.toFixed(2);
   document.getElementById('r-labour').textContent=labourTotal.toFixed(2);
 
-  // Overheads — Operating cost (optional inclusion in cost price)
-  var ohRate = +(document.getElementById('overhead-rate').value) || 0;
-  var includeOverhead = document.getElementById('overhead-include-toggle')?.checked !== false;
-  var overheadTotal = (activeMins / 60) * ohRate;
-  var overheadInCost = includeOverhead ? overheadTotal : 0;
-  document.getElementById('overhead-total').textContent = overheadTotal.toFixed(2);
-  document.getElementById('r-overhead').textContent = overheadTotal.toFixed(2);
+  // Overheads — Removed from cost calculation
+  var ohRate = 0;
+  var includeOverhead = false;
+  var overheadTotal = 0;
+  var overheadInCost = 0;
+  if (document.getElementById('overhead-total')) document.getElementById('overhead-total').textContent = '0.00';
+  if (document.getElementById('r-overhead')) document.getElementById('r-overhead').textContent = '0.00';
   var ohTimeDisplay = document.getElementById('overhead-time-display');
-  if (ohTimeDisplay) ohTimeDisplay.textContent = (activeMins / 60).toFixed(1) + ' hrs';
-  // Dim the overhead row if not included in cost
+  if (ohTimeDisplay) ohTimeDisplay.textContent = '0.0 hrs';
   var ohRow = document.getElementById('overhead-breakdown-row');
-  if (ohRow) ohRow.style.opacity = includeOverhead ? '1' : '0.4';
+  if (ohRow) ohRow.style.display = 'none';
 
   // COGS subtotal (Direct only)
   var cogsTotal = rawTotal + decoTotal + packTotal + labourTotal;
@@ -1476,7 +1475,7 @@ function viewOrderInvoice(orderId){
             <div class="invoice-total-row"><span>Labour</span><span>₹${(order.labour?.totalCost||0).toFixed(2)}</span></div>
           </div>
           <div>
-            <div class="invoice-total-row"><span>Overheads</span><span>₹${(order.overheads?.totalCost||0).toFixed(2)}</span></div>
+            ${(order.overheads?.totalCost||0) > 0 ? `<div class="invoice-total-row"><span>Overheads</span><span>₹${(order.overheads?.totalCost||0).toFixed(2)}</span></div>` : ''}
             <div class="invoice-total-row"><span>Wastage &amp; Buffer</span><span>₹${(order.wastage?.totalCost||0).toFixed(2)}</span></div>
             <div class="invoice-total-row"><span>Miscellaneous</span><span>₹${(order.misc?.cost||0).toFixed(2)}</span></div>
             <div class="invoice-total-row grand"><span>Total Cost Price</span><span>₹${(s.totalCost||0).toFixed(2)}</span></div>
