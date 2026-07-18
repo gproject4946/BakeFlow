@@ -122,6 +122,8 @@
     <div class="nav-item admin-only" onclick="navigate('reports')"><i class="ti ti-chart-bar"></i>Analytics</div>
     <div class="nav-item admin-only" onclick="navigate('salesreports')"><i class="ti ti-trending-up"></i>Sales &amp; Revenue</div>
     <div class="nav-item admin-only" onclick="navigate('auditlog')"><i class="ti ti-shield-check"></i>Audit Log</div>
+    <div class="nav-section">Help</div>
+    <div class="nav-item" onclick="navigate('guide')"><i class="ti ti-help-circle"></i>User Guide</div>
   </nav>
 </aside>
 
@@ -1342,6 +1344,129 @@
         <div class="product-card" onclick="loadTemplate('gift-box')"><span class="emoji">🎁</span><div class="pc-name">Gift / Hamper Box</div><div class="pc-cat">Combo with multiple items</div></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- USER GUIDE & DOCUMENTATION PAGE -->
+<div id="page-guide" class="hidden">
+  <div class="page-header"><div class="page-title">User Guide &amp; Costing Principles</div></div>
+  <div class="content" style="max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
+    
+    <!-- 1. Principles of Costing -->
+    <div class="card">
+      <div class="card-title" style="font-size:18px;color:var(--bo-gold-dark);display:flex;align-items:center;gap:8px;">
+        <i class="ti ti-book" style="font-size:22px;"></i> Core Costing Principles in BakeFlow
+      </div>
+      <p style="font-size:13.5px;color:var(--bo-muted);line-height:1.5;margin-bottom:12px;">
+        BakeFlow uses a **Direct Costing Model** where only the direct, incremental expenses involved in creating a specific product are counted inside the Cost Calculator. This ensures your margins are accurate and scalable.
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+        <div style="background:var(--bo-cream);padding:14px;border-radius:8px;border:1px solid var(--bo-border);">
+          <strong style="color:var(--bo-success);font-size:13.5px;display:block;margin-bottom:6px;">📈 Direct COGS (Billed to Recipes)</strong>
+          <ul style="font-size:12.5px;margin-left:16px;line-height:1.45;color:var(--bo-text);">
+            <li>Raw Materials (Flour, butter, sugar, etc.)</li>
+            <li>Packaging (Boxes, board, carry bag, tags)</li>
+            <li>Decorations (Fondant, toppers, candles)</li>
+            <li>Direct Production Labour (Staff active time)</li>
+          </ul>
+        </div>
+        <div style="background:var(--bo-cream);padding:14px;border-radius:8px;border:1px solid var(--bo-border);">
+          <strong style="color:var(--bo-danger);font-size:13.5px;display:block;margin-bottom:6px;">🏢 Operating Expenses (Deducted from GP)</strong>
+          <ul style="font-size:12.5px;margin-left:16px;line-height:1.45;color:var(--bo-text);">
+            <li>Rent &amp; Society Maintenance</li>
+            <li>Utilities (Electricity, Water, LPG/Gas, Fuel)</li>
+            <li>Business Admin (Licenses, Software, Professional fees)</li>
+            <li>Non-Production Staff (Sales, cashiers, delivery, managers)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Costing Methods Comparison -->
+    <div class="card">
+      <div class="card-title" style="font-size:18px;color:var(--bo-gold-dark);display:flex;align-items:center;gap:8px;">
+        <i class="ti ti-adjustments" style="font-size:22px;"></i> Simple vs. Advanced Labor Costing
+      </div>
+      <p style="font-size:13.5px;color:var(--bo-muted);line-height:1.5;margin-bottom:12px;">
+        Labour costing can be calculated using either the **Simple (Effort-Based)** or the **Advanced (Active Time-Based)** method. You can switch between them using the dropdown inside the Cost Calculator.
+      </p>
+      
+      <table style="width:100%;font-size:12.5px;border-collapse:collapse;margin:12px 0;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--bo-border);text-align:left;background:var(--bo-cream);">
+            <th style="padding:8px;">Feature</th>
+            <th style="padding:8px;color:var(--bo-gold-dark);">Simple (Effort Points) Method</th>
+            <th style="padding:8px;color:var(--bo-gold-dark);">Advanced (Active Time) Method</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--bo-border);">
+            <td style="padding:8px;font-weight:600;">Core Metric</td>
+            <td style="padding:8px;">Complexity multipliers (1.0, 1.5, 2.0, 3.0 pts)</td>
+            <td style="padding:8px;">Active minutes + direct staff count</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--bo-border);">
+            <td style="padding:8px;font-weight:600;">Best Used For</td>
+            <td style="padding:8px;">Quick pricing, standard cupcakes/brownies, catalog cakes.</td>
+            <td style="padding:8px;">Highly complex custom fondant or tiered theme cakes.</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--bo-border);">
+            <td style="padding:8px;font-weight:600;">Math Formula</td>
+            <td style="padding:8px;">$\text{Points} \times \text{Cost/Point} \times \text{Batch Size}$</td>
+            <td style="padding:8px;">$(\text{Active Minutes} / 60) \times \text{Direct Hourly Rate}$</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--bo-border);">
+            <td style="padding:8px;font-weight:600;">Why Use It?</td>
+            <td style="padding:8px;">Saves time by grouping recipes into difficulty levels.</td>
+            <td style="padding:8px;">Captures precise human hours for labor-intensive details.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3. Use Case Flows -->
+    <div class="card">
+      <div class="card-title" style="font-size:18px;color:var(--bo-gold-dark);display:flex;align-items:center;gap:8px;">
+        <i class="ti ti-git-branch" style="font-size:22px;"></i> Step-by-Step Use Cases
+      </div>
+      
+      <div style="display:flex;flex-direction:column;gap:16px;margin-top:12px;">
+        <!-- Flow A -->
+        <div style="border-left:3px solid var(--bo-gold);padding-left:14px;">
+          <strong style="color:var(--bo-brown);font-size:14.0px;display:block;">Case A: Standard Cookie Box (Simple Method)</strong>
+          <p style="font-size:12.5px;color:var(--bo-muted);margin-top:4px;line-height:1.45;">
+            1. Open **Cost Calculator**. Add raw materials (chocolate, flour, butter) and packaging box.<br>
+            2. Choose **Simple Method** in the labor section.<br>
+            3. Rate the difficulty (e.g. standard batch = `1.0 Effort Point`). Labor cost is auto-calculated using the team's capacity.<br>
+            4. Adjust margin slider to 60%, save to Catalog as a standard product.
+          </p>
+        </div>
+        
+        <!-- Flow B -->
+        <div style="border-left:3px solid var(--bo-info);padding-left:14px;">
+          <strong style="color:var(--bo-brown);font-size:14.0px;display:block;">Case B: 3-Tier Custom Wedding Cake (Advanced Method)</strong>
+          <p style="font-size:12.5px;color:var(--bo-muted);margin-top:4px;line-height:1.45;">
+            1. Open **Cost Calculator**, add rich ingredients, packaging, and specific toppers/decorations.<br>
+            2. Select **Advanced Method** in labor costing.<br>
+            3. Set Batch Active Time (e.g., 90 mins for baking/assembly with 2 staff members) and Unit Active Time (e.g., 180 mins decoration for icing detail with 1 decorator).<br>
+            4. The system calculates the total direct labor hours, computes labor cost using the team's salary-derived hourly rate, and adds it to the COGS subtotal.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Essential Quick Start Tips -->
+    <div class="card">
+      <div class="card-title" style="font-size:18px;color:var(--bo-gold-dark);display:flex;align-items:center;gap:8px;">
+        <i class="ti ti-bulb" style="font-size:22px;"></i> Essential BakeFlow Tips
+      </div>
+      <ul style="font-size:13px;color:var(--bo-text);margin-left:20px;line-height:1.6;display:flex;flex-direction:column;gap:8px;">
+        <li><strong>Wastage Buffer:</strong> Always set a 3-5% wastage/buffer percentage in the calculator for raw material spillages and scrap loss.</li>
+        <li><strong>Inventory Depletion:</strong> When you record a Sales Invoice, the system will search for a recipe matching the product name and automatically deduct the ingredients and packaging from your inventory.</li>
+        <li><strong>Double-counting:</strong> Do not count occupancy (rent) or cleaning supplies as ingredients or custom overheads in the calculator; they are already handled globally as monthly operating expenses.</li>
+      </ul>
+    </div>
+
   </div>
 </div>
 
