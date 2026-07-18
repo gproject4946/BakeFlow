@@ -29,15 +29,32 @@ var _scanItems = [];
 
 // ── Default fallbacks (used if server returns nothing) ────────
 var DEFAULT_LABOUR = {
-  empCount: 10,
-  monthlySalaries: 150000,
-  hoursPerDay: 8,
-  daysPerMonth: 26,
-  times: { prep: 30, bake: 45, decoSimple: 30, decoComplex: 120, pack: 15 }
+  roles: [
+    { role: 'Baker', staffCount: 2, monthlySalary: 30000 },
+    { role: 'Cake Decorator', staffCount: 1, monthlySalary: 35000 },
+    { role: 'Production Helper', staffCount: 2, monthlySalary: 18000 }
+  ],
+  workingDays: 26,
+  workingHours: 8,
+  productiveTimePct: 75,
+  dailyEffortPoints: 10
 };
 var DEFAULT_OVERHEAD = {
-  fixed: { rent: 15000, elec: 3000, gas: 1500, clean: 1500 }
+  roles: [
+    { role: 'Cashier & Sales', staffCount: 1, monthlySalary: 18000 },
+    { role: 'Delivery Partner', staffCount: 1, monthlySalary: 15000 }
+  ],
+  occupancy: { rent: 15000, society: 1000, other: 0 },
+  utilities: { electricity: 3000, gas: 1500, water: 500, fuel: 500, other: 0 },
+  admin: { internetPhone: 800, software: 1200, professional: 1000, insurance: 500, other: 0 },
+  marketing: { promo: 1500, commission: 2000, other: 0 },
+  delivery: { fuel: 1000, thirdParty: 1500, other: 0 },
+  maintenance: { repairs: 1000, cleaning: 1000, misc: 500 }
 };
+
+var labourSettings = null;
+var overheadSettings = null;
+
 
 // ── Loading overlay ──────────────────────────────────────────
 function showLoading(msg) {
@@ -69,37 +86,52 @@ async function initApp() {
     catalogProducts   = prods;
     savedOrders       = orders;
 
-    var labourSettings   = settings.labour   || DEFAULT_LABOUR;
-    var overheadSettings = settings.overhead || DEFAULT_OVERHEAD;
+    labourSettings   = settings.labour   || DEFAULT_LABOUR;
+    overheadSettings = settings.overhead || DEFAULT_OVERHEAD;
 
-    // Populate labour inputs
-    document.getElementById('labour-emp-count').value       = labourSettings.empCount !== undefined ? labourSettings.empCount : 10;
-    document.getElementById('labour-monthly-salaries').value = labourSettings.monthlySalaries !== undefined ? labourSettings.monthlySalaries : 150000;
-    document.getElementById('labour-hours-per-day').value   = labourSettings.hoursPerDay !== undefined ? labourSettings.hoursPerDay : 8;
-    document.getElementById('labour-days-per-month').value  = labourSettings.daysPerMonth !== undefined ? labourSettings.daysPerMonth : 26;
+    // Automatic migration for old schema settings
+    if (!labourSettings.roles) {
+      labourSettings = {
+        roles: [
+          { role: 'Production Staff', staffCount: labourSettings.empCount || 10, monthlySalary: (labourSettings.monthlySalaries || 150000) / (labourSettings.empCount || 10) }
+        ],
+        workingDays: labourSettings.daysPerMonth || 26,
+        workingHours: labourSettings.hoursPerDay || 8,
+        productiveTimePct: 75,
+        dailyEffortPoints: 10
+      };
+    }
+    if (!overheadSettings.roles) {
+      const oldFixed = overheadSettings.fixed || {};
+      overheadSettings = {
+        roles: [
+          { role: 'Non-Production Staff', staffCount: 1, monthlySalary: 18000 }
+        ],
+        occupancy: { rent: oldFixed.rent !== undefined ? oldFixed.rent : 15000, society: 0, other: 0 },
+        utilities: { electricity: oldFixed.elec !== undefined ? oldFixed.elec : 3000, gas: oldFixed.gas !== undefined ? oldFixed.gas : 1500, water: 0, fuel: 0, other: 0 },
+        admin: { internetPhone: 0, software: 0, professional: 0, insurance: 0, other: oldFixed.clean !== undefined ? oldFixed.clean : 1500 },
+        marketing: { promo: 0, commission: 0, other: 0 },
+        delivery: { fuel: 0, thirdParty: 0, other: 0 },
+        maintenance: { repairs: 0, cleaning: 0, misc: 0 }
+      };
+    }
 
-    // Populate default times
-    const times = labourSettings.times || DEFAULT_LABOUR.times;
-    document.getElementById('def-time-prep').value      = times.prep !== undefined ? times.prep : 30;
-    document.getElementById('def-time-bake').value      = times.bake !== undefined ? times.bake : 45;
-    document.getElementById('def-time-deco').value      = times.decoSimple !== undefined ? times.decoSimple : 30;
-    document.getElementById('def-time-deco-comp').value = times.decoComplex !== undefined ? times.decoComplex : 120;
-    document.getElementById('def-time-pack').value      = times.pack !== undefined ? times.pack : 15;
+    // Populate Labour Settings UI inputs (except roles table which is rendered dynamically)
+    document.getElementById('labour-days-per-month').value = labourSettings.workingDays || 26;
+    document.getElementById('labour-hours-per-day').value  = labourSettings.workingHours || 8;
+    document.getElementById('labour-productive-pct').value = labourSettings.productiveTimePct || 75;
+    document.getElementById('labour-effort-points').value  = labourSettings.dailyEffortPoints || 10;
 
-    // Populate overhead inputs
-    document.getElementById('monthly-rent').value  = overheadSettings.fixed && overheadSettings.fixed.rent !== undefined ? overheadSettings.fixed.rent : 15000;
-    document.getElementById('monthly-elec').value  = overheadSettings.fixed && overheadSettings.fixed.elec !== undefined ? overheadSettings.fixed.elec : 3000;
-    document.getElementById('monthly-gas').value   = overheadSettings.fixed && overheadSettings.fixed.gas !== undefined ? overheadSettings.fixed.gas : 1500;
-    document.getElementById('monthly-clean').value = overheadSettings.fixed && overheadSettings.fixed.clean !== undefined ? overheadSettings.fixed.clean : 1500;
+    // Populate Overheads Settings UI inputs (rendered via separate helper)
+    renderLabourRoles();
+    renderOverheadSettingsUI();
 
     // Wire save buttons
-    var ohSaveBtn = document.querySelector('#page-overheads button');
+    var ohSaveBtn = document.querySelector('#page-overheads button[onclick^="saveOverheadSettings"]');
     if (ohSaveBtn) ohSaveBtn.onclick = saveOverheadSettingsFromUI;
 
-    var labSave1 = document.querySelector('#page-labour .card:first-child button');
-    var labSave2 = document.querySelector('#page-labour .card:last-child button');
-    if (labSave1) labSave1.onclick = saveLabourSettingsFromUI;
-    if (labSave2) labSave2.onclick = saveLabourSettingsFromUI;
+    var labSaveBtn = document.querySelector('#page-labour button[onclick^="saveLabourSettings"]');
+    if (labSaveBtn) labSaveBtn.onclick = saveLabourSettingsFromUI;
 
     // Update derived rates
     deriveSettingsRates();
@@ -132,79 +164,309 @@ async function initApp() {
 
 // ── Settings ──────────────────────────────────────────────────
 async function saveLabourSettingsFromUI() {
-  const settings = {
-    empCount:        parseInt(document.getElementById('labour-emp-count').value) || 10,
-    monthlySalaries: parseFloat(document.getElementById('labour-monthly-salaries').value) || 0,
-    hoursPerDay:     parseFloat(document.getElementById('labour-hours-per-day').value) || 8,
-    daysPerMonth:    parseFloat(document.getElementById('labour-days-per-month').value) || 26,
-    times: {
-      prep:        parseInt(document.getElementById('def-time-prep').value) || 30,
-      bake:        parseInt(document.getElementById('def-time-bake').value) || 45,
-      decoSimple:  parseInt(document.getElementById('def-time-deco').value) || 30,
-      decoComplex: parseInt(document.getElementById('def-time-deco-comp').value) || 120,
-      pack:        parseInt(document.getElementById('def-time-pack').value) || 15,
-    }
-  };
-  await API.saveSettings('labour', settings);
-  deriveSettingsRates();
-  recalculate();
-  showToast('Labour settings saved!');
+  if (!labourSettings) return;
+  labourSettings.workingDays = parseFloat(document.getElementById('labour-days-per-month').value) || 26;
+  labourSettings.workingHours = parseFloat(document.getElementById('labour-hours-per-day').value) || 8;
+  labourSettings.productiveTimePct = parseFloat(document.getElementById('labour-productive-pct').value) || 75;
+  labourSettings.dailyEffortPoints = parseFloat(document.getElementById('labour-effort-points').value) || 10;
+  
+  try {
+    await API.saveSettings('labour', labourSettings);
+    deriveSettingsRates();
+    recalculate();
+    showToast('Labour settings saved successfully!');
+  } catch (err) {
+    showToast('Failed to save labour settings', true);
+  }
 }
 
 async function saveOverheadSettingsFromUI() {
-  const settings = {
-    fixed: {
-      rent:  parseFloat(document.getElementById('monthly-rent').value) || 0,
-      elec:  parseFloat(document.getElementById('monthly-elec').value) || 0,
-      gas:   parseFloat(document.getElementById('monthly-gas').value) || 0,
-      clean: parseFloat(document.getElementById('monthly-clean').value) || 0,
-    }
+  if (!overheadSettings) return;
+  
+  // Read values from form fields
+  const getVal = (id) => parseFloat(document.getElementById(id)?.value) || 0;
+  
+  overheadSettings.occupancy = {
+    rent: getVal('monthly-rent'),
+    society: getVal('monthly-society'),
+    other: getVal('monthly-occupancy-other')
   };
-  await API.saveSettings('overhead', settings);
+  overheadSettings.utilities = {
+    electricity: getVal('monthly-electricity'),
+    gas: getVal('monthly-gas'),
+    water: getVal('monthly-water'),
+    fuel: getVal('monthly-fuel'),
+    other: getVal('monthly-utilities-other')
+  };
+  overheadSettings.admin = {
+    internetPhone: getVal('monthly-internet-phone'),
+    software: getVal('monthly-software'),
+    professional: getVal('monthly-professional'),
+    insurance: getVal('monthly-insurance'),
+    other: getVal('monthly-admin-other')
+  };
+  overheadSettings.marketing = {
+    promo: getVal('monthly-promo'),
+    commission: getVal('monthly-commission'),
+    other: getVal('monthly-marketing-other')
+  };
+  overheadSettings.delivery = {
+    fuel: getVal('monthly-transport-fuel'),
+    thirdParty: getVal('monthly-delivery-thirdparty'),
+    other: getVal('monthly-delivery-other')
+  };
+  overheadSettings.maintenance = {
+    repairs: getVal('monthly-repairs'),
+    cleaning: getVal('monthly-cleaning'),
+    misc: getVal('monthly-maintenance-misc')
+  };
+  
+  try {
+    await API.saveSettings('overhead', overheadSettings);
+    deriveSettingsRates();
+    recalculate();
+    showToast('Operating Expense settings saved successfully!');
+  } catch (err) {
+    showToast('Failed to save operating expense settings', true);
+  }
+}
+
+function renderLabourRoles() {
+  const container = document.getElementById('labour-roles-list');
+  if (!container || !labourSettings || !labourSettings.roles) return;
+  
+  container.innerHTML = labourSettings.roles.map((r, idx) => `
+    <tr style="border-bottom:1px solid rgba(232,213,190,0.15);">
+      <td style="padding:8px 0;"><input type="text" value="${r.role}" placeholder="e.g. Baker" oninput="updateLabourRole(${idx}, 'role', this.value)" style="width:100%;padding:4px 8px;font-size:12.5px;"></td>
+      <td style="padding:8px 0;"><input type="number" value="${r.staffCount}" min="0.1" step="0.1" oninput="updateLabourRole(${idx}, 'staffCount', this.value)" style="width:75px;padding:4px 8px;font-size:12.5px;"></td>
+      <td style="padding:8px 0;"><input type="number" value="${r.monthlySalary}" min="0" step="100" oninput="updateLabourRole(${idx}, 'monthlySalary', this.value)" style="width:130px;padding:4px 8px;font-size:12.5px;"></td>
+      <td style="padding:8px 0;text-align:center;"><button class="btn btn-sm btn-danger" onclick="deleteLabourRole(${idx})" style="padding:3px 6px;"><i class="ti ti-trash"></i></button></td>
+    </tr>
+  `).join('');
+}
+
+function updateLabourRole(idx, field, value) {
+  if (!labourSettings || !labourSettings.roles[idx]) return;
+  if (field === 'role') {
+    labourSettings.roles[idx].role = value;
+  } else if (field === 'staffCount') {
+    labourSettings.roles[idx].staffCount = parseFloat(value) || 0;
+  } else if (field === 'monthlySalary') {
+    labourSettings.roles[idx].monthlySalary = parseFloat(value) || 0;
+  }
   deriveSettingsRates();
-  recalculate();
-  showToast('Overhead settings saved!');
+}
+
+function addLabourRole() {
+  if (!labourSettings) labourSettings = JSON.parse(JSON.stringify(DEFAULT_LABOUR));
+  if (!labourSettings.roles) labourSettings.roles = [];
+  labourSettings.roles.push({ role: '', staffCount: 1, monthlySalary: 15000 });
+  renderLabourRoles();
+  deriveSettingsRates();
+}
+
+function deleteLabourRole(idx) {
+  if (!labourSettings || !labourSettings.roles) return;
+  labourSettings.roles.splice(idx, 1);
+  renderLabourRoles();
+  deriveSettingsRates();
+}
+
+function renderOverheadSettingsUI() {
+  const listEl = document.getElementById('overhead-roles-list');
+  if (listEl && overheadSettings && overheadSettings.roles) {
+    listEl.innerHTML = overheadSettings.roles.map((r, idx) => `
+      <tr style="border-bottom:1px solid rgba(232,213,190,0.15);">
+        <td style="padding:8px 0;"><input type="text" value="${r.role}" placeholder="e.g. Cashier" oninput="updateOverheadRole(${idx}, 'role', this.value)" style="width:100%;padding:4px 8px;font-size:12.5px;"></td>
+        <td style="padding:8px 0;"><input type="number" value="${r.staffCount}" min="0.1" step="0.1" oninput="updateOverheadRole(${idx}, 'staffCount', this.value)" style="width:75px;padding:4px 8px;font-size:12.5px;"></td>
+        <td style="padding:8px 0;"><input type="number" value="${r.monthlySalary}" min="0" step="100" oninput="updateOverheadRole(${idx}, 'monthlySalary', this.value)" style="width:130px;padding:4px 8px;font-size:12.5px;"></td>
+        <td style="padding:8px 0;text-align:center;"><button class="btn btn-sm btn-danger" onclick="deleteOverheadRole(${idx})" style="padding:3px 6px;"><i class="ti ti-trash"></i></button></td>
+      </tr>
+    `).join('');
+  }
+  
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || 0; };
+  if (overheadSettings) {
+    const occ = overheadSettings.occupancy || {};
+    setVal('monthly-rent', occ.rent);
+    setVal('monthly-society', occ.society);
+    setVal('monthly-occupancy-other', occ.other);
+    
+    const ut = overheadSettings.utilities || {};
+    setVal('monthly-electricity', ut.electricity);
+    setVal('monthly-gas', ut.gas);
+    setVal('monthly-water', ut.water);
+    setVal('monthly-fuel', ut.fuel);
+    setVal('monthly-utilities-other', ut.other);
+    
+    const ad = overheadSettings.admin || {};
+    setVal('monthly-internet-phone', ad.internetPhone);
+    setVal('monthly-software', ad.software);
+    setVal('monthly-professional', ad.professional);
+    setVal('monthly-insurance', ad.insurance);
+    setVal('monthly-admin-other', ad.other);
+    
+    const mk = overheadSettings.marketing || {};
+    setVal('monthly-promo', mk.promo);
+    setVal('monthly-commission', mk.commission);
+    setVal('monthly-marketing-other', mk.other);
+    
+    const dl = overheadSettings.delivery || {};
+    setVal('monthly-transport-fuel', dl.fuel);
+    setVal('monthly-delivery-thirdparty', dl.thirdParty);
+    setVal('monthly-delivery-other', dl.other);
+    
+    const mt = overheadSettings.maintenance || {};
+    setVal('monthly-repairs', mt.repairs);
+    setVal('monthly-cleaning', mt.cleaning);
+    setVal('monthly-maintenance-misc', mt.misc);
+  }
+}
+
+function updateOverheadRole(idx, field, value) {
+  if (!overheadSettings || !overheadSettings.roles[idx]) return;
+  if (field === 'role') {
+    overheadSettings.roles[idx].role = value;
+  } else if (field === 'staffCount') {
+    overheadSettings.roles[idx].staffCount = parseFloat(value) || 0;
+  } else if (field === 'monthlySalary') {
+    overheadSettings.roles[idx].monthlySalary = parseFloat(value) || 0;
+  }
+  deriveSettingsRates();
+}
+
+function addOverheadRole() {
+  if (!overheadSettings) overheadSettings = JSON.parse(JSON.stringify(DEFAULT_OVERHEAD));
+  if (!overheadSettings.roles) overheadSettings.roles = [];
+  overheadSettings.roles.push({ role: '', staffCount: 1, monthlySalary: 15000 });
+  renderOverheadSettingsUI();
+  deriveSettingsRates();
+}
+
+function deleteOverheadRole(idx) {
+  if (!overheadSettings || !overheadSettings.roles) return;
+  overheadSettings.roles.splice(idx, 1);
+  renderOverheadSettingsUI();
+  deriveSettingsRates();
 }
 
 function deriveSettingsRates() {
-  const empCount = parseInt(document.getElementById('labour-emp-count').value) || 10;
-  const salaries = parseFloat(document.getElementById('labour-monthly-salaries').value) || 0;
-  const hours = parseFloat(document.getElementById('labour-hours-per-day').value) || 8;
-  const days = parseFloat(document.getElementById('labour-days-per-month').value) || 26;
-
-  const rent = parseFloat(document.getElementById('monthly-rent').value) || 0;
-  const elec = parseFloat(document.getElementById('monthly-elec').value) || 0;
-  const gas = parseFloat(document.getElementById('monthly-gas').value) || 0;
-  const clean = parseFloat(document.getElementById('monthly-clean').value) || 0;
-
-  const totalHours = days * hours;
-  const labourRate = totalHours > 0 ? (salaries / totalHours) : 0;
-  const totalOverhead = rent + elec + gas + clean;
-  const overheadRate = totalHours > 0 ? (totalOverhead / totalHours) : 0;
-
-  const dLabour = document.getElementById('derived-labour-rate-display');
-  const dOverhead = document.getElementById('derived-overhead-rate-display');
-  if (dLabour) dLabour.textContent = Math.round(labourRate);
-  if (dOverhead) dOverhead.textContent = Math.round(overheadRate);
-
-  const sLabour = document.getElementById('summary-monthly-labour');
-  const sOverheads = document.getElementById('summary-monthly-overheads');
-  const sTotal = document.getElementById('summary-monthly-total');
-  const sDaily = document.getElementById('summary-daily-cost');
-  const sHourly = document.getElementById('summary-hourly-cost');
-
-  if (sLabour) sLabour.textContent = salaries.toLocaleString('en-IN');
-  if (sOverheads) sOverheads.textContent = totalOverhead.toLocaleString('en-IN');
+  if (!labourSettings) return;
   
-  const totalMonthlyCost = salaries + totalOverhead;
-  if (sTotal) sTotal.textContent = totalMonthlyCost.toLocaleString('en-IN');
-  if (sDaily) sDaily.textContent = days > 0 ? Math.round(totalMonthlyCost / days).toLocaleString('en-IN') : '0';
-  if (sHourly) sHourly.textContent = totalHours > 0 ? Math.round(totalMonthlyCost / totalHours).toLocaleString('en-IN') : '0';
-
+  const workingDays = parseFloat(document.getElementById('labour-days-per-month')?.value) || labourSettings.workingDays || 26;
+  const workingHours = parseFloat(document.getElementById('labour-hours-per-day')?.value) || labourSettings.workingHours || 8;
+  const productiveTimePct = parseFloat(document.getElementById('labour-productive-pct')?.value) || labourSettings.productiveTimePct || 75;
+  const dailyEffortPoints = parseFloat(document.getElementById('labour-effort-points')?.value) || labourSettings.dailyEffortPoints || 10;
+  
+  let totalMonthlyLabourCost = 0;
+  let totalProductionStaff = 0;
+  
+  if (labourSettings.roles) {
+    labourSettings.roles.forEach(r => {
+      totalMonthlyLabourCost += (r.staffCount || 0) * (r.monthlySalary || 0);
+      totalProductionStaff += (r.staffCount || 0);
+    });
+  }
+  
+  const scheduledHours = totalProductionStaff * workingDays * workingHours;
+  const effectiveHours = scheduledHours * (productiveTimePct / 100);
+  const derivedLabourRate = effectiveHours > 0 ? (totalMonthlyLabourCost / effectiveHours) : 0;
+  
+  const dailyDirectLabourPool = workingDays > 0 ? (totalMonthlyLabourCost / workingDays) : 0;
+  const derivedEffortRate = dailyEffortPoints > 0 ? (dailyDirectLabourPool / dailyEffortPoints) : 0;
+  
+  const totalMonthlyCostEl = document.getElementById('labour-total-monthly-cost');
+  if (totalMonthlyCostEl) totalMonthlyCostEl.textContent = '₹' + Math.round(totalMonthlyLabourCost).toLocaleString('en-IN');
+  
+  const totalStaffEl = document.getElementById('labour-total-staff');
+  if (totalStaffEl) totalStaffEl.textContent = totalProductionStaff.toFixed(1);
+  
+  const dLabour = document.getElementById('derived-labour-rate-display');
+  if (dLabour) dLabour.textContent = Math.round(derivedLabourRate);
+  
+  const dEffort = document.getElementById('derived-effort-rate-display');
+  if (dEffort) dEffort.textContent = Math.round(derivedEffortRate);
+  
   const calcLabourRate = document.getElementById('labour-rate');
-  const calcOverheadRate = document.getElementById('overhead-rate');
-  if (calcLabourRate) calcLabourRate.value = labourRate.toFixed(2);
-  if (calcOverheadRate) calcOverheadRate.value = overheadRate.toFixed(2);
+  if (calcLabourRate) calcLabourRate.value = derivedLabourRate.toFixed(2);
+  
+  const sLabour = document.getElementById('summary-monthly-labour');
+  if (sLabour) sLabour.textContent = Math.round(totalMonthlyLabourCost).toLocaleString('en-IN');
+  
+  deriveOperatingExpensesRates(totalMonthlyLabourCost);
+}
+
+function deriveOperatingExpensesRates(totalMonthlyLabourCost = 0) {
+  if (!overheadSettings) return;
+  
+  let nonProdStaffCost = 0;
+  let totalNonProdStaff = 0;
+  
+  if (overheadSettings.roles) {
+    overheadSettings.roles.forEach(r => {
+      nonProdStaffCost += (r.staffCount || 0) * (r.monthlySalary || 0);
+      totalNonProdStaff += (r.staffCount || 0);
+    });
+  }
+  
+  const rent = parseFloat(document.getElementById('monthly-rent')?.value) || overheadSettings.occupancy?.rent || 0;
+  const society = parseFloat(document.getElementById('monthly-society')?.value) || overheadSettings.occupancy?.society || 0;
+  const otherOccupancy = parseFloat(document.getElementById('monthly-occupancy-other')?.value) || overheadSettings.occupancy?.other || 0;
+  const totalOccupancy = rent + society + otherOccupancy;
+  
+  const electricity = parseFloat(document.getElementById('monthly-electricity')?.value) || overheadSettings.utilities?.electricity || 0;
+  const gas = parseFloat(document.getElementById('monthly-gas')?.value) || overheadSettings.utilities?.gas || 0;
+  const water = parseFloat(document.getElementById('monthly-water')?.value) || overheadSettings.utilities?.water || 0;
+  const fuel = parseFloat(document.getElementById('monthly-fuel')?.value) || overheadSettings.utilities?.fuel || 0;
+  const otherUtilities = parseFloat(document.getElementById('monthly-utilities-other')?.value) || overheadSettings.utilities?.other || 0;
+  const totalUtilities = electricity + gas + water + fuel + otherUtilities;
+  
+  const internetPhone = parseFloat(document.getElementById('monthly-internet-phone')?.value) || overheadSettings.admin?.internetPhone || 0;
+  const software = parseFloat(document.getElementById('monthly-software')?.value) || overheadSettings.admin?.software || 0;
+  const professional = parseFloat(document.getElementById('monthly-professional')?.value) || overheadSettings.admin?.professional || 0;
+  const insurance = parseFloat(document.getElementById('monthly-insurance')?.value) || overheadSettings.admin?.insurance || 0;
+  const otherAdmin = parseFloat(document.getElementById('monthly-admin-other')?.value) || overheadSettings.admin?.other || 0;
+  const totalAdmin = internetPhone + software + professional + insurance + otherAdmin;
+  
+  const promo = parseFloat(document.getElementById('monthly-promo')?.value) || overheadSettings.marketing?.promo || 0;
+  const commission = parseFloat(document.getElementById('monthly-commission')?.value) || overheadSettings.marketing?.commission || 0;
+  const otherMarketing = parseFloat(document.getElementById('monthly-marketing-other')?.value) || overheadSettings.marketing?.other || 0;
+  const totalMarketing = promo + commission + otherMarketing;
+  
+  const transportFuel = parseFloat(document.getElementById('monthly-transport-fuel')?.value) || overheadSettings.delivery?.fuel || 0;
+  const thirdPartyDelivery = parseFloat(document.getElementById('monthly-delivery-thirdparty')?.value) || overheadSettings.delivery?.thirdParty || 0;
+  const otherDelivery = parseFloat(document.getElementById('monthly-delivery-other')?.value) || overheadSettings.delivery?.other || 0;
+  const totalDelivery = transportFuel + thirdPartyDelivery + otherDelivery;
+  
+  const repairs = parseFloat(document.getElementById('monthly-repairs')?.value) || overheadSettings.maintenance?.repairs || 0;
+  const cleaning = parseFloat(document.getElementById('monthly-cleaning')?.value) || overheadSettings.maintenance?.cleaning || 0;
+  const miscMaintenance = parseFloat(document.getElementById('monthly-maintenance-misc')?.value) || overheadSettings.maintenance?.misc || 0;
+  const totalMaintenance = repairs + cleaning + miscMaintenance;
+  
+  const totalMonthlyOverhead = nonProdStaffCost + totalOccupancy + totalUtilities + totalAdmin + totalMarketing + totalDelivery + totalMaintenance;
+  
+  const sNonProd = document.getElementById('summary-monthly-nonprod');
+  if (sNonProd) sNonProd.textContent = Math.round(nonProdStaffCost).toLocaleString('en-IN');
+  
+  const sOverheads = document.getElementById('summary-monthly-overheads');
+  if (sOverheads) sOverheads.textContent = Math.round(totalOccupancy + totalUtilities + totalAdmin + totalMarketing + totalDelivery + totalMaintenance).toLocaleString('en-IN');
+  
+  const sTotal = document.getElementById('summary-monthly-total');
+  if (sTotal) sTotal.textContent = Math.round(totalMonthlyLabourCost + totalMonthlyOverhead).toLocaleString('en-IN');
+  
+  const workingDays = parseFloat(document.getElementById('labour-days-per-month')?.value) || (labourSettings && labourSettings.workingDays) || 26;
+  
+  const sDaily = document.getElementById('summary-daily-cost');
+  if (sDaily) sDaily.textContent = workingDays > 0 ? Math.round(totalMonthlyOverhead / workingDays).toLocaleString('en-IN') : '0';
+  
+  const workingHours = parseFloat(document.getElementById('labour-hours-per-day')?.value) || (labourSettings && labourSettings.workingHours) || 8;
+  const totalHours = workingDays * workingHours;
+  
+  const sHourly = document.getElementById('summary-hourly-cost');
+  if (sHourly) sHourly.textContent = totalHours > 0 ? Math.round(totalMonthlyOverhead / totalHours).toLocaleString('en-IN') : '0';
+  
+  const dOverhead = document.getElementById('derived-overhead-rate-display');
+  if (dOverhead) dOverhead.textContent = Math.round(totalMonthlyOverhead).toLocaleString('en-IN');
 }
 
 // ── Navigation ────────────────────────────────────────────────
@@ -433,10 +695,165 @@ function viewPackagingHistory(idx) {
 }
 
 // ── Reports ───────────────────────────────────────────────────
+// ── Date range selection helpers ──────────────────────────────
+function getPeriodDateRange(preset, startId, endId) {
+  let start = null;
+  let end = new Date();
+  end.setHours(23, 59, 59, 999);
+  
+  if (preset === 'today') {
+    start = new Date();
+    start.setHours(0, 0, 0, 0);
+  } else if (preset === '7days') {
+    start = new Date();
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+  } else if (preset === '30days') {
+    start = new Date();
+    start.setDate(start.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+  } else if (preset === 'this-month') {
+    start = new Date(end.getFullYear(), end.getMonth(), 1);
+  } else if (preset === 'last-month') {
+    start = new Date(end.getFullYear(), end.getMonth() - 1, 1);
+    end = new Date(end.getFullYear(), end.getMonth(), 0, 23, 59, 59, 999);
+  } else if (preset === 'this-quarter') {
+    const qStartMonth = Math.floor(end.getMonth() / 3) * 3;
+    start = new Date(end.getFullYear(), qStartMonth, 1);
+  } else if (preset === 'this-year') {
+    start = new Date(end.getFullYear(), 0, 1);
+  } else if (preset === 'custom') {
+    const sVal = document.getElementById(startId)?.value;
+    const eVal = document.getElementById(endId)?.value;
+    if (sVal) start = new Date(sVal);
+    if (eVal) {
+      end = new Date(eVal);
+      end.setHours(23, 59, 59, 999);
+    }
+  }
+  return { start, end };
+}
+
+function getPriorPeriodDateRange(start, end) {
+  const diffTime = Math.abs(end.getTime() - start.getTime());
+  const priorEnd = new Date(start.getTime() - 1);
+  const priorStart = new Date(priorEnd.getTime() - diffTime);
+  return { start: priorStart, end: priorEnd };
+}
+
+function formatDateDisplay(start, end) {
+  const opt = { day: 'numeric', month: 'short', year: 'numeric' };
+  return start.toLocaleDateString('en-IN', opt) + ' - ' + end.toLocaleDateString('en-IN', opt);
+}
+
+function getOperatingExpensesForPeriod(start, end) {
+  if (!overheadSettings) return 0;
+  
+  let nonProdStaffCost = 0;
+  if (overheadSettings.roles) {
+    overheadSettings.roles.forEach(r => {
+      nonProdStaffCost += (r.staffCount || 0) * (r.monthlySalary || 0);
+    });
+  }
+  const rent = Number(overheadSettings.occupancy?.rent) || 0;
+  const society = Number(overheadSettings.occupancy?.society) || 0;
+  const otherOccupancy = Number(overheadSettings.occupancy?.other) || 0;
+  const totalOccupancy = rent + society + otherOccupancy;
+  
+  const electricity = Number(overheadSettings.utilities?.electricity) || 0;
+  const gas = Number(overheadSettings.utilities?.gas) || 0;
+  const water = Number(overheadSettings.utilities?.water) || 0;
+  const fuel = Number(overheadSettings.utilities?.fuel) || 0;
+  const otherUtilities = Number(overheadSettings.utilities?.other) || 0;
+  const totalUtilities = electricity + gas + water + fuel + otherUtilities;
+  
+  const internetPhone = Number(overheadSettings.admin?.internetPhone) || 0;
+  const software = Number(overheadSettings.admin?.software) || 0;
+  const professional = Number(overheadSettings.admin?.professional) || 0;
+  const insurance = Number(overheadSettings.admin?.insurance) || 0;
+  const otherAdmin = Number(overheadSettings.admin?.other) || 0;
+  const totalAdmin = internetPhone + software + professional + insurance + otherAdmin;
+  
+  const promo = Number(overheadSettings.marketing?.promo) || 0;
+  const commission = Number(overheadSettings.marketing?.commission) || 0;
+  const otherMarketing = Number(overheadSettings.marketing?.other) || 0;
+  const totalMarketing = promo + commission + otherMarketing;
+  
+  const transportFuel = Number(overheadSettings.delivery?.fuel) || 0;
+  const thirdPartyDelivery = Number(overheadSettings.delivery?.thirdParty) || 0;
+  const otherDelivery = Number(overheadSettings.delivery?.other) || 0;
+  const totalDelivery = transportFuel + thirdPartyDelivery + otherDelivery;
+  
+  const repairs = Number(overheadSettings.maintenance?.repairs) || 0;
+  const cleaning = Number(overheadSettings.maintenance?.cleaning) || 0;
+  const miscMaintenance = Number(overheadSettings.maintenance?.misc) || 0;
+  const totalMaintenance = repairs + cleaning + miscMaintenance;
+  
+  const totalMonthlyOverhead = nonProdStaffCost + totalOccupancy + totalUtilities + totalAdmin + totalMarketing + totalDelivery + totalMaintenance;
+  
+  let totalCost = 0;
+  let current = new Date(start.getTime());
+  while (current <= end) {
+    const year = current.getFullYear();
+    const month = current.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    totalCost += totalMonthlyOverhead / daysInMonth;
+    current.setDate(current.getDate() + 1);
+  }
+  return totalCost;
+}
+
+function formatChangeBadge(valCurrent, valPrior) {
+  if (valPrior === 0) {
+    if (valCurrent === 0) return { text: '—', cls: '' };
+    return { text: 'New', cls: 'badge-green' };
+  }
+  const pct = ((valCurrent - valPrior) / Math.abs(valPrior)) * 100;
+  const sign = pct >= 0 ? '+' : '';
+  const fmt = pct.toFixed(1) + '%';
+  return {
+    text: sign + fmt,
+    cls: pct >= 0 ? 'badge-green' : 'badge-rose'
+  };
+}
+
+function onReportsDatePresetChange() {
+  const val = document.getElementById('reports-date-preset').value;
+  const custom = document.getElementById('reports-custom-dates');
+  if (val === 'custom') {
+    custom.classList.remove('hidden');
+    if (!document.getElementById('reports-start-date').value) {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      document.getElementById('reports-start-date').value = d.toISOString().split('T')[0];
+      document.getElementById('reports-end-date').value = new Date().toISOString().split('T')[0];
+    }
+  } else {
+    custom.classList.add('hidden');
+  }
+  renderReports();
+}
+
+var currentReportsTab = 'catalog';
+function switchReportsTab(tabName) {
+  currentReportsTab = tabName;
+  document.querySelectorAll('#page-reports .tabs .tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-rep-' + tabName)?.classList.add('active');
+  
+  document.getElementById('reports-sec-catalog').classList.add('hidden');
+  document.getElementById('reports-sec-sales').classList.add('hidden');
+  document.getElementById('reports-sec-costs').classList.add('hidden');
+  document.getElementById('reports-sec-customers').classList.add('hidden');
+  document.getElementById('reports-sec-ai').classList.add('hidden');
+  
+  document.getElementById('reports-sec-' + tabName).classList.remove('hidden');
+  renderReports();
+}
+
 function renderReports() {
   const activeProds = catalogProducts.filter(p => !p.deleted);
   
-  // 1. Calculate Average Cost, Average Sell, Best Margin Product, Highest Cost Product
+  // 1. Catalog Profile Analytics
   const avgCostEl = document.getElementById('rep-avg-cost');
   const avgSellEl = document.getElementById('rep-avg-sell');
   const bestMarginEl = document.getElementById('rep-best-margin');
@@ -453,7 +870,6 @@ function renderReports() {
     const avgCost = totalCost / activeProds.length;
     const avgSell = totalSell / activeProds.length;
     
-    // Best margin product
     let bestProd = activeProds[0];
     let maxMargin = Number(bestProd.margin) || 0;
     for (const p of activeProds) {
@@ -464,7 +880,6 @@ function renderReports() {
       }
     }
     
-    // Highest cost product
     let highestProd = activeProds[0];
     let maxCost = Number(highestProd.cost) || 0;
     for (const p of activeProds) {
@@ -475,68 +890,418 @@ function renderReports() {
       }
     }
     
-    if (avgCostEl) avgCostEl.textContent = `₹${Math.round(avgCost)}`;
-    if (avgSellEl) avgSellEl.textContent = `₹${Math.round(avgSell)}`;
-    if (bestMarginEl) bestMarginEl.textContent = `${bestProd.emoji} ${bestProd.name} (${maxMargin}%)`;
-    if (highestCostEl) highestCostEl.textContent = `${highestProd.emoji} ${highestProd.name} (₹${Math.round(maxCost)})`;
+    if (avgCostEl) avgCostEl.textContent = `₹${Math.round(avgCost).toLocaleString('en-IN')}`;
+    if (avgSellEl) avgSellEl.textContent = `₹${Math.round(avgSell).toLocaleString('en-IN')}`;
+    if (bestMarginEl) bestMarginEl.textContent = `${bestProd.emoji || '🎂'} ${bestProd.name} (${maxMargin}%)`;
+    if (highestCostEl) highestCostEl.textContent = `${highestProd.emoji || '🎂'} ${highestProd.name} (₹${Math.round(maxCost)})`;
   }
   
-  // 2. Profitability by Category Chart
-  const el = document.getElementById('profitability-chart');
-  if (activeProds.length === 0) {
-    el.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:20px;text-align:center;">Add products to catalog to see analytics.</div>';
-  } else {
-    el.innerHTML = activeProds.slice(0, 8).map(p => `
-      <div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;">
-          <span>${p.emoji} ${p.name}</span>
-          <span style="font-weight:500;color:var(--bo-success);">${p.margin}%</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width:${Math.min(100, p.margin)}%;"></div>
-        </div>
+  // Profitability by Category (Catalog)
+  const profitabilityChart = document.getElementById('profitability-chart');
+  if (profitabilityChart) {
+    if (activeProds.length === 0) {
+      profitabilityChart.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:20px;text-align:center;">Add products to catalog to see analytics.</div>';
+    } else {
+      const catMargins = {};
+      activeProds.forEach(p => {
+        if (!catMargins[p.cat]) catMargins[p.cat] = [];
+        catMargins[p.cat].push(Number(p.margin) || 0);
+      });
+      const entries = Object.entries(catMargins).map(([cat, margins]) => {
+        const avg = margins.reduce((a, b) => a + b, 0) / margins.length;
+        return { cat, avg };
+      }).sort((a, b) => b.avg - a.avg);
+      
+      profitabilityChart.innerHTML = entries.slice(0, 8).map(e => `
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;">
+            <span>${e.cat}</span>
+            <span style="font-weight:500;color:var(--bo-success);">${Math.round(e.avg)}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${Math.min(100, e.avg)}%;"></div>
+          </div>
+        </div>`).join('');
+    }
+  }
+  
+  // Margin Distribution Histogram
+  const histEl = document.getElementById('catalog-margin-histogram');
+  if (histEl) {
+    const bins = [0, 0, 0, 0, 0];
+    activeProds.forEach(p => {
+      const m = Number(p.margin) || 0;
+      if (m <= 20) bins[0]++;
+      else if (m <= 40) bins[1]++;
+      else if (m <= 60) bins[2]++;
+      else if (m <= 80) bins[3]++;
+      else bins[4]++;
+    });
+    const maxCount = Math.max(...bins, 1);
+    histEl.innerHTML = bins.map((count) => {
+      const heightPct = (count / maxCount) * 100;
+      return `
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;">
+          <div style="font-size:11px;font-weight:600;color:var(--bo-gold-dark);margin-bottom:4px;">${count}</div>
+          <div style="width:70%;height:${heightPct}%;background:var(--bo-gold);border-radius:4px 4px 0 0;min-height:4px;transition:height 0.3s;"></div>
+        </div>`;
+    }).join('');
+  }
+  
+  // Fetch period date ranges
+  const preset = document.getElementById('reports-date-preset')?.value || '30days';
+  const { start, end } = getPeriodDateRange(preset, 'reports-start-date', 'reports-end-date');
+  
+  const rangeDisplay = document.getElementById('reports-date-display');
+  if (rangeDisplay && start && end) {
+    rangeDisplay.textContent = formatDateDisplay(start, end);
+  }
+  
+  const periodInvoices = salesInvoices.filter(inv => {
+    if (inv.deleted) return false;
+    const ts = Number(inv.timestamp) || 0;
+    return ts >= start.getTime() && ts <= end.getTime();
+  });
+  
+  // 2. Sales & Margins Analytics
+  const productStats = {};
+  let totalGP = 0;
+  let totalRev = 0;
+  
+  periodInvoices.forEach(inv => {
+    const items = Array.isArray(inv.items) ? inv.items : [];
+    items.forEach(item => {
+      if (!item.name) return;
+      const key = item.name;
+      if (!productStats[key]) {
+        productStats[key] = { name: key, qty: 0, revenue: 0, cost: 0, profit: 0 };
+      }
+      const qty = Number(item.qty) || 0;
+      const rev = qty * (Number(item.unitPrice) || 0);
+      const itemCost = Number(item.costPrice) || 0;
+      const cost = qty * itemCost;
+      const gp = rev - cost;
+      
+      productStats[key].qty += qty;
+      productStats[key].revenue += rev;
+      productStats[key].cost += cost;
+      productStats[key].profit += gp;
+      totalGP += gp;
+      totalRev += rev;
+    });
+  });
+  
+  const topProdsBody = document.getElementById('rep-top-products-body');
+  if (topProdsBody) {
+    const sortedProds = Object.values(productStats).sort((a, b) => b.profit - a.profit);
+    if (sortedProds.length === 0) {
+      topProdsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--bo-muted);padding:14px;">No products sold in this period.</td></tr>';
+    } else {
+      topProdsBody.innerHTML = sortedProds.slice(0, 10).map(p => {
+        const share = totalGP > 0 ? ((p.profit / totalGP) * 100).toFixed(1) : '0';
+        return `
+          <tr>
+            <td><strong>${p.name}</strong></td>
+            <td style="text-align:right;">${p.qty}</td>
+            <td style="text-align:right;">₹${Math.round(p.revenue).toLocaleString('en-IN')}</td>
+            <td style="text-align:right;color:var(--bo-success);font-weight:600;">₹${Math.round(p.profit).toLocaleString('en-IN')}</td>
+            <td style="text-align:right;"><span class="badge badge-green">${share}%</span></td>
+          </tr>`;
+      }).join('');
+    }
+  }
+  
+  // Quadrants
+  const prodList = Object.values(productStats);
+  let meanVol = 0;
+  let meanMargin = 0;
+  if (prodList.length > 0) {
+    meanVol = prodList.reduce((sum, p) => sum + p.qty, 0) / prodList.length;
+    meanMargin = prodList.reduce((sum, p) => sum + (p.revenue > 0 ? (p.profit / p.revenue * 100) : 0), 0) / prodList.length;
+  }
+  
+  const quadrantLists = { stars: [], drivers: [], specialists: [], underperformers: [] };
+  prodList.forEach(p => {
+    const margin = p.revenue > 0 ? (p.profit / p.revenue * 100) : 0;
+    if (p.qty >= meanVol) {
+      if (margin >= meanMargin) quadrantLists.stars.push(p.name);
+      else quadrantLists.drivers.push(p.name);
+    } else {
+      if (margin >= meanMargin) quadrantLists.specialists.push(p.name);
+      else quadrantLists.underperformers.push(p.name);
+    }
+  });
+  
+  const renderQuad = (id, arr) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = arr.length > 0 ? arr.slice(0, 4).join(', ') + (arr.length > 4 ? '...' : '') : 'None';
+    }
+  };
+  renderQuad('quadrant-stars', quadrantLists.stars);
+  renderQuad('quadrant-drivers', quadrantLists.drivers);
+  renderQuad('quadrant-specialists', quadrantLists.specialists);
+  renderQuad('quadrant-underperformers', quadrantLists.underperformers);
+  
+  // Category Sales Contribution
+  const catStats = {};
+  periodInvoices.forEach(inv => {
+    const items = Array.isArray(inv.items) ? inv.items : [];
+    items.forEach(item => {
+      const cp = catalogProducts.find(p => p.name.toLowerCase().trim() === item.name.toLowerCase().trim());
+      const cat = cp ? cp.cat : (item.description || 'Custom');
+      
+      if (!catStats[cat]) {
+        catStats[cat] = { name: cat, qty: 0, revenue: 0, cost: 0, profit: 0 };
+      }
+      const qty = Number(item.qty) || 0;
+      const rev = qty * (Number(item.unitPrice) || 0);
+      const itemCost = Number(item.costPrice) || 0;
+      const cost = qty * itemCost;
+      const gp = rev - cost;
+      
+      catStats[cat].qty += qty;
+      catStats[cat].revenue += rev;
+      catStats[cat].cost += cost;
+      catStats[cat].profit += gp;
+    });
+  });
+  
+  const catMetricsEl = document.getElementById('rep-category-metrics');
+  if (catMetricsEl) {
+    const entries = Object.values(catStats).sort((a, b) => b.revenue - a.revenue);
+    if (entries.length === 0) {
+      catMetricsEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--bo-muted);font-size:12.5px;">No sales by category.</div>';
+    } else {
+      catMetricsEl.innerHTML = entries.map(c => {
+        const margin = c.revenue > 0 ? Math.round((c.profit / c.revenue) * 100) : 0;
+        return `
+          <div class="card-sm" style="border:1px solid var(--bo-border);background:var(--bo-white);border-radius:8px;">
+            <div style="font-weight:600;font-size:13.5px;margin-bottom:8px;color:var(--bo-brown);">${c.name}</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--bo-muted);">Revenue:</span><strong>₹${Math.round(c.revenue).toLocaleString('en-IN')}</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--bo-muted);">Gross Profit:</span><strong style="color:var(--bo-success);">₹${Math.round(c.profit).toLocaleString('en-IN')}</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--bo-muted);">Avg. Margin:</span><strong>${margin}%</strong></div>
+          </div>`;
+      }).join('');
+    }
+  }
+  
+  // 3. Cost Component Analysis
+  const el2 = document.getElementById('cost-analysis');
+  if (el2) {
+    const periodOrders = savedOrders.filter(o => {
+      if (o.deleted) return false;
+      const ts = Number(o.timestamp) || 0;
+      return ts >= start.getTime() && ts <= end.getTime();
+    });
+    
+    if (periodOrders.length === 0) {
+      el2.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:20px;text-align:center;">No recipe calculations in this period.</div>';
+    } else {
+      let raw = 0, labour = 0, pack = 0, deco = 0;
+      periodOrders.forEach(o => {
+        raw += Number(o.summary && o.summary.rawCost) || 0;
+        labour += Number(o.labour && o.labour.totalCost) || 0;
+        pack += Number(o.summary && o.summary.packCost) || 0;
+        deco += Number(o.summary && o.summary.decoCost) || 0;
+      });
+      
+      const sum = raw + labour + pack + deco;
+      const cats = ['Raw Materials', 'Labour', 'Packaging', 'Decoration'];
+      const colors = ['var(--bo-gold)', 'var(--bo-rose)', '#B4C4A8', '#C4B4E8'];
+      
+      if (sum === 0) {
+        el2.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:20px;text-align:center;">All recipes in period have zero cost.</div>';
+      } else {
+        const vals = [
+          Math.round((raw / sum) * 100),
+          Math.round((labour / sum) * 100),
+          Math.round((pack / sum) * 100),
+          Math.round((deco / sum) * 100),
+        ];
+        el2.innerHTML = cats.map((c, i) => `
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;">
+              <span>${c}</span>
+              <span style="font-weight:500;">${vals[i]}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${vals[i]}%;background:${colors[i]};"></div>
+            </div>
+          </div>`).join('');
+      }
+    }
+  }
+  
+  // Top Cost Drivers (Ingredients & Packaging)
+  const driversIngEl = document.getElementById('cost-drivers-ingredients');
+  if (driversIngEl) {
+    const sortedIngs = ingredientsMaster.filter(i => !i.deleted).sort((a, b) => b.rate - a.rate);
+    driversIngEl.innerHTML = sortedIngs.slice(0, 5).map(i => `
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;">
+        <span>${i.name}</span>
+        <strong style="color:var(--bo-gold-dark);">₹${i.rate.toFixed(2)}/${i.unit}</strong>
       </div>`).join('');
   }
   
-  // 3. Cost Component Analysis Chart (from saved recipes/orders)
-  const el2 = document.getElementById('cost-analysis');
-  const activeOrders = savedOrders.filter(o => !o.deleted);
+  const driversPackEl = document.getElementById('cost-drivers-packaging');
+  if (driversPackEl) {
+    const sortedPacks = packagingMaster.filter(p => !p.deleted).sort((a, b) => b.rate - a.rate);
+    driversPackEl.innerHTML = sortedPacks.slice(0, 5).map(p => `
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;">
+        <span>${p.name}</span>
+        <strong style="color:var(--bo-gold-dark);">₹${p.rate.toFixed(2)}</strong>
+      </div>`).join('');
+  }
   
-  if (activeOrders.length === 0) {
-    el2.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:20px;text-align:center;">Add cost calculations to see cost breakdown.</div>';
-  } else {
-    let raw = 0, labour = 0, pack = 0, overhead = 0, deco = 0;
-    activeOrders.forEach(o => {
-      raw += Number(o.summary && o.summary.rawCost) || 0;
-      labour += Number(o.labour && o.labour.totalCost) || 0;
-      pack += Number(o.summary && o.summary.packCost) || 0;
-      overhead += Number(o.overheads && o.overheads.totalCost) || 0;
-      deco += Number(o.summary && o.summary.decoCost) || 0;
-    });
+  // 4. Customer Insights & Order Behaviour
+  const customerStats = {};
+  let totalBasketItems = 0;
+  let weekdayRev = 0;
+  
+  periodInvoices.forEach(inv => {
+    const phone = inv.customerPhone || 'Walk-in';
+    const name = inv.customerName || 'Walk-in Customer';
+    if (!customerStats[phone]) {
+      customerStats[phone] = { name, freq: 0, revenue: 0 };
+    }
+    customerStats[phone].freq++;
+    const amt = Number(inv.totalAmount) || 0;
+    customerStats[phone].revenue += amt;
     
-    const sum = raw + labour + pack + overhead + deco;
-    const cats = ['Raw Materials', 'Labour', 'Packaging', 'Overheads', 'Decoration'];
-    const colors = ['var(--bo-gold)', 'var(--bo-rose)', '#B4C4A8', '#F5C4A8', '#C4B4E8'];
-    if (sum === 0) {
-      el2.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:20px;text-align:center;">All calculations have zero costs.</div>';
+    const items = Array.isArray(inv.items) ? inv.items : [];
+    items.forEach(i => { totalBasketItems += (Number(i.qty) || 0); });
+    
+    const ts = Number(inv.timestamp) || 0;
+    const dayOfWeek = new Date(ts).getDay();
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      weekdayRev += amt;
+    }
+  });
+  
+  const topCustBody = document.getElementById('rep-top-customers-body');
+  if (topCustBody) {
+    const sortedCusts = Object.values(customerStats).sort((a, b) => b.revenue - a.revenue);
+    if (sortedCusts.length === 0) {
+      topCustBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--bo-muted);padding:14px;">No customer transactions in period.</td></tr>';
     } else {
-      const vals = [
-        Math.round((raw / sum) * 100),
-        Math.round((labour / sum) * 100),
-        Math.round((pack / sum) * 100),
-        Math.round((overhead / sum) * 100),
-        Math.round((deco / sum) * 100),
-      ];
-      el2.innerHTML = cats.map((c, i) => `
-        <div style="margin-bottom:10px;">
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;">
-            <span>${c}</span>
-            <span style="font-weight:500;">${vals[i]}%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width:${vals[i]}%;background:${colors[i]};"></div>
-          </div>
-        </div>`).join('');
+      topCustBody.innerHTML = sortedCusts.slice(0, 5).map(c => {
+        const aov = c.freq > 0 ? (c.revenue / c.freq) : 0;
+        return `
+          <tr>
+            <td><strong>${c.name}</strong></td>
+            <td style="text-align:right;">${c.freq}</td>
+            <td style="text-align:right;font-weight:500;color:var(--bo-gold-dark);">₹${Math.round(c.revenue).toLocaleString('en-IN')}</td>
+            <td style="text-align:right;">₹${Math.round(aov).toLocaleString('en-IN')}</td>
+          </tr>`;
+      }).join('');
+    }
+  }
+  
+  const totalCusts = Object.keys(customerStats).length;
+  let repeatCusts = 0;
+  Object.values(customerStats).forEach(c => {
+    if (c.freq > 1) repeatCusts++;
+  });
+  
+  const repeatPct = totalCusts > 0 ? Math.round((repeatCusts / totalCusts) * 100) : 0;
+  const weekdayPct = totalRev > 0 ? Math.round((weekdayRev / totalRev) * 100) : 0;
+  const avgBasket = periodInvoices.length > 0 ? (totalBasketItems / periodInvoices.length).toFixed(1) : '0.0';
+  
+  const repeatPctEl = document.getElementById('rep-repeat-customer-pct');
+  if (repeatPctEl) repeatPctEl.textContent = repeatPct + '%';
+  const repeatBarEl = document.getElementById('rep-repeat-customer-bar');
+  if (repeatBarEl) repeatBarEl.style.width = repeatPct + '%';
+  
+  const weekdayPctEl = document.getElementById('rep-weekday-sales-pct');
+  if (weekdayPctEl) weekdayPctEl.textContent = weekdayPct + '%';
+  const weekdayBarEl = document.getElementById('rep-weekday-sales-bar');
+  if (weekdayBarEl) weekdayBarEl.style.width = weekdayPct + '%';
+  
+  const avgBasketEl = document.getElementById('rep-avg-basket-size');
+  if (avgBasketEl) avgBasketEl.textContent = avgBasket;
+  
+  // 5. AI Business Diagnostics Insights
+  const insightsContainer = document.getElementById('ai-insights-list');
+  if (insightsContainer) {
+    const insights = [];
+    
+    let avgMargin = 0;
+    if (prodList.length > 0) {
+      avgMargin = prodList.reduce((sum, p) => sum + (p.revenue > 0 ? (p.profit / p.revenue * 100) : 0), 0) / prodList.length;
+    }
+    if (avgMargin < 40 && prodList.length > 0) {
+      insights.push({
+        type: 'warning',
+        title: 'Low Gross Margins Detected',
+        desc: `Your average sales margin is ${Math.round(avgMargin)}%, which is below the target 40%. Consider increasing selling prices or negotiating raw material rates.`
+      });
+    } else if (avgMargin >= 50 && prodList.length > 0) {
+      insights.push({
+        type: 'success',
+        title: 'Healthy Gross Margins',
+        desc: `Great job! Your average sales margin is a strong ${Math.round(avgMargin)}%, well above industry baseline targets.`
+      });
+    }
+    
+    if (repeatPct < 25 && totalCusts > 3) {
+      insights.push({
+        type: 'info',
+        title: 'Low Repeat Orders',
+        desc: `Only ${repeatPct}% of customers ordered more than once in this period. Consider introducing loyalty rewards or WhatsApp follow-up campaigns.`
+      });
+    } else if (repeatPct >= 40 && totalCusts > 3) {
+      insights.push({
+        type: 'success',
+        title: 'High Customer Loyalty',
+        desc: `${repeatPct}% repeat customer ratio is excellent, indicating high customer satisfaction and product quality.`
+      });
+    }
+    
+    const periodOrders = savedOrders.filter(o => !o.deleted && Number(o.timestamp) >= start.getTime() && Number(o.timestamp) <= end.getTime());
+    if (periodOrders.length > 0) {
+      let raw = 0, labour = 0;
+      periodOrders.forEach(o => {
+        raw += Number(o.summary?.rawCost) || 0;
+        labour += Number(o.labour?.totalCost) || 0;
+      });
+      if (labour > raw * 1.5) {
+        insights.push({
+          type: 'warning',
+          title: 'Labour Costs Exceeding Material Budgets',
+          desc: `Production labour is disproportionately high compared to ingredient costs. Check active time estimates or review staff efficiency.`
+        });
+      }
+    }
+    
+    const sortedCats = Object.values(catStats).sort((a, b) => b.revenue - a.revenue);
+    if (sortedCats.length > 0) {
+      const topCat = sortedCats[0];
+      const share = totalRev > 0 ? ((topCat.revenue / totalRev) * 100).toFixed(0) : '0';
+      if (share > 50) {
+        insights.push({
+          type: 'info',
+          title: `High Category Concentration in ${topCat.name}`,
+          desc: `${topCat.name} accounts for ${share}% of all revenue. While this is your core strength, consider diversifying catalog products to reduce reliance.`
+        });
+      }
+    }
+
+    if (insights.length === 0) {
+      insightsContainer.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:12px 0;">Not enough data in period to generate diagnostics. Add more calculations and invoices.</div>';
+    } else {
+      insightsContainer.innerHTML = insights.map(ins => {
+        const borderCol = ins.type === 'success' ? 'var(--bo-success)' : (ins.type === 'warning' ? 'var(--bo-danger)' : 'var(--bo-info)');
+        const bgCol = ins.type === 'success' ? 'rgba(45,106,79,0.05)' : (ins.type === 'warning' ? 'rgba(155,35,53,0.05)' : 'rgba(26,74,122,0.05)');
+        const icon = ins.type === 'success' ? '✅' : (ins.type === 'warning' ? '⚠️' : 'ℹ️');
+        return `
+          <div style="border-left:4px solid ${borderCol};background:${bgCol};padding:14px;border-radius:0 8px 8px 0;box-shadow:0 1px 4px rgba(0,0,0,0.02);margin-bottom:10px;">
+            <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;color:var(--bo-brown);">
+              <span>${icon}</span> <span>${ins.title}</span>
+            </div>
+            <div style="font-size:12px;color:var(--bo-muted);margin-top:4px;line-height:1.45;">${ins.desc}</div>
+          </div>`;
+      }).join('');
     }
   }
 }
@@ -996,24 +1761,37 @@ function recalculate(){
   document.getElementById('pack-total').textContent=packTotal.toFixed(2);
   document.getElementById('r-pack').textContent=packTotal.toFixed(2);
 
-  // Labour — Direct COGS with oven sharing logic
-  var prep=+(document.getElementById('labour-prep').value)||0;
-  var bake=+(document.getElementById('labour-bake').value)||0;
-  var deco=+(document.getElementById('labour-deco').value)||0;
-  var pack=+(document.getElementById('labour-pack').value)||0;
-  var rate=+(document.getElementById('labour-rate').value)||0;
-  var ovenBatches=Math.max(1,+(document.getElementById('labour-oven-batches')?.value)||1);
-  // Baker actively works during prep/deco/pack; baking is shared across oven batches
-  var activeMins=prep+deco+pack+(bake/ovenBatches);
-  var labourTotal=(activeMins/60)*rate;
-  document.getElementById('labour-hours').textContent=(activeMins/60).toFixed(1)+' hrs';
-  document.getElementById('labour-total').textContent=labourTotal.toFixed(2);
-  document.getElementById('r-labour').textContent=labourTotal.toFixed(2);
+  // Labour — Direct COGS (Simple effort points vs Advanced active time-minutes)
+  var method = document.getElementById('labour-method')?.value || 'advanced';
+  var batchSize = parseFloat(document.getElementById('calc-batch').value) || 1;
+  var labourTotal = 0;
+  var activeMins = 0;
+  
+  if (method === 'simple') {
+    var effortPoints = parseFloat(document.getElementById('labour-effort-level')?.value) || 1.0;
+    var costPerPoint = getLabourCostPerEffortPoint();
+    labourTotal = effortPoints * costPerPoint * batchSize;
+    
+    var totalPoints = effortPoints * batchSize;
+    document.getElementById('labour-hours').textContent = totalPoints.toFixed(1) + ' pts';
+    document.getElementById('labour-total').textContent = labourTotal.toFixed(2);
+    document.getElementById('r-labour').textContent = labourTotal.toFixed(2);
+  } else {
+    var batchActiveMins = parseFloat(document.getElementById('labour-prep')?.value) || 0;
+    var batchStaff = parseFloat(document.getElementById('labour-batch-staff')?.value) || 1;
+    var unitActiveMins = parseFloat(document.getElementById('labour-unit-active')?.value) || 0;
+    var unitStaff = parseFloat(document.getElementById('labour-unit-staff')?.value) || 1;
+    
+    activeMins = (batchActiveMins * batchStaff) + (unitActiveMins * unitStaff * batchSize);
+    var derivedRate = getDerivedLabourRate();
+    labourTotal = (activeMins / 60) * derivedRate;
+    
+    document.getElementById('labour-hours').textContent = (activeMins / 60).toFixed(1) + ' hrs';
+    document.getElementById('labour-total').textContent = labourTotal.toFixed(2);
+    document.getElementById('r-labour').textContent = labourTotal.toFixed(2);
+  }
 
-  // Overheads — Removed from cost calculation
-  var ohRate = 0;
-  var includeOverhead = false;
-  var overheadTotal = 0;
+  // Overheads — Completely removed from product cost calculation
   var overheadInCost = 0;
   if (document.getElementById('overhead-total')) document.getElementById('overhead-total').textContent = '0.00';
   if (document.getElementById('r-overhead')) document.getElementById('r-overhead').textContent = '0.00';
@@ -1178,7 +1956,33 @@ function resetCalc(){
   var ouEl=document.getElementById('calc-output-unit');if(ouEl)ouEl.value='g';
   var obEl=document.getElementById('labour-oven-batches');if(obEl)obEl.value=1;
   var ohToggle=document.getElementById('overhead-include-toggle');if(ohToggle)ohToggle.checked=true;
+  
+  if (document.getElementById('labour-method')) document.getElementById('labour-method').value = 'advanced';
+  if (document.getElementById('labour-effort-level')) document.getElementById('labour-effort-level').value = '1.0';
+  if (document.getElementById('labour-prep')) document.getElementById('labour-prep').value = 30;
+  if (document.getElementById('labour-batch-staff')) document.getElementById('labour-batch-staff').value = 1;
+  if (document.getElementById('labour-unit-active')) document.getElementById('labour-unit-active').value = 15;
+  if (document.getElementById('labour-unit-staff')) document.getElementById('labour-unit-staff').value = 1;
+  toggleLabourMethod();
+  
   recalculate();
+}
+
+function toggleLabourMethod() {
+  const method = document.getElementById('labour-method')?.value || 'advanced';
+  const simpleSec = document.getElementById('labour-simple-section');
+  const advancedSec = document.getElementById('labour-advanced-section');
+  const hoursLabel = document.getElementById('labour-hours-label');
+  
+  if (method === 'simple') {
+    if (simpleSec) simpleSec.classList.remove('hidden');
+    if (advancedSec) advancedSec.classList.add('hidden');
+    if (hoursLabel) hoursLabel.textContent = 'Effort Points';
+  } else {
+    if (simpleSec) simpleSec.classList.add('hidden');
+    if (advancedSec) advancedSec.classList.remove('hidden');
+    if (hoursLabel) hoursLabel.textContent = 'Active labour time';
+  }
 }
 
 // ── Save Order ────────────────────────────────────────────────
@@ -1192,6 +1996,13 @@ async function saveOrder(){
   ingredientsMaster.forEach(m=>{snapshot[m.name]={rate:m.rate,unit:m.unit};});
   packagingMaster.forEach(m=>{snapshot[m.name]={rate:m.rate};});
 
+  var method = document.getElementById('labour-method')?.value || 'advanced';
+  var effortLevel = parseFloat(document.getElementById('labour-effort-level')?.value) || 1.0;
+  var prep = +(document.getElementById('labour-prep')?.value)||0;
+  var batchStaff = +(document.getElementById('labour-batch-staff')?.value)||1;
+  var unitActive = +(document.getElementById('labour-unit-active')?.value)||0;
+  var unitStaff = +(document.getElementById('labour-unit-staff')?.value)||1;
+
   var order={
     id,name,category:cat,
     date:new Date().toLocaleDateString('en-IN'),
@@ -1202,14 +2013,27 @@ async function saveOrder(){
     ingredients:JSON.parse(JSON.stringify(ingredients)),
     decorations:JSON.parse(JSON.stringify(decorations)),
     packaging:JSON.parse(JSON.stringify(packaging)),
-    labour:{prep:+(document.getElementById('labour-prep').value)||0,bake:+(document.getElementById('labour-bake').value)||0,deco:+(document.getElementById('labour-deco').value)||0,pack:+(document.getElementById('labour-pack').value)||0,rate:+(document.getElementById('labour-rate').value)||0,hours:parseFloat(document.getElementById('labour-hours').textContent)||0,totalCost:parseFloat(document.getElementById('r-labour').textContent)||0},
-    overheads:{elec:0,gas:0,water:0,rent:0,admin:0,delivery:0,rate:parseFloat(document.getElementById('overhead-rate').value)||0,totalCost:parseFloat(document.getElementById('overhead-total').textContent)||0},
+    labour:{
+      method,
+      effortLevel,
+      prep,
+      batchStaff,
+      unitActive,
+      unitStaff,
+      bake: 0,
+      deco: 0,
+      pack: 0,
+      rate:+(document.getElementById('labour-rate').value)||0,
+      hours:parseFloat(document.getElementById('labour-hours').textContent)||0,
+      totalCost:parseFloat(document.getElementById('r-labour').textContent)||0
+    },
+    overheads:{elec:0,gas:0,water:0,rent:0,admin:0,delivery:0,rate:0,totalCost:0},
     wastage:{pct:+(document.getElementById('wastage-pct').value)||0,bufferPct:+(document.getElementById('buffer-pct').value)||0,totalCost:parseFloat(document.getElementById('r-wastage').textContent)||0},
     misc:{cost:+(document.getElementById('misc-cost').value)||0,notes:document.getElementById('misc-notes').value||''},
     outputWeight:+(document.getElementById('calc-output-weight')?.value)||0,
     outputUnit:document.getElementById('calc-output-unit')?.value||'g',
-    ovenBatches:+(document.getElementById('labour-oven-batches')?.value)||1,
-    includeOverhead:document.getElementById('overhead-include-toggle')?.checked!==false,
+    ovenBatches: 1,
+    includeOverhead: false,
     summary:{rawCost:parseFloat(document.getElementById('r-raw').textContent)||0,decoCost:parseFloat(document.getElementById('r-deco').textContent)||0,packCost:parseFloat(document.getElementById('r-pack').textContent)||0,cogsTotal:parseFloat(document.getElementById('r-cogs')?.textContent)||0,totalCost:parseFloat(document.getElementById('r-cost').textContent)||0,perServing:parseFloat(document.getElementById('r-per-serving').textContent)||0,breakeven:parseFloat(document.getElementById('r-breakeven').textContent)||0,targetMargin:+(document.getElementById('margin-slider').value)||60,pricingRule:document.getElementById('price-rule').value,sellingPrice:parseFloat(document.getElementById('r-selling').textContent)||0,profitAmount:parseFloat(document.getElementById('r-profit').textContent)||0,profitPct:parseFloat(document.getElementById('r-profit-pct').textContent)||0},
     rateSnapshot:snapshot
   };
@@ -1244,13 +2068,30 @@ function loadOrderForEdit(orderId){
   decorations=JSON.parse(JSON.stringify(order.decorations||[]));
   packaging=JSON.parse(JSON.stringify(order.packaging||[]));
   renderIngredients();renderDecorations();renderPackaging();
-  if(order.labour){document.getElementById('labour-prep').value=order.labour.prep;document.getElementById('labour-bake').value=order.labour.bake;document.getElementById('labour-deco').value=order.labour.deco;document.getElementById('labour-pack').value=order.labour.pack;document.getElementById('labour-rate').value=order.labour.rate;}
-  if(order.overheads){document.getElementById('overhead-rate').value=order.overheads.rate||order.overheads.hourlyRate||0;}
+  
+  if(order.labour){
+    const l = order.labour;
+    if (l.method) {
+      document.getElementById('labour-method').value = l.method;
+      document.getElementById('labour-effort-level').value = l.effortLevel || 1.0;
+      document.getElementById('labour-prep').value = l.prep || 0;
+      document.getElementById('labour-batch-staff').value = l.batchStaff || 1;
+      document.getElementById('labour-unit-active').value = l.unitActive || 0;
+      document.getElementById('labour-unit-staff').value = l.unitStaff || 1;
+    } else {
+      // Migrate legacy time fields on load
+      document.getElementById('labour-method').value = 'advanced';
+      document.getElementById('labour-prep').value = l.prep || 0;
+      document.getElementById('labour-batch-staff').value = 1;
+      document.getElementById('labour-unit-active').value = (l.deco || 0) + (l.pack || 0);
+      document.getElementById('labour-unit-staff').value = 1;
+    }
+    toggleLabourMethod();
+  }
+  
   if(order.wastage){document.getElementById('wastage-pct').value=order.wastage.pct;document.getElementById('wastage-val').textContent=order.wastage.pct+'%';document.getElementById('buffer-pct').value=order.wastage.bufferPct;document.getElementById('buffer-val').textContent=order.wastage.bufferPct+'%';}
   if(order.misc){document.getElementById('misc-cost').value=order.misc.cost;document.getElementById('misc-notes').value=order.misc.notes;}
   if(order.outputWeight){var owEl=document.getElementById('calc-output-weight');if(owEl)owEl.value=order.outputWeight;var ouEl=document.getElementById('calc-output-unit');if(ouEl)ouEl.value=order.outputUnit||'g';}
-  if(order.ovenBatches){var obEl=document.getElementById('labour-oven-batches');if(obEl)obEl.value=order.ovenBatches;}
-  if(order.includeOverhead!==undefined){var ohToggle=document.getElementById('overhead-include-toggle');if(ohToggle)ohToggle.checked=order.includeOverhead;}
   if(order.summary){document.getElementById('margin-slider').value=order.summary.targetMargin||60;document.getElementById('margin-pct-val').textContent=(order.summary.targetMargin||60)+'%';document.getElementById('price-rule').value=order.summary.pricingRule||'exact';}
   recalculate();
   showToast('Order loaded with historical rates!');
@@ -2347,13 +3188,13 @@ function showAddSaleItemFromCatalog() {
 function addSaleItemFromProduct(productId) {
   const p = catalogProducts.find(x => x.id === productId);
   if (!p) return;
-  currentSaleItems.push({ id: Date.now() + '', name: p.name, description: p.cat, qty: 1, unitPrice: p.sell });
+  currentSaleItems.push({ id: Date.now() + '', name: p.name, description: p.cat, qty: 1, unitPrice: p.sell, costPrice: p.cost || 0 });
   renderSaleItems();
   updateSaleTotals();
 }
 
 function addCustomSaleItem() {
-  currentSaleItems.push({ id: Date.now() + '', name: '', description: '', qty: 1, unitPrice: 0 });
+  currentSaleItems.push({ id: Date.now() + '', name: '', description: '', qty: 1, unitPrice: 0, costPrice: 0 });
   renderSaleItems();
   updateSaleTotals();
 }
@@ -2707,7 +3548,23 @@ async function restoreInventoryForSaleItems(items) {
 }
 
 async function doSaveSale() {
-  const subtotal = currentSaleItems.reduce((s, i) => s + (i.qty * i.unitPrice), 0);
+  const finalItems = currentSaleItems.map(item => {
+    let cost = Number(item.costPrice) || 0;
+    if (cost === 0 && item.name) {
+      const cp = catalogProducts.find(p => !p.deleted && p.name.toLowerCase().trim() === item.name.toLowerCase().trim());
+      if (cp) {
+        cost = Number(cp.cost) || 0;
+      } else {
+        const rec = savedOrders.find(o => !o.deleted && o.name.toLowerCase().trim() === item.name.toLowerCase().trim());
+        if (rec && rec.summary) {
+          cost = Number(rec.summary.totalCost) || 0;
+        }
+      }
+    }
+    return { ...item, costPrice: cost };
+  });
+
+  const subtotal = finalItems.reduce((s, i) => s + (i.qty * i.unitPrice), 0);
   const discount = parseFloat((document.getElementById('sale-discount') && document.getElementById('sale-discount').value) || 0) || 0;
   const gstPct   = parseFloat((document.getElementById('sale-gst') && document.getElementById('sale-gst').value) || 0) || 0;
   const gstAmt   = ((subtotal - discount) * gstPct) / 100;
@@ -2720,7 +3577,7 @@ async function doSaveSale() {
       customerCity:    currentSaleCustomer ? currentSaleCustomer.city    : '',
       customerPincode: currentSaleCustomer ? currentSaleCustomer.pincode : '',
       customerAddress: currentSaleCustomer ? currentSaleCustomer.address : '',
-      items: currentSaleItems,
+      items: finalItems,
       subtotal, discountAmt: discount, gstPct, gstAmt, totalAmount: total,
       paymentMethod: (document.getElementById('sale-payment') && document.getElementById('sale-payment').value) || 'Cash',
       notes: (document.getElementById('sale-notes') && document.getElementById('sale-notes').value) || '',
@@ -2819,49 +3676,263 @@ async function deleteSaleEntry(id) {
 
 // ── Sales Reports (Admin only) ───────────────────────────────
 
-function renderSalesReports() {
-  const active = salesInvoices.filter(i => !i.deleted);
-  const revenue = active.reduce((s, i) => s + Number(i.totalAmount), 0);
-  const waSent  = active.filter(i => i.whatsappSent).length;
-  const avg     = active.length > 0 ? revenue / active.length : 0;
-  const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-  el('sr-revenue',  '₹' + revenue.toLocaleString('en-IN'));
-  el('sr-invoices', active.length);
-  el('sr-avg',      '₹' + avg.toFixed(0));
-  el('sr-wa',       waSent);
-
-  // Monthly bar chart
-  const monthly = {};
-  active.forEach(i => {
-    const d = new Date(i.timestamp);
-    const key = d.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
-    monthly[key] = (monthly[key] || 0) + Number(i.totalAmount);
-  });
-  const maxVal = Math.max(...Object.values(monthly), 1);
-  const chartEl = document.getElementById('sr-monthly-chart');
-  if (chartEl) {
-    const entries = Object.entries(monthly).slice(-6);
-    chartEl.innerHTML = entries.length === 0
-      ? '<div style="color:var(--bo-muted);font-size:13px;">No sales data yet.</div>'
-      : entries.map(([month, val]) => `
-          <div style="margin-bottom:10px;">
-            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;"><span>${month}</span><span style="color:var(--bo-gold-dark);font-weight:500;">₹${val.toLocaleString('en-IN')}</span></div>
-            <div class="progress-bar"><div class="progress-fill" style="width:${(val/maxVal*100).toFixed(0)}%;"></div></div>
-          </div>`).join('');
+function onSalesDatePresetChange() {
+  const val = document.getElementById('salesreports-date-preset').value;
+  const custom = document.getElementById('salesreports-custom-dates');
+  if (val === 'custom') {
+    custom.classList.remove('hidden');
+    if (!document.getElementById('salesreports-start-date').value) {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      document.getElementById('salesreports-start-date').value = d.toISOString().split('T')[0];
+      document.getElementById('salesreports-end-date').value = new Date().toISOString().split('T')[0];
+    }
+  } else {
+    custom.classList.add('hidden');
   }
+  renderSalesReports();
+}
 
+function renderSalesReports() {
+  const preset = document.getElementById('salesreports-date-preset')?.value || '30days';
+  const { start, end } = getPeriodDateRange(preset, 'salesreports-start-date', 'salesreports-end-date');
+  const prior = getPriorPeriodDateRange(start, end);
+  
+  const rangeDisplay = document.getElementById('salesreports-date-display');
+  if (rangeDisplay && start && end) {
+    rangeDisplay.textContent = formatDateDisplay(start, end);
+  }
+  
+  // Filter invoices for both periods
+  const currentPeriodInvoices = salesInvoices.filter(i => {
+    if (i.deleted) return false;
+    const ts = Number(i.timestamp) || 0;
+    return ts >= start.getTime() && ts <= end.getTime();
+  });
+  
+  const priorPeriodInvoices = salesInvoices.filter(i => {
+    if (i.deleted) return false;
+    const ts = Number(i.timestamp) || 0;
+    return ts >= prior.start.getTime() && ts <= prior.end.getTime();
+  });
+  
+  // Calculate Current Period Metrics
+  const revCurrent = currentPeriodInvoices.reduce((s, i) => s + (Number(i.totalAmount) || 0), 0);
+  let cogsMatCurrent = 0;
+  let cogsLabourCurrent = 0;
+  
+  currentPeriodInvoices.forEach(inv => {
+    const items = Array.isArray(inv.items) ? inv.items : [];
+    items.forEach(item => {
+      const qty = Number(item.qty) || 0;
+      const cost = Number(item.costPrice) || 0;
+      const totalItemCost = qty * cost;
+      
+      const recipe = savedOrders.find(o => !o.deleted && o.name.toLowerCase().trim() === item.name.toLowerCase().trim());
+      if (recipe && recipe.summary && recipe.summary.totalCost > 0) {
+        const sum = recipe.summary;
+        const totalRecipeCost = Number(sum.totalCost) || 1;
+        const matCost = (Number(sum.rawCost) || 0) + (Number(sum.packCost) || 0) + (Number(sum.decoCost) || 0);
+        const labCost = Number(recipe.labour?.totalCost) || 0;
+        
+        cogsMatCurrent += totalItemCost * (matCost / totalRecipeCost);
+        cogsLabourCurrent += totalItemCost * (labCost / totalRecipeCost);
+      } else {
+        cogsMatCurrent += totalItemCost;
+      }
+    });
+  });
+  const cogsTotalCurrent = cogsMatCurrent + cogsLabourCurrent;
+  const gpCurrent = revCurrent - cogsTotalCurrent;
+  const gpmCurrent = revCurrent > 0 ? (gpCurrent / revCurrent * 100) : 0;
+  const opexCurrent = getOperatingExpensesForPeriod(start, end);
+  const opCurrent = gpCurrent - opexCurrent;
+  const opmCurrent = revCurrent > 0 ? (opCurrent / revCurrent * 100) : 0;
+  
+  // Calculate Prior Period Metrics
+  const revPrior = priorPeriodInvoices.reduce((s, i) => s + (Number(i.totalAmount) || 0), 0);
+  let cogsMatPrior = 0;
+  let cogsLabourPrior = 0;
+  
+  priorPeriodInvoices.forEach(inv => {
+    const items = Array.isArray(inv.items) ? inv.items : [];
+    items.forEach(item => {
+      const qty = Number(item.qty) || 0;
+      const cost = Number(item.costPrice) || 0;
+      const totalItemCost = qty * cost;
+      
+      const recipe = savedOrders.find(o => !o.deleted && o.name.toLowerCase().trim() === item.name.toLowerCase().trim());
+      if (recipe && recipe.summary && recipe.summary.totalCost > 0) {
+        const sum = recipe.summary;
+        const totalRecipeCost = Number(sum.totalCost) || 1;
+        const matCost = (Number(sum.rawCost) || 0) + (Number(sum.packCost) || 0) + (Number(sum.decoCost) || 0);
+        const labCost = Number(recipe.labour?.totalCost) || 0;
+        
+        cogsMatPrior += totalItemCost * (matCost / totalRecipeCost);
+        cogsLabourPrior += totalItemCost * (labCost / totalRecipeCost);
+      } else {
+        cogsMatPrior += totalItemCost;
+      }
+    });
+  });
+  const cogsTotalPrior = cogsMatPrior + cogsLabourPrior;
+  const gpPrior = revPrior - cogsTotalPrior;
+  const gpmPrior = revPrior > 0 ? (gpPrior / revPrior * 100) : 0;
+  const opexPrior = getOperatingExpensesForPeriod(prior.start, prior.end);
+  const opPrior = gpPrior - opexPrior;
+  const opmPrior = revPrior > 0 ? (opPrior / revPrior * 100) : 0;
+  
+  // DOM Updates
+  const elSet = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  
+  elSet('sr-revenue', '₹' + Math.round(revCurrent).toLocaleString('en-IN'));
+  elSet('sr-cogs', '₹' + Math.round(cogsTotalCurrent).toLocaleString('en-IN'));
+  elSet('sr-gross-profit', '₹' + Math.round(gpCurrent).toLocaleString('en-IN'));
+  elSet('sr-gross-margin-pct', Math.round(gpmCurrent) + '%');
+  elSet('sr-operating-margin-pct', Math.round(opmCurrent) + '%');
+  
+  const updateChange = (id, curr, priorVal) => {
+    const badge = document.getElementById(id);
+    if (badge) {
+      const info = formatChangeBadge(curr, priorVal);
+      badge.textContent = info.text;
+      badge.className = 'badge ' + info.cls;
+    }
+  };
+  updateChange('sr-revenue-change', revCurrent, revPrior);
+  updateChange('sr-cogs-change', cogsTotalCurrent, cogsTotalPrior);
+  
+  elSet('sr-orders-count', currentPeriodInvoices.length);
+  const aov = currentPeriodInvoices.length > 0 ? (revCurrent / currentPeriodInvoices.length) : 0;
+  elSet('sr-avg-order-value', '₹' + Math.round(aov).toLocaleString('en-IN'));
+  elSet('sr-operating-expenses', '₹' + Math.round(opexCurrent).toLocaleString('en-IN'));
+  
+  const waSent = currentPeriodInvoices.filter(i => i.whatsappSent).length;
+  elSet('sr-wa-sent', waSent);
+  
+  // P&L Period Comparison Table
+  const pctChangeStr = (curr, pr) => {
+    if (pr === 0) return curr === 0 ? '0.0%' : 'New';
+    const pct = ((curr - pr) / Math.abs(pr)) * 100;
+    return (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+  };
+  
+  elSet('pl-rev-current', '₹' + Math.round(revCurrent).toLocaleString('en-IN'));
+  elSet('pl-rev-prior', '₹' + Math.round(revPrior).toLocaleString('en-IN'));
+  elSet('pl-rev-change', pctChangeStr(revCurrent, revPrior));
+  
+  elSet('pl-cogs-mat-current', '₹' + Math.round(cogsMatCurrent).toLocaleString('en-IN'));
+  elSet('pl-cogs-mat-prior', '₹' + Math.round(cogsMatPrior).toLocaleString('en-IN'));
+  elSet('pl-cogs-mat-change', pctChangeStr(cogsMatCurrent, cogsMatPrior));
+  
+  elSet('pl-cogs-labour-current', '₹' + Math.round(cogsLabourCurrent).toLocaleString('en-IN'));
+  elSet('pl-cogs-labour-prior', '₹' + Math.round(cogsLabourPrior).toLocaleString('en-IN'));
+  elSet('pl-cogs-labour-change', pctChangeStr(cogsLabourCurrent, cogsLabourPrior));
+  
+  elSet('pl-gp-current', '₹' + Math.round(gpCurrent).toLocaleString('en-IN'));
+  elSet('pl-gp-prior', '₹' + Math.round(gpPrior).toLocaleString('en-IN'));
+  elSet('pl-gp-change', pctChangeStr(gpCurrent, gpPrior));
+  
+  elSet('pl-gpm-current', Math.round(gpmCurrent) + '%');
+  elSet('pl-gpm-prior', Math.round(gpmPrior) + '%');
+  elSet('pl-gpm-change', (gpmCurrent - gpmPrior).toFixed(1) + '%');
+  
+  elSet('pl-opex-current', '₹' + Math.round(opexCurrent).toLocaleString('en-IN'));
+  elSet('pl-opex-prior', '₹' + Math.round(opexPrior).toLocaleString('en-IN'));
+  elSet('pl-opex-change', pctChangeStr(opexCurrent, opexPrior));
+  
+  elSet('pl-op-current', '₹' + Math.round(opCurrent).toLocaleString('en-IN'));
+  elSet('pl-op-prior', '₹' + Math.round(opPrior).toLocaleString('en-IN'));
+  elSet('pl-op-change', pctChangeStr(opCurrent, opPrior));
+  
+  elSet('pl-opm-current', Math.round(opmCurrent) + '%');
+  elSet('pl-opm-prior', Math.round(opmPrior) + '%');
+  elSet('pl-opm-change', (opmCurrent - opmPrior).toFixed(1) + '%');
+  
+  // Operating Loss Warning & Styling
+  const lossAlert = document.getElementById('operating-loss-alert');
+  const lossAlertAmt = document.getElementById('loss-alert-amount');
+  const opProfitVal = document.getElementById('sr-operating-profit');
+  const opProfitCard = document.getElementById('sr-operating-profit-card');
+  const plOpRow = document.getElementById('pl-operating-profit-row');
+  
+  if (opCurrent < 0) {
+    if (lossAlert) lossAlert.classList.remove('hidden');
+    if (lossAlertAmt) lossAlertAmt.textContent = '₹' + Math.round(Math.abs(opCurrent)).toLocaleString('en-IN');
+    
+    if (opProfitVal) {
+      opProfitVal.textContent = '-₹' + Math.round(Math.abs(opCurrent)).toLocaleString('en-IN');
+      opProfitVal.style.color = 'var(--bo-danger)';
+    }
+    if (opProfitCard) {
+      opProfitCard.style.borderColor = 'rgba(155,35,53,0.3)';
+      opProfitCard.style.background = 'rgba(155,35,53,0.03)';
+    }
+    if (plOpRow) {
+      plOpRow.style.background = 'rgba(155,35,53,0.05)';
+      const cells = plOpRow.querySelectorAll('td');
+      if (cells[1]) cells[1].style.color = 'var(--bo-danger)';
+    }
+  } else {
+    if (lossAlert) lossAlert.classList.add('hidden');
+    if (opProfitVal) {
+      opProfitVal.textContent = '₹' + Math.round(opCurrent).toLocaleString('en-IN');
+      opProfitVal.style.color = 'var(--bo-success)';
+    }
+    if (opProfitCard) {
+      opProfitCard.style.borderColor = 'var(--bo-border)';
+      opProfitCard.style.background = 'var(--bo-white)';
+    }
+    if (plOpRow) {
+      plOpRow.style.background = 'rgba(45,106,79,0.05)';
+      const cells = plOpRow.querySelectorAll('td');
+      if (cells[1]) cells[1].style.color = 'var(--bo-success)';
+    }
+  }
+  
+  // Payments Breakdown
+  const payments = {};
+  currentPeriodInvoices.forEach(i => {
+    const method = i.paymentMethod || 'Cash';
+    payments[method] = (payments[method] || 0) + Number(i.totalAmount);
+  });
+  
+  const maxPayment = Math.max(...Object.values(payments), 1);
+  const paymentBreakdownEl = document.getElementById('sr-payment-breakdown');
+  if (paymentBreakdownEl) {
+    if (Object.keys(payments).length === 0) {
+      paymentBreakdownEl.innerHTML = '<div style="color:var(--bo-muted);font-size:12.5px;padding:8px 0;">No sales transactions.</div>';
+    } else {
+      const colors = { UPI: 'var(--bo-info)', Cash: 'var(--bo-success)', Card: 'var(--bo-gold)', Credit: 'var(--bo-danger)', 'Bank Transfer': '#7A6BAD' };
+      paymentBreakdownEl.innerHTML = Object.entries(payments).map(([m, val]) => `
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;">
+            <span>${m}</span>
+            <strong style="color:var(--bo-gold-dark);">₹${Math.round(val).toLocaleString('en-IN')}</strong>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${(val/maxPayment*100).toFixed(0)}%;background:${colors[m]||'var(--bo-gold)'};"></div>
+          </div>
+        </div>`).join('');
+    }
+  }
+  
   // Table
   const tb = document.getElementById('sr-table-body');
   if (tb) {
-    tb.innerHTML = active.slice(0, 25).map(inv => `
-      <tr>
-        <td style="font-weight:500;">${inv.invoiceNumber}</td>
-        <td>${inv.customerName || '—'}</td>
-        <td style="color:var(--bo-gold-dark);">₹${Number(inv.totalAmount).toLocaleString('en-IN')}</td>
-        <td style="font-size:12px;">${inv.createdBy || '—'}</td>
-        <td style="font-size:12px;color:var(--bo-muted);">${inv.date || ''}</td>
-        <td>${inv.whatsappSent ? '✅' : '✗'}</td>
-      </tr>`).join('');
+    if (currentPeriodInvoices.length === 0) {
+      tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--bo-muted);padding:14px;">No invoices in this period.</td></tr>';
+    } else {
+      tb.innerHTML = currentPeriodInvoices.slice(0, 15).map(inv => `
+        <tr>
+          <td style="font-weight:500;">${inv.invoiceNumber}</td>
+          <td>${inv.customerName || '—'}</td>
+          <td><span class="badge badge-gold">${inv.paymentMethod || '—'}</span></td>
+          <td style="font-size:12px;">${inv.createdBy || '—'}</td>
+          <td style="font-size:12px;color:var(--bo-muted);">${inv.date || ''}</td>
+          <td style="text-align:right;color:var(--bo-gold-dark);font-weight:600;">₹${Number(inv.totalAmount).toLocaleString('en-IN')}</td>
+        </tr>`).join('');
+    }
   }
 }
 

@@ -327,30 +327,64 @@
             <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="pack-total">0.00</span></span>
           </div>
         </div>
+        <!-- Labour Cost Card -->
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Labour Cost <span style="font-size:11px;font-weight:400;color:var(--bo-muted);font-family:'DM Sans',sans-serif;">(Direct — COGS)</span></div>
-          <div class="form-row-3">
-            <div class="form-group"><label class="form-label">Prep / Mixing (mins)</label><input type="number" id="labour-prep" value="30" min="0" oninput="recalculate()"></div>
-            <div class="form-group">
-              <label class="form-label">Baking / Oven Time (mins)</label>
-              <input type="number" id="labour-bake" value="45" min="0" oninput="recalculate()">
+          
+          <!-- Method Selection -->
+          <div class="form-row" style="margin-bottom: 12px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Labour Costing Method</label>
+              <select id="labour-method" onchange="toggleLabourMethod(); recalculate();">
+                <option value="simple">Simple — Effort Based</option>
+                <option value="advanced" selected>Advanced — Time Based</option>
+              </select>
             </div>
-            <div class="form-group"><label class="form-label">Decoration (mins)</label><input type="number" id="labour-deco" value="60" min="0" oninput="recalculate()"></div>
+            <!-- Keep hidden fields for app compatibility -->
+            <input type="number" id="labour-bake" value="0" style="display:none;">
+            <input type="number" id="labour-deco" value="0" style="display:none;">
+            <input type="number" id="labour-pack" value="0" style="display:none;">
+            <input type="number" id="labour-oven-batches" value="1" style="display:none;">
+            <input type="number" id="labour-rate" value="150" style="display:none;">
           </div>
-          <div class="form-row-3">
-            <div class="form-group"><label class="form-label">Packing Time (mins)</label><input type="number" id="labour-pack" value="15" min="0" oninput="recalculate()"></div>
-            <div class="form-group">
-              <label class="form-label">Simultaneous Oven Batches <span style="font-size:10px;color:var(--bo-gold-dark);">⚡</span></label>
-              <input type="number" id="labour-oven-batches" value="1" min="1" max="20" oninput="recalculate()" title="How many batches bake at the same time in your oven? Baking time cost is shared equally among them.">
+          
+          <!-- Simple Mode Container -->
+          <div id="labour-simple-section" class="hidden" style="margin-bottom:12px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Relative Production Effort Level</label>
+              <select id="labour-effort-level" onchange="recalculate();">
+                <option value="0.5">VERY LOW (0.5 pts — e.g. Cookies, basic Brownies)</option>
+                <option value="1.0" selected>STANDARD (1.0 pt — e.g. Basic Cakes, Pastries)</option>
+                <option value="2.0">MODERATE (2.0 pts — e.g. Decorated Cakes, Layered Desserts)</option>
+                <option value="4.0">HIGH (4.0 pts — e.g. Theme Cakes)</option>
+                <option value="8.0">VERY HIGH (8.0 pts — e.g. Wedding Cakes, Sculpted Cakes)</option>
+              </select>
             </div>
-            <div class="form-group"><label class="form-label">Hourly Wage (₹/hr) <span style="font-size:11px;color:var(--bo-muted);">(Derived)</span></label><input type="number" id="labour-rate" value="150" min="0" disabled style="background-color: var(--bo-bg-alt); cursor: not-allowed; opacity: 0.85;" title="Configure globally in Labour Settings"></div>
+            <div style="background:rgba(58,90,64,0.06);border:1px solid rgba(58,90,64,0.15);border-radius:6px;padding:8px 12px;font-size:11.5px;color:var(--bo-muted);margin-top:10px;">
+              💡 <strong>Simple allocation</strong>: Labour cost is calculated by allocating the daily direct labour pool across your daily effort capacity. No time tracking needed.
+            </div>
           </div>
-          <div style="background:rgba(196,154,60,0.07);border:1px solid rgba(196,154,60,0.2);border-radius:6px;padding:8px 12px;font-size:11.5px;color:var(--bo-muted);margin-bottom:8px;">
-            💡 <strong>Oven time is shared</strong>: If 5 cakes bake together, each cake bears only 1/5 of the oven time cost. Prep, decoration &amp; packing are <strong>full cost</strong> as the baker is actively working.
+          
+          <!-- Advanced Mode Container -->
+          <div id="labour-advanced-section">
+            <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--bo-gold-dark);letter-spacing:0.5px;margin-bottom:8px;">Shared Batch Production (once per batch)</div>
+            <div class="form-row" style="margin-bottom:12px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Batch Prep Time (mins)</label><input type="number" id="labour-prep" value="30" min="0" oninput="recalculate()"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Batch Staff Count</label><input type="number" id="labour-batch-staff" value="1" min="1" oninput="recalculate()"></div>
+            </div>
+            <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--bo-gold-dark);letter-spacing:0.5px;margin-bottom:8px;">Per-Unit Production (repeated for each item)</div>
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Unit Finishing Time (mins)</label><input type="number" id="labour-unit-active" value="15" min="0" oninput="recalculate()"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Unit Staff Count</label><input type="number" id="labour-unit-staff" value="1" min="1" oninput="recalculate()"></div>
+            </div>
+            <div style="background:rgba(196,154,60,0.07);border:1px solid rgba(196,154,60,0.2);border-radius:6px;padding:8px 12px;font-size:11.5px;color:var(--bo-muted);margin-top:10px;">
+              💡 <strong>Active Time Only</strong>: Only enter active hands-on work. Unattended baking, resting, or proofing should not be counted as labor time.
+            </div>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--bo-border);">
-            <span style="color:var(--bo-muted);">Active labour time (this product): <span id="labour-hours">2.5 hrs</span></span>
-            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="labour-total">375.00</span></span>
+          
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--bo-border);margin-top:12px;">
+            <span style="color:var(--bo-muted);"><span id="labour-hours-label">Active labour time</span>: <span id="labour-hours">0.0 hrs</span></span>
+            <span style="font-weight:500;color:var(--bo-gold-dark);">₹<span id="labour-total">0.00</span></span>
           </div>
         </div>
         <div class="card" style="margin-bottom:16px; display:none;">
@@ -682,72 +716,187 @@
 </div>
 
 <!-- LABOUR SETTINGS PAGE -->
-<!-- LABOUR SETTINGS PAGE -->
 <div id="page-labour" class="hidden">
-  <div class="page-header"><div class="page-title">Labour Settings</div></div>
+  <div class="page-header"><div class="page-title">Direct Labour Settings</div></div>
   <div class="content">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;align-items:start;">
+      <!-- Roles Card -->
       <div class="card">
-        <div class="card-title">Labour Cost Derivation</div>
-        <div class="form-group"><label class="form-label">Number of Employees</label><input type="number" id="labour-emp-count" value="10" min="1" oninput="deriveSettingsRates()"></div>
-        <div class="form-group"><label class="form-label">Total Monthly Salaries (₹)</label><input type="number" id="labour-monthly-salaries" value="150000" min="0" oninput="deriveSettingsRates()"></div>
-        <div class="form-group"><label class="form-label">Operating Hours per Day</label><input type="number" id="labour-hours-per-day" value="8" min="1" max="24" oninput="deriveSettingsRates()"></div>
-        <div class="form-group"><label class="form-label">Operating Days per Month</label><input type="number" id="labour-days-per-month" value="26" min="1" max="31" oninput="deriveSettingsRates()"></div>
-        <div class="highlight-box" style="padding:14px; margin-top: 15px;">
-          <div style="font-size:12px;color:var(--bo-muted);margin-bottom:4px;">Derived hourly labour rate (entire pool)</div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--bo-gold-dark);">₹<span id="derived-labour-rate-display">721</span>/hr</div>
-          <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">This baseline hourly rate is used to calculate recipe labour costs.</div>
+        <div class="card-title">Direct Production Labour Pool</div>
+        <p style="font-size:12.5px;color:var(--bo-muted);line-height:1.45;margin-bottom:16px;">
+          Define roles directly involved in physically making, decorating, or packing bakery products (e.g. Bakers, Pastry Chefs, Decorators, Helpers). Do not include non-production staff (cashiers, delivery, admin). For mixed-role employees (e.g. owners), include only their production-related salary proportion here.
+        </p>
+        <div id="labour-roles-container">
+          <table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:12px;" class="roles-table">
+            <thead>
+              <tr style="border-bottom:1px solid var(--bo-border);text-align:left;">
+                <th style="padding:6px 0;">Production Role</th>
+                <th style="padding:6px 0;width:90px;">Staff Count</th>
+                <th style="padding:6px 0;width:150px;">Monthly Cost / Person (₹)</th>
+                <th style="padding:6px 0;width:50px;text-align:center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="labour-roles-list">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+          <button class="btn btn-sm btn-gold" onclick="addLabourRole()" style="margin-bottom:10px;"><i class="ti ti-plus"></i> Add Role</button>
         </div>
-        <button class="btn btn-gold btn-sm" onclick="saveLabourSettingsFromUI()" style="margin-top: 15px;">Save Settings</button>
       </div>
+      
+      <!-- Capacity Card -->
       <div class="card">
-        <div class="card-title">Default Time Estimates (minutes)</div>
-        <div class="form-group"><label class="form-label">Standard Cake Prep</label><input type="number" id="def-time-prep" value="30" min="0"></div>
-        <div class="form-group"><label class="form-label">Standard Baking Time</label><input type="number" id="def-time-bake" value="45" min="0"></div>
-        <div class="form-group"><label class="form-label">Simple Decoration</label><input type="number" id="def-time-deco" value="30" min="0"></div>
-        <div class="form-group"><label class="form-label">Complex Decoration (theme cake)</label><input type="number" id="def-time-deco-comp" value="120" min="0"></div>
-        <div class="form-group"><label class="form-label">Packaging Time</label><input type="number" id="def-time-pack" value="15" min="0"></div>
-        <button class="btn btn-gold btn-sm" onclick="saveLabourSettingsFromUI()" style="margin-top: 15px;">Save Settings</button>
+        <div class="card-title">Capacity & Cost Allocation</div>
+        <div class="form-group">
+          <label class="form-label">Working Days per Month</label>
+          <input type="number" id="labour-days-per-month" value="26" min="1" max="31" oninput="deriveSettingsRates()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Working Hours per Day</label>
+          <input type="number" id="labour-hours-per-day" value="8" min="1" max="24" oninput="deriveSettingsRates()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Productive Time Percentage (%)</label>
+          <input type="number" id="labour-productive-pct" value="75" min="10" max="100" oninput="deriveSettingsRates()" title="Percentage of scheduled time spent strictly on baking/making vs. cleaning, breaks, or waiting.">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Average Daily Effort Points Completed</label>
+          <input type="number" id="labour-effort-points" value="10" min="1" oninput="deriveSettingsRates()" title="For Simple Costing: typical total effort points completed by the whole team per day.">
+        </div>
+        
+        <div class="highlight-box" style="padding:14px; margin-top: 15px;">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px;">
+            <span style="color:var(--bo-muted);">Total Monthly Cost:</span>
+            <strong id="labour-total-monthly-cost">₹0</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:12px;">
+            <span style="color:var(--bo-muted);">Total Production Staff:</span>
+            <strong id="labour-total-staff">0</strong>
+          </div>
+          <div style="border-top:1px dashed var(--bo-border);padding-top:10px;margin-bottom:8px;">
+            <div style="font-size:11px;color:var(--bo-muted);margin-bottom:2px;">Derived Hourly rate (Advanced time mode)</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--bo-gold-dark);">₹<span id="derived-labour-rate-display">0</span>/hr</div>
+          </div>
+          <div style="border-top:1px dashed var(--bo-border);padding-top:10px;">
+            <div style="font-size:11px;color:var(--bo-muted);margin-bottom:2px;">Labour Cost Per Effort Point (Simple mode)</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--bo-gold-dark);">₹<span id="derived-effort-rate-display">0</span>/pt</div>
+          </div>
+        </div>
+        
+        <button class="btn btn-gold btn-sm" onclick="saveLabourSettingsFromUI()" style="margin-top: 15px; width: 100%; justify-content: center;"><i class="ti ti-device-floppy"></i> Save Labour Settings</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- OVERHEAD SETTINGS PAGE -->
+<!-- OPERATING EXPENSES SETTINGS PAGE -->
 <div id="page-overheads" class="hidden">
-  <div class="page-header"><div class="page-title">Overhead Settings</div></div>
+  <div class="page-header"><div class="page-title">Operating Expenses &amp; Overheads</div></div>
   <div class="content">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-      <div class="card">
-        <div class="card-title">Monthly Fixed Overheads</div>
-        <div class="form-group"><label class="form-label">Monthly Rent (₹)</label><input type="number" value="15000" id="monthly-rent" oninput="deriveSettingsRates()"></div>
-        <div class="form-group"><label class="form-label">Monthly Electricity (₹)</label><input type="number" value="3000" id="monthly-elec" oninput="deriveSettingsRates()"></div>
-        <div class="form-group"><label class="form-label">Monthly Gas / LPG (₹)</label><input type="number" value="1500" id="monthly-gas" oninput="deriveSettingsRates()"></div>
-        <div class="form-group"><label class="form-label">Monthly Internet, Software, Cleaning &amp; Misc (₹)</label><input type="number" value="1500" id="monthly-clean" oninput="deriveSettingsRates()"></div>
-        <div class="highlight-box" style="padding:14px; margin-top: 15px;">
-          <div style="font-size:12px;color:var(--bo-muted);margin-bottom:4px;">Derived hourly overhead rate</div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--bo-gold-dark);">₹<span id="derived-overhead-rate-display">101</span>/hr</div>
-          <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;">This baseline hourly rate is used to calculate recipe overhead costs.</div>
+    <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;align-items:start;">
+      <!-- Input Forms -->
+      <div style="display:flex;flex-direction:column;gap:20px;">
+        
+        <!-- Non-Production Staff Card -->
+        <div class="card">
+          <div class="card-title">Non-Production Staff</div>
+          <p style="font-size:12px;color:var(--bo-muted);line-height:1.4;margin-bottom:12px;">
+            Define roles not directly involved in making products (e.g. Cashiers, Sales, Delivery, Administrative assistants, Managers).
+          </p>
+          <table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:12px;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--bo-border);text-align:left;">
+                <th style="padding:6px 0;">Non-Production Role</th>
+                <th style="padding:6px 0;width:90px;">Staff Count</th>
+                <th style="padding:6px 0;width:150px;">Monthly Cost / Person (₹)</th>
+                <th style="padding:6px 0;width:50px;text-align:center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="overhead-roles-list">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+          <button class="btn btn-sm btn-gold" onclick="addOverheadRole()"><i class="ti ti-plus"></i> Add Role</button>
         </div>
-        <button class="btn btn-gold btn-sm" onclick="saveOverheadSettingsFromUI()" style="margin-top:12px;">Save Settings</button>
-      </div>
-      <div class="card">
-        <div class="card-title">Bakery Operating Cost Summary</div>
-        <div style="margin-bottom:15px; border-bottom:1px dashed var(--bo-border); padding-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px;"><span>Monthly Labour (Salaries)</span><span style="font-weight:500;">₹<span id="summary-monthly-labour">1,50,000</span></span></div>
-          <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px;"><span>Monthly Fixed Overheads</span><span style="font-weight:500;">₹<span id="summary-monthly-overheads">21,000</span></span></div>
-          <div style="display:flex;justify-content:space-between;font-size:14.5px;font-weight:600;color:var(--bo-gold-dark);margin-top:8px;"><span>Total Monthly Expense</span><span>₹<span id="summary-monthly-total">1,71,000</span></span></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px;"><span>Daily Operating Cost</span><span style="font-weight:500;">₹<span id="summary-daily-cost">6,577</span></span></div>
-          <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px;"><span>Hourly Operating Cost</span><span style="font-weight:500;">₹<span id="summary-hourly-cost">822</span></span></div>
-        </div>
-        <div class="highlight-box" style="margin-top: 15px; border-color: rgba(45, 106, 79, 0.2); background: rgba(45, 106, 79, 0.04);">
-          <div style="font-size:12px; font-weight:600; color:var(--bo-success); margin-bottom:4px;">✓ Simplified Allocation Active</div>
-          <div style="font-size:11px; color:var(--bo-muted); line-height:1.4;">
-            Your Cost Calculator now automatically allocates labour and overheads to each product based on total production time, saving you from guessing individual rates.
+        
+        <!-- Occupancy & Utilities Card -->
+        <div class="card">
+          <div class="card-title">Occupancy &amp; Utilities</div>
+          <div class="form-row-3">
+            <div class="form-group"><label class="form-label">Monthly Rent (₹)</label><input type="number" id="monthly-rent" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Society Maintenance (₹)</label><input type="number" id="monthly-society" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Other Occupancy (₹)</label><input type="number" id="monthly-occupancy-other" value="0" oninput="deriveSettingsRates()"></div>
+          </div>
+          <div class="form-row-3" style="margin-top:12px;">
+            <div class="form-group"><label class="form-label">Electricity (₹)</label><input type="number" id="monthly-electricity" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Gas / LPG (₹)</label><input type="number" id="monthly-gas" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Water (₹)</label><input type="number" id="monthly-water" value="0" oninput="deriveSettingsRates()"></div>
+          </div>
+          <div class="form-row" style="margin-top:12px;">
+            <div class="form-group"><label class="form-label">Generator / Fuel (₹)</label><input type="number" id="monthly-fuel" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Other Utilities (₹)</label><input type="number" id="monthly-utilities-other" value="0" oninput="deriveSettingsRates()"></div>
           </div>
         </div>
+        
+        <!-- Admin & Marketing Card -->
+        <div class="card">
+          <div class="card-title">Business Admin &amp; Marketing</div>
+          <div class="form-row-3">
+            <div class="form-group"><label class="form-label">Internet &amp; Phone (₹)</label><input type="number" id="monthly-internet-phone" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Software &amp; Subs (₹)</label><input type="number" id="monthly-software" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Accounting Fees (₹)</label><input type="number" id="monthly-professional" value="0" oninput="deriveSettingsRates()"></div>
+          </div>
+          <div class="form-row" style="margin-top:12px;">
+            <div class="form-group"><label class="form-label">Licenses &amp; Insurance (₹)</label><input type="number" id="monthly-insurance" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Other Admin (₹)</label><input type="number" id="monthly-admin-other" value="0" oninput="deriveSettingsRates()"></div>
+          </div>
+          <div class="form-row-3" style="margin-top:12px;border-top:1px dashed var(--bo-border);padding-top:12px;">
+            <div class="form-group"><label class="form-label">Advertising (₹)</label><input type="number" id="monthly-promo" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Commissions (₹)</label><input type="number" id="monthly-commission" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Other Marketing (₹)</label><input type="number" id="monthly-marketing-other" value="0" oninput="deriveSettingsRates()"></div>
+          </div>
+        </div>
+        
+        <!-- Delivery & Maintenance Card -->
+        <div class="card">
+          <div class="card-title">Delivery &amp; Maintenance</div>
+          <div class="form-row-3">
+            <div class="form-group"><label class="form-label">Transport Fuel (₹)</label><input type="number" id="monthly-transport-fuel" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">3rd Party Delivery (₹)</label><input type="number" id="monthly-delivery-thirdparty" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Other Delivery (₹)</label><input type="number" id="monthly-delivery-other" value="0" oninput="deriveSettingsRates()"></div>
+          </div>
+          <div class="form-row-3" style="margin-top:12px;border-top:1px dashed var(--bo-border);padding-top:12px;">
+            <div class="form-group"><label class="form-label">Repairs &amp; Maint. (₹)</label><input type="number" id="monthly-repairs" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Cleaning Supplies (₹)</label><input type="number" id="monthly-cleaning" value="0" oninput="deriveSettingsRates()"></div>
+            <div class="form-group"><label class="form-label">Miscellaneous (₹)</label><input type="number" id="monthly-maintenance-misc" value="0" oninput="deriveSettingsRates()"></div>
+          </div>
+        </div>
+        
+      </div>
+      
+      <!-- Summary Card -->
+      <div class="card" style="position:sticky;top:72px;">
+        <div class="card-title">Operating Cost Summary</div>
+        <div style="margin-bottom:15px; border-bottom:1px dashed var(--bo-border); padding-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>Monthly Direct Labour</span><span style="font-weight:500;">₹<span id="summary-monthly-labour">0</span></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>Monthly Non-Prod Staff</span><span style="font-weight:500;">₹<span id="summary-monthly-nonprod">0</span></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>Monthly Operations Cost</span><span style="font-weight:500;">₹<span id="summary-monthly-overheads">0</span></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600;color:var(--bo-gold-dark);margin-top:8px;"><span>Total Monthly Expense</span><span>₹<span id="summary-monthly-total">0</span></span></div>
+        </div>
+        <div style="margin-bottom:15px; border-bottom:1px dashed var(--bo-border); padding-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span title="Total Operating Expense divided by working days">Daily Operating Cost</span><span style="font-weight:500;">₹<span id="summary-daily-cost">0</span></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span title="Total Operating Expense divided by total working hours">Hourly Operating Cost</span><span style="font-weight:500;">₹<span id="summary-hourly-cost">0</span></span></div>
+        </div>
+        
+        <div class="highlight-box" style="padding:14px;">
+          <div style="font-size:12px;color:var(--bo-muted);margin-bottom:4px;">Total Monthly Operating Expenses</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--bo-gold-dark);">₹<span id="derived-overhead-rate-display">0</span></div>
+          <div style="font-size:11px;color:var(--bo-muted);margin-top:4px;line-height:1.4;">
+            ⚠️ Operating Expenses are kept completely separate from Product Cost/COGS and are deducted from overall Gross Profit on reports.
+          </div>
+        </div>
+        
+        <button class="btn btn-gold btn-sm" onclick="saveOverheadSettingsFromUI()" style="margin-top:15px; width:100%; justify-content:center;"><i class="ti ti-device-floppy"></i> Save Operating Expenses</button>
       </div>
     </div>
   </div>
@@ -787,35 +936,374 @@
 
 <!-- REPORTS PAGE (admin only) -->
 <div id="page-reports" class="hidden">
-  <div class="page-header"><div class="page-title">Reports &amp; Analytics</div></div>
+  <div class="page-header">
+    <div class="page-title">Reports &amp; Analytics</div>
+  </div>
   <div class="content">
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label">Avg. Cost Price</div><div class="stat-value gold" id="rep-avg-cost">₹0</div></div>
-      <div class="stat-card"><div class="stat-label">Avg. Selling Price</div><div class="stat-value" id="rep-avg-sell">₹0</div></div>
-      <div class="stat-card"><div class="stat-label">Best Margin Product</div><div class="stat-value green" style="font-size:18px;" id="rep-best-margin">—</div></div>
-      <div class="stat-card"><div class="stat-label">Highest Cost Product</div><div class="stat-value rose" style="font-size:18px;" id="rep-highest-cost">—</div></div>
+    <!-- Date range selector -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;background:var(--bo-white);padding:12px 20px;border-radius:10px;border:1px solid var(--bo-border);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label class="form-label" style="margin:0;white-space:nowrap;font-weight:600;">Analysis Period:</label>
+        <select id="reports-date-preset" onchange="onReportsDatePresetChange()" style="width:160px;margin:0;">
+          <option value="today">Today</option>
+          <option value="7days">Last 7 Days</option>
+          <option value="30days" selected>Last 30 Days</option>
+          <option value="this-month">This Month</option>
+          <option value="last-month">Last Month</option>
+          <option value="this-quarter">This Quarter</option>
+          <option value="this-year">This Year</option>
+          <option value="custom">Custom Range</option>
+        </select>
+        <div id="reports-custom-dates" class="hidden" style="display:inline-flex;align-items:center;gap:6px;">
+          <input type="date" id="reports-start-date" onchange="renderReports()" style="width:135px;padding:6px;margin:0;">
+          <span style="font-size:12px;color:var(--bo-muted);">to</span>
+          <input type="date" id="reports-end-date" onchange="renderReports()" style="width:135px;padding:6px;margin:0;">
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--bo-muted);font-weight:600;" id="reports-date-display"></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-      <div class="card"><div class="card-title">Profitability by Category</div><div id="profitability-chart"></div></div>
-      <div class="card"><div class="card-title">Cost Component Analysis</div><div id="cost-analysis"></div></div>
+
+    <!-- Navigation Tabs for Analytics -->
+    <div class="tabs">
+      <div class="tab active" id="tab-rep-catalog" onclick="switchReportsTab('catalog')">Catalog Profile</div>
+      <div class="tab" id="tab-rep-sales" onclick="switchReportsTab('sales')">Sales &amp; Margins</div>
+      <div class="tab" id="tab-rep-costs" onclick="switchReportsTab('costs')">Cost Components</div>
+      <div class="tab" id="tab-rep-customers" onclick="switchReportsTab('customers')">Customer Insights</div>
+      <div class="tab" id="tab-rep-ai" onclick="switchReportsTab('ai')">Business Diagnostics</div>
     </div>
+
+    <!-- TAB 1: Catalog Profile -->
+    <div id="reports-sec-catalog">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Avg. Cost Price</div><div class="stat-value gold" id="rep-avg-cost">₹0</div></div>
+        <div class="stat-card"><div class="stat-label">Avg. Selling Price</div><div class="stat-value" id="rep-avg-sell">₹0</div></div>
+        <div class="stat-card"><div class="stat-label">Best Margin Product</div><div class="stat-value green" style="font-size:16px;" id="rep-best-margin">—</div></div>
+        <div class="stat-card"><div class="stat-label">Highest Cost Product</div><div class="stat-value rose" style="font-size:16px;" id="rep-highest-cost">—</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="card"><div class="card-title">Profitability by Category (Catalog)</div><div id="profitability-chart"></div></div>
+        <div class="card">
+          <div class="card-title">Margin Distribution Histogram</div>
+          <div id="catalog-margin-histogram" style="display:flex;align-items:flex-end;justify-content:space-between;height:180px;padding-top:20px;border-bottom:1px solid var(--bo-border);"></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--bo-muted);margin-top:6px;">
+            <span>0-20% Margin</span>
+            <span>20-40%</span>
+            <span>40-60%</span>
+            <span>60-80%</span>
+            <span>80%+ Margin</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Sales & Margins -->
+    <div id="reports-sec-sales" class="hidden">
+      <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title">Top Products by Revenue &amp; Profit</div>
+          <table style="width:100%;font-size:12.5px;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--bo-border);">
+                <th>Product</th>
+                <th style="text-align:right;">Qty Sold</th>
+                <th style="text-align:right;">Revenue</th>
+                <th style="text-align:right;">Gross Profit</th>
+                <th style="text-align:right;">GP Share</th>
+              </tr>
+            </thead>
+            <tbody id="rep-top-products-body"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">Product Margin Quadrants</div>
+          <p style="font-size:11px;color:var(--bo-muted);margin-bottom:12px;line-height:1.3;">
+            Classification of products sold in the selected period.
+          </p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="background:rgba(45,106,79,0.06);padding:10px;border-radius:6px;border:1px solid rgba(45,106,79,0.15);">
+              <div style="font-size:12px;font-weight:600;color:var(--bo-success);">🌟 High Volume &amp; High Margin</div>
+              <div id="quadrant-stars" style="font-size:11px;color:var(--bo-text);margin-top:4px;">None</div>
+            </div>
+            <div style="background:rgba(26,74,122,0.06);padding:10px;border-radius:6px;border:1px solid rgba(26,74,122,0.15);">
+              <div style="font-size:12px;font-weight:600;color:var(--bo-info);">🚜 Volume Drivers (High Vol, Low Margin)</div>
+              <div id="quadrant-drivers" style="font-size:11px;color:var(--bo-text);margin-top:4px;">None</div>
+            </div>
+            <div style="background:rgba(196,154,60,0.08);padding:10px;border-radius:6px;border:1px solid rgba(196,154,60,0.25);">
+              <div style="font-size:12px;font-weight:600;color:var(--bo-gold-dark);">💎 High Margin Specialists (Low Vol, High Margin)</div>
+              <div id="quadrant-specialists" style="font-size:11px;color:var(--bo-text);margin-top:4px;">None</div>
+            </div>
+            <div style="background:rgba(155,79,82,0.06);padding:10px;border-radius:6px;border:1px solid rgba(155,79,82,0.15);">
+              <div style="font-size:12px;font-weight:600;color:var(--bo-rose-dark);">⚠️ Underperformers (Low Vol, Low Margin)</div>
+              <div id="quadrant-underperformers" style="font-size:11px;color:var(--bo-text);margin-top:4px;">None</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Category Sales Contribution</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;" id="rep-category-metrics"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Cost Components -->
+    <div id="reports-sec-costs" class="hidden">
+      <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:20px;">
+        <div class="card">
+          <div class="card-title">COGS Cost Component Share</div>
+          <p style="font-size:12px;color:var(--bo-muted);margin-bottom:12px;">Based on cost snapshots of saved calculations in the period.</p>
+          <div id="cost-analysis"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top Cost Drivers (Ingredients &amp; Packaging)</div>
+          <p style="font-size:12px;color:var(--bo-muted);margin-bottom:12px;">Costliest items in your master inventory list.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+              <div style="font-size:11.5px;font-weight:600;color:var(--bo-brown);margin-bottom:8px;border-bottom:1px solid var(--bo-border);padding-bottom:4px;">Ingredients</div>
+              <div id="cost-drivers-ingredients" style="display:flex;flex-direction:column;gap:6px;"></div>
+            </div>
+            <div>
+              <div style="font-size:11.5px;font-weight:600;color:var(--bo-brown);margin-bottom:8px;border-bottom:1px solid var(--bo-border);padding-bottom:4px;">Packaging</div>
+              <div id="cost-drivers-packaging" style="display:flex;flex-direction:column;gap:6px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Customer Insights -->
+    <div id="reports-sec-customers" class="hidden">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title">Top Value Customers</div>
+          <table style="width:100%;font-size:12.5px;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--bo-border);">
+                <th>Customer</th>
+                <th style="text-align:right;">Order Freq</th>
+                <th style="text-align:right;">Total Revenue</th>
+                <th style="text-align:right;">AOV</th>
+              </tr>
+            </thead>
+            <tbody id="rep-top-customers-body"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">Customer Cohort &amp; Order Behaviour</div>
+          <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;">
+                <span style="color:var(--bo-muted);">Repeat Customer Ratio:</span>
+                <strong id="rep-repeat-customer-pct">0%</strong>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" id="rep-repeat-customer-bar" style="width:0%;"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;">
+                <span style="color:var(--bo-muted);">Weekday Sales Share (Mon-Fri):</span>
+                <strong id="rep-weekday-sales-pct">0%</strong>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" id="rep-weekday-sales-bar" style="width:0%;background:var(--bo-info);"></div></div>
+            </div>
+            <div style="border-top:1px dashed var(--bo-border);padding-top:10px;display:flex;justify-content:space-between;font-size:12.5px;">
+              <span style="color:var(--bo-muted);">Average Basket Size (items/order):</span>
+              <strong id="rep-avg-basket-size">0.0</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: AI Insights -->
+    <div id="reports-sec-ai" class="hidden">
+      <div class="card">
+        <div class="card-title">Business Diagnostic Insights</div>
+        <p style="font-size:13px;color:var(--bo-muted);line-height:1.45;margin-bottom:16px;">
+          Automatically computed diagnostics highlighting strengths and vulnerabilities in your business operation for the selected period.
+        </p>
+        <div id="ai-insights-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <!-- SALES REPORTS PAGE (admin only) -->
 <div id="page-salesreports" class="hidden">
-  <div class="page-header"><div class="page-title">Sales &amp; Revenue</div></div>
+  <div class="page-header">
+    <div class="page-title">Sales &amp; Revenue Financial Report</div>
+  </div>
   <div class="content">
-    <div class="stats-grid" style="margin-bottom:24px;">
-      <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value gold" id="sr-revenue">₹0</div></div>
-      <div class="stat-card"><div class="stat-label">Total Orders</div><div class="stat-value" id="sr-orders">0</div></div>
-      <div class="stat-card"><div class="stat-label">Avg. Order Value</div><div class="stat-value" id="sr-avg">₹0</div></div>
-      <div class="stat-card"><div class="stat-label">Top Customer</div><div class="stat-value green" id="sr-top-cust" style="font-size:16px;">—</div></div>
+    <!-- Date range selector -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;background:var(--bo-white);padding:12px 20px;border-radius:10px;border:1px solid var(--bo-border);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label class="form-label" style="margin:0;white-space:nowrap;font-weight:600;">Financial Period:</label>
+        <select id="salesreports-date-preset" onchange="onSalesDatePresetChange()" style="width:160px;margin:0;">
+          <option value="today">Today</option>
+          <option value="7days">Last 7 Days</option>
+          <option value="30days" selected>Last 30 Days</option>
+          <option value="this-month">This Month</option>
+          <option value="last-month">Last Month</option>
+          <option value="this-quarter">This Quarter</option>
+          <option value="this-year">This Year</option>
+          <option value="custom">Custom Range</option>
+        </select>
+        <div id="salesreports-custom-dates" class="hidden" style="display:inline-flex;align-items:center;gap:6px;">
+          <input type="date" id="salesreports-start-date" onchange="renderSalesReports()" style="width:135px;padding:6px;margin:0;">
+          <span style="font-size:12px;color:var(--bo-muted);">to</span>
+          <input type="date" id="salesreports-end-date" onchange="renderSalesReports()" style="width:135px;padding:6px;margin:0;">
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--bo-muted);font-weight:600;" id="salesreports-date-display"></div>
     </div>
+
+    <!-- P&L Financial Metrics Grid (Dual-level profit analysis: Gross & Operating) -->
+    <div class="stats-grid" style="margin-bottom:20px;">
+      <div class="stat-card">
+        <div class="stat-label">Total Revenue</div>
+        <div class="stat-value gold" id="sr-revenue">₹0</div>
+        <div class="badge" id="sr-revenue-change" style="font-size:10px;margin-top:4px;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total COGS</div>
+        <div class="stat-value rose" id="sr-cogs">₹0</div>
+        <div class="badge" id="sr-cogs-change" style="font-size:10px;margin-top:4px;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Gross Profit</div>
+        <div class="stat-value green" id="sr-gross-profit">₹0</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:2px;">Margin: <span id="sr-gross-margin-pct" style="font-weight:600;color:var(--bo-success);">0%</span></div>
+      </div>
+      <div class="stat-card" id="sr-operating-profit-card">
+        <div class="stat-label">Operating Profit</div>
+        <div class="stat-value green" id="sr-operating-profit">₹0</div>
+        <div style="font-size:11px;color:var(--bo-muted);margin-top:2px;">Margin: <span id="sr-operating-margin-pct" style="font-weight:600;color:var(--bo-success);">0%</span></div>
+      </div>
+    </div>
+
+    <!-- Secondary Financial Metrics -->
+    <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;margin-bottom:20px;">
+      <div class="stat-card" style="padding:12px 14px;">
+        <div style="font-size:10px;color:var(--bo-muted);text-transform:uppercase;letter-spacing:1px;">Total Orders</div>
+        <div style="font-size:18px;font-weight:600;margin-top:4px;" id="sr-orders-count">0</div>
+      </div>
+      <div class="stat-card" style="padding:12px 14px;">
+        <div style="font-size:10px;color:var(--bo-muted);text-transform:uppercase;letter-spacing:1px;">Avg. Order Value (AOV)</div>
+        <div style="font-size:18px;font-weight:600;margin-top:4px;" id="sr-avg-order-value">₹0</div>
+      </div>
+      <div class="stat-card" style="padding:12px 14px;">
+        <div style="font-size:10px;color:var(--bo-muted);text-transform:uppercase;letter-spacing:1px;">Operating Expenses</div>
+        <div style="font-size:18px;font-weight:600;margin-top:4px;color:var(--bo-rose-dark);" id="sr-operating-expenses">₹0</div>
+      </div>
+      <div class="stat-card" style="padding:12px 14px;">
+        <div style="font-size:10px;color:var(--bo-muted);text-transform:uppercase;letter-spacing:1px;">WA Messages Sent</div>
+        <div style="font-size:18px;font-weight:600;margin-top:4px;color:var(--bo-info);" id="sr-wa-sent">0</div>
+      </div>
+    </div>
+
+    <!-- Comparative Table & Payments Breakdown -->
+    <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;margin-bottom:20px;">
+      <!-- P&L Period Report Table -->
+      <div class="card">
+        <div class="card-title">Profit &amp; Loss Statement (Period vs Prior Period)</div>
+        <table style="width:100%;font-size:13px;" class="pl-table">
+          <thead>
+            <tr style="border-bottom:1px solid var(--bo-border);">
+              <th>Line Item</th>
+              <th style="text-align:right;">Selected Period</th>
+              <th style="text-align:right;">Prior Period</th>
+              <th style="text-align:right;">Growth / Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid rgba(232,213,190,0.3);">
+              <td><strong>Gross Revenue (Sales)</strong></td>
+              <td style="text-align:right;" id="pl-rev-current">₹0</td>
+              <td style="text-align:right;" id="pl-rev-prior">₹0</td>
+              <td style="text-align:right;" id="pl-rev-change">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(232,213,190,0.3);">
+              <td>Less: Direct Materials (COGS)</td>
+              <td style="text-align:right;" id="pl-cogs-mat-current">₹0</td>
+              <td style="text-align:right;" id="pl-cogs-mat-prior">₹0</td>
+              <td style="text-align:right;" id="pl-cogs-mat-change">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(232,213,190,0.3);">
+              <td>Less: Direct Production Labour (COGS)</td>
+              <td style="text-align:right;" id="pl-cogs-labour-current">₹0</td>
+              <td style="text-align:right;" id="pl-cogs-labour-prior">₹0</td>
+              <td style="text-align:right;" id="pl-cogs-labour-change">—</td>
+            </tr>
+            <tr style="border-bottom:2px solid var(--bo-gold);background:rgba(196,154,60,0.04);">
+              <td><strong>Gross Profit (GP)</strong></td>
+              <td style="text-align:right;font-weight:600;color:var(--bo-success);" id="pl-gp-current">₹0</td>
+              <td style="text-align:right;font-weight:600;" id="pl-gp-prior">₹0</td>
+              <td style="text-align:right;" id="pl-gp-change">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(232,213,190,0.3);">
+              <td>GP Margin %</td>
+              <td style="text-align:right;font-weight:600;" id="pl-gpm-current">0%</td>
+              <td style="text-align:right;" id="pl-gpm-prior">0%</td>
+              <td style="text-align:right;" id="pl-gpm-change">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(232,213,190,0.3);">
+              <td>Less: Monthly Operating Expenses (OPEX)</td>
+              <td style="text-align:right;color:var(--bo-rose-dark);" id="pl-opex-current">₹0</td>
+              <td style="text-align:right;" id="pl-opex-prior">₹0</td>
+              <td style="text-align:right;" id="pl-opex-change">—</td>
+            </tr>
+            <tr style="border-bottom:2px solid var(--bo-gold);background:rgba(45,106,79,0.05);" id="pl-operating-profit-row">
+              <td><strong>Operating Profit (EBITDA)</strong></td>
+              <td style="text-align:right;font-weight:600;color:var(--bo-success);" id="pl-op-current">₹0</td>
+              <td style="text-align:right;font-weight:600;" id="pl-op-prior">₹0</td>
+              <td style="text-align:right;" id="pl-op-change">—</td>
+            </tr>
+            <tr>
+              <td>Operating Margin %</td>
+              <td style="text-align:right;font-weight:600;" id="pl-opm-current">0%</td>
+              <td style="text-align:right;" id="pl-opm-prior">0%</td>
+              <td style="text-align:right;" id="pl-opm-change">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:20px;">
+        <!-- Payment Breakdown Card -->
+        <div class="card">
+          <div class="card-title">Revenue by Payment Method</div>
+          <div id="sr-payment-breakdown" style="margin-top:8px;display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+
+        <!-- Operating Loss warning alert box -->
+        <div class="highlight-box hidden" id="operating-loss-alert" style="background:rgba(155,35,53,0.05);border-color:rgba(155,35,53,0.3);padding:14px;">
+          <div style="font-size:12px;font-weight:600;color:var(--bo-danger);margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+            ⚠️ <span>Operating Loss Incurred</span>
+          </div>
+          <div style="font-size:11px;color:var(--bo-muted);line-height:1.4;">
+            Your operating expenses exceeded gross profits in this period, resulting in a net loss of <strong id="loss-alert-amount" style="color:var(--bo-danger);">₹0</strong>. Consider optimising ingredient COGS or reducing monthly fixed OPEX.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Sales Transaction List -->
     <div class="card">
-      <div class="card-title">Revenue by Payment Method</div>
-      <div id="sr-payment-breakdown" style="margin-top:8px;"></div>
+      <div class="card-title">Recent Invoices in Selected Period</div>
+      <table style="width:100%;font-size:12.5px;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--bo-border);">
+            <th>Invoice No</th>
+            <th>Customer</th>
+            <th>Payment</th>
+            <th>Billed By</th>
+            <th>Date</th>
+            <th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody id="sr-table-body"></tbody>
+      </table>
     </div>
+
   </div>
 </div>
 
