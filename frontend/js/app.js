@@ -2561,7 +2561,9 @@ async function loadDashboardData() {
 
   const lowEl = document.getElementById('dash-lowstock-list');
   if (lowEl) {
-    if (lowItems.length === 0) {
+    if (allItems.length === 0) {
+      lowEl.innerHTML = '<div style="color:var(--bo-muted);font-size:13px;">⚠️ No inventory items added yet. <span style="cursor:pointer;text-decoration:underline;color:var(--bo-gold-dark);" onclick="navigate(\'materials\')">Add materials →</span></div>';
+    } else if (lowItems.length === 0) {
       lowEl.innerHTML = '<div style="color:var(--bo-success);font-size:13px;">✅ All items well stocked!</div>';
     } else {
       lowEl.innerHTML = lowItems.slice(0, 5).map(i => `
@@ -2619,18 +2621,14 @@ function renderMaterialsMaster() {
 }
 
 function updateMaterialStats() {
-  const activeAll = [
-    ...ingredientsMaster.filter(i => !i.deleted),
-    ...packagingMaster.filter(p => !p.deleted),
-  ];
-  const low  = activeAll.filter(i => Number(i.minAlert) > 0 && Number(i.stockQty) > 0 && Number(i.stockQty) <= Number(i.minAlert));
-  const out  = activeAll.filter(i => Number(i.stockQty) === 0);
-  const good = activeAll.filter(i => Number(i.stockQty) > Number(i.minAlert) || Number(i.minAlert) === 0);
+  const activeIngs = ingredientsMaster.filter(i => !i.deleted);
+  const activePacks = packagingMaster.filter(p => !p.deleted);
+  const activeAllLength = activeIngs.length + activePacks.length;
+  
   const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-  el('mat-total', activeAll.length);
-  el('mat-low', low.length);
-  el('mat-out', out.length);
-  el('mat-in', good.length);
+  el('mat-total', activeAllLength);
+  el('mat-ing-count', activeIngs.length);
+  el('mat-pack-count', activePacks.length);
 }
 
 function getStockBadge(item) {
