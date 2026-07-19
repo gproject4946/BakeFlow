@@ -364,6 +364,10 @@
           <label>New Password *</label>
           <input type="password" id="my-new-password" placeholder="At least 8 characters">
         </div>
+        <div class="form-group">
+          <label>Confirm New Password *</label>
+          <input type="password" id="my-confirm-password" placeholder="Re-type new password">
+        </div>
       </div>
       <button class="btn btn-gold" onclick="changeMyPassword()">Update Password</button>
       <div class="form-msg" id="my-msg"></div>
@@ -621,6 +625,7 @@
 
     async function changeMyPassword() {
       const password = document.getElementById('my-new-password').value;
+      const confirmPassword = document.getElementById('my-confirm-password').value;
       const msgEl    = document.getElementById('my-msg');
       msgEl.textContent = '';
 
@@ -634,22 +639,20 @@
         msgEl.textContent = 'Password must be at least 8 characters.';
         return;
       }
-
-      const sess = JSON.parse(localStorage.getItem('bakeflow_session') || '{}');
-      const userId = sess.userId;
-      if (!userId) {
+      if (password !== confirmPassword) {
         msgEl.style.color = 'var(--danger)';
-        msgEl.textContent = 'Unable to identify your user ID. Try logging out and back in.';
+        msgEl.textContent = 'Passwords do not match.';
         return;
       }
 
       try {
-        const res  = await api(`/api/team/${userId}`, { method: 'PUT', body: JSON.stringify({ password }) });
+        const res  = await api('/api/team/change-own-password', { method: 'POST', body: JSON.stringify({ password }) });
         const data = await res.json();
         if (res.ok) {
           msgEl.style.color = 'var(--success)';
           msgEl.textContent = '✓ Your password has been updated successfully.';
           document.getElementById('my-new-password').value = '';
+          document.getElementById('my-confirm-password').value = '';
         } else {
           msgEl.style.color = 'var(--danger)';
           msgEl.textContent = data.error || 'Failed to update password.';

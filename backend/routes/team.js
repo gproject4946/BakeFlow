@@ -181,4 +181,35 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+// POST /api/team/change-own-password
+// Allows currently authenticated owner/admin to change their own password without sending userId from frontend
+router.post('/change-own-password', async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password is required' });
+
+  try {
+    const tenantId = req.user.tenantId;
+    const email = req.user.email;
+
+    // Find user record in DB
+    const user = await db.prisma.user.findFirst({
+      where: { tenantId, email, deleted: false }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User record not found' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    await db.prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword }
+    });
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
