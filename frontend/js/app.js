@@ -2437,9 +2437,10 @@ async function showRoleModal() {
   document.getElementById('role-modal').classList.remove('hidden');
   document.getElementById('role-modal').style.display = 'flex';
   try {
-    const emps = await API.getEmployees();
+    const googleToken = window._pendingGoogleCredential;
+    const emps = await API.getEmployees(googleToken);
     const sel = document.getElementById('employee-select');
-    if (sel) sel.innerHTML = emps.map(e => `<option value="${e.index}">${e.name}</option>`).join('') || '<option value="">No employees configured</option>';
+    if (sel) sel.innerHTML = emps.map(e => `<option value="${e.username || e.index}">${e.name}</option>`).join('') || '<option value="">No employees configured</option>';
   } catch(e) {}
 }
 
@@ -2587,7 +2588,7 @@ async function submitRole() {
       }
       result = await API.loginGoogle(googleToken, password);
     } else {
-      result = await API.loginEmployee(empIdx, password);
+      result = await API.loginEmployee(empIdx, password, window._pendingGoogleCredential);
     }
 
     const session = {

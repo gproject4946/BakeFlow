@@ -142,8 +142,41 @@ router.post('/google', async (req, res) => {
 // POST /api/auth/employee
 // Supports BOTH legacy .env index login AND new DB-backed username/password login
 router.post('/employee', async (req, res) => {
-  const { employeeIndex, username, password } = req.body;
-  const tenantId = req.body.tenantId || 'default-tenant-uuid';
+  const { employeeIndex, username, password, googleToken } = req.body;
+  let tenantId = req.body.tenantId || 'default-tenant-uuid';
+
+  if (googleToken) {
+    try {
+      if (!process.env.GOOGLE_CLIENT_ID) {
+        return res.status(500).json({ success: false, error: 'Google client ID is not configured on the server' });
+      }
+      const ticket = await client.verifyIdToken({
+        idToken: googleToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      const tenant = await db.prisma.tenant.findFirst({
+        where: {
+          OR: [
+            { googleId: payload.sub },
+            { email: payload.email }
+          ]
+        }
+      });
+      if (tenant) {
+        tenantId = tenant.id;
+      }
+    } catch (err) {
+      console.warn('[Employee Login] Google verification failed:', err.message);
+    }
+  }
+
+  if (tenantId !== 'default-tenant-uuid') {
+    const tenant = await db.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (tenant && tenant.status === 'suspended') {
+      return res.status(403).json({ success: false, error: 'Access Denied: This bakery account is suspended. Please contact platform support.' });
+    }
+  }
 
   if (!password) {
     return res.status(400).json({ success: false, error: 'Password is required' });
@@ -244,7 +277,35 @@ router.post('/employee', async (req, res) => {
 // Returns list of employee names (DB-first, .env fallback)
 router.get('/employees', async (req, res) => {
   try {
-    const tenantId = 'default-tenant-uuid'; // Fallback for pre-login page context
+    let tenantId = 'default-tenant-uuid'; // Fallback for pre-login page context
+    const googleToken = req.headers['x-google-token'];
+
+    if (googleToken) {
+      try {
+        if (!process.env.GOOGLE_CLIENT_ID) {
+          return res.status(500).json({ success: false, error: 'Google client ID not configured' });
+        }
+        const ticket = await client.verifyIdToken({
+          idToken: googleToken,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        const tenant = await db.prisma.tenant.findFirst({
+          where: {
+            OR: [
+              { googleId: payload.sub },
+              { email: payload.email }
+            ]
+          }
+        });
+        if (tenant) {
+          tenantId = tenant.id;
+        }
+      } catch (err) {
+        console.warn('[Get Employees] Google verification failed:', err.message);
+      }
+    }
+
     const dbEmployees = await db.prisma.user.findMany({
       where: { tenantId, role: 'employee', active: true, deleted: false },
       select: { id: true, name: true, username: true },
@@ -259,7 +320,7 @@ router.get('/employees', async (req, res) => {
     const employees = [];
     for (let i = 1; i <= 5; i++) {
       const name = process.env[`EMPLOYEE_${i}_NAME`] || `Employee ${i}`;
-      employees.push({ index: i, name });
+      employees.push({ index: i, name, username: `employee_${i}` });
     }
     res.json(employees);
   } catch (err) {

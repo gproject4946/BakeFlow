@@ -45,13 +45,29 @@ const API = {
       body: JSON.stringify({ token, password }),
     });
   },
-  loginEmployee(employeeIndex, password) {
+  loginEmployee(empVal, password, googleToken) {
+    const isIndex = /^\d+$/.test(empVal);
+    const body = { password };
+    if (googleToken) {
+      body.googleToken = googleToken;
+    }
+    if (isIndex) {
+      body.employeeIndex = empVal;
+    } else {
+      body.username = empVal;
+    }
     return this._req('/auth/employee', {
       method: 'POST',
-      body: JSON.stringify({ employeeIndex, password }),
+      body: JSON.stringify(body),
     });
   },
-  getEmployees() { return this._req('/auth/employees'); },
+  getEmployees(googleToken) {
+    const headers = {};
+    if (googleToken) {
+      headers['X-Google-Token'] = googleToken;
+    }
+    return this._req('/auth/employees', { headers });
+  },
   getConfig()    { return this._req('/auth/config'); },
 
 
