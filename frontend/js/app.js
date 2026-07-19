@@ -2423,20 +2423,7 @@ function handleGoogleCredential(response) {
   } catch(e) { showToast('Google sign-in error', true); }
 }
 
-function handleNameLogin() {
-  const name = (document.getElementById('auth-name-input').value || '').trim();
-  if (!name) { showToast('Please enter your name', true); return; }
-  window._pendingGoogleProfile = { name, email: '', picture: '' };
-  window._pendingGoogleCredential = null; // Clear Google token
-  
-  // Auto-select Employee in the modal since Admin requires Google Sign-in
-  const employeeRadio = document.querySelector('input[name="role"][value="employee"]');
-  if (employeeRadio) {
-    employeeRadio.checked = true;
-    onRoleChange('employee');
-  }
-  showRoleModal();
-}
+
 
 async function showRoleModal() {
   document.getElementById('auth-overlay').style.display = 'none';
