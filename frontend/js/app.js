@@ -1783,7 +1783,7 @@ function recalculate(){
     var unitStaff = parseFloat(document.getElementById('labour-unit-staff')?.value) || 1;
     
     activeMins = (batchActiveMins * batchStaff) + (unitActiveMins * unitStaff * batchSize);
-    var derivedRate = getDerivedLabourRate();
+    var derivedRate = parseFloat(document.getElementById('labour-rate')?.value) || 0;
     labourTotal = (activeMins / 60) * derivedRate;
     
     document.getElementById('labour-hours').textContent = (activeMins / 60).toFixed(1) + ' hrs';
