@@ -48,7 +48,7 @@ router.get('/tenants', async (req, res) => {
 });
 
 // POST /api/admin/tenants
-// Onboard a new bakery
+// Onboard a new bakery (supports upsert to reactivate/update existing tenants & passwords)
 router.post('/tenants', async (req, res) => {
   const { name, email, googleId, plan, phone, password } = req.body;
   if (!name || !email || !googleId) {
@@ -57,6 +57,76 @@ router.post('/tenants', async (req, res) => {
 
   try {
     const targetPlan = plan || 'free';
+    
+    // Hash the password if provided
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 12);
+    }
+
+    // Check if tenant with this googleId or email already exists
+    const existingTenant = await db.prisma.tenant.findFirst({
+      where: {
+        OR: [
+          { googleId },
+          { email }
+        ]
+      }
+    });
+
+    if (existingTenant) {
+      // Update existing tenant to active status, new plan, name, and phone
+      const updatedTenant = await db.prisma.tenant.update({
+        where: { id: existingTenant.id },
+        data: {
+          name,
+          email,
+          googleId,
+          phone: phone || existingTenant.phone,
+          plan: targetPlan,
+          status: 'active'
+        }
+      });
+
+      // Find the Owner user for this tenant
+      const existingOwner = await db.prisma.user.findFirst({
+        where: { tenantId: existingTenant.id, role: 'owner' }
+      });
+
+      if (existingOwner) {
+        // Update existing owner user
+        await db.prisma.user.update({
+          where: { id: existingOwner.id },
+          data: {
+            name: name + ' Owner',
+            email,
+            phone: phone || existingOwner.phone,
+            googleId,
+            password: hashedPassword || existingOwner.password,
+            active: true
+          }
+        });
+      } else {
+        // Create owner user if they didn't exist
+        await db.prisma.user.create({
+          data: {
+            tenantId: existingTenant.id,
+            name: name + ' Owner',
+            email,
+            phone: phone || null,
+            googleId,
+            role: 'owner',
+            authMethod: 'google',
+            password: hashedPassword,
+            active: true
+          }
+        });
+      }
+
+      return res.json(updatedTenant);
+    }
+
+    // Create brand new Tenant if none existed
     if (targetPlan === 'free') {
       const freeCount = await db.prisma.tenant.count({
         where: { plan: 'free' }
@@ -76,12 +146,6 @@ router.post('/tenants', async (req, res) => {
         status: 'active'
       }
     });
-
-    // Hash the password if provided, otherwise leave empty (owner can reset/verify via WhatsApp later)
-    let hashedPassword = null;
-    if (password) {
-      hashedPassword = await bcrypt.hash(password, 12);
-    }
 
     // Automatically create the owner user account for this tenant
     await db.prisma.user.create({
