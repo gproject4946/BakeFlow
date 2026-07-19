@@ -60,7 +60,7 @@ var overheadSettings = null;
 function showLoading(msg) {
   var ol = document.getElementById('loading-overlay');
   if (ol) {
-    ol.querySelector('.loading-text').textContent = msg || 'Connecting to Google Sheets…';
+    ol.querySelector('.loading-text').textContent = msg || 'Loading BakeFlow…';
     ol.classList.remove('hidden');
   }
 }
@@ -71,7 +71,7 @@ function hideLoading() {
 
 // ── Bootstrap ─────────────────────────────────────────────────
 async function initApp() {
-  showLoading('Connecting to Google Sheets…');
+  showLoading('Connecting to database…');
   try {
     const [ings, packs, prods, orders, settings] = await Promise.all([
       API.getIngredients(),
@@ -2045,7 +2045,7 @@ async function saveOrder(){
     currentEditingOrderId=null;
     var banner=document.getElementById('calc-edit-banner');if(banner)banner.remove();
     renderSavedOrdersList();
-    showToast('Calculation saved to Google Sheets! ✓');
+    showToast('Calculation saved successfully! ✓');
     navigate('orders');
   } catch(err){ showToast('Failed to save calculation!',true); }
 }
