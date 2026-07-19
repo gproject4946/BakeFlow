@@ -2529,10 +2529,11 @@ function applySession() {
   const suRole = document.getElementById('su-role');
   const suAvatar = document.getElementById('su-avatar');
   if (suName) suName.textContent = currentSession.name;
-  const hasAdminPrivileges = currentSession.role === 'admin' || currentSession.role === 'owner';
+  const hasAdminPrivileges = currentSession.role === 'admin' || currentSession.role === 'owner' || currentSession.role === 'platform_admin';
   if (suRole) {
     if (currentSession.role === 'owner') suRole.textContent = '👑 Owner';
     else if (currentSession.role === 'admin') suRole.textContent = '🔑 Admin';
+    else if (currentSession.role === 'platform_admin') suRole.textContent = '🏛️ Platform Admin';
     else suRole.textContent = '👤 Employee';
   }
   if (suAvatar && currentSession.picture) {
