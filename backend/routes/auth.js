@@ -327,6 +327,11 @@ router.post('/request-access', async (req, res) => {
     });
 
     res.json({ success: true, message: 'Your onboarding request has been submitted successfully and is awaiting review.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // POST /api/auth/otp-request
 // Generates a 6-digit WhatsApp OTP and sends it to the owner's phone number
 router.post('/otp-request', async (req, res) => {
