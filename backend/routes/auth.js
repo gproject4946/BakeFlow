@@ -94,19 +94,11 @@ router.post('/google', async (req, res) => {
 
     // 2. Check Password
     let isMatch = false;
-    if (isPlatformAdmin) {
-      // Platform admin always matches against the master ADMIN_PASSWORD
-      const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
-      if (adminPass.startsWith('$2a$') || adminPass.startsWith('$2b$')) {
-        isMatch = await bcrypt.compare(password, adminPass);
-      } else {
-        isMatch = (password === adminPass);
-      }
-    } else if (dbUser && dbUser.password) {
-      // Bakery owner has their own password set in database
+    if (dbUser && dbUser.password) {
+      // If a database password is set for this account, they MUST log in using it ONLY (no ADMIN_PASSWORD fallback allowed)
       isMatch = await bcrypt.compare(password, dbUser.password);
     } else {
-      // Fallback: If owner has no password set (just onboarded), allow master ADMIN_PASSWORD
+      // Fallback: If no password is set in DB yet, or if they are a platform-only admin without a tenant-bound user record, check against ADMIN_PASSWORD env variable
       const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
       if (adminPass.startsWith('$2a$') || adminPass.startsWith('$2b$')) {
         isMatch = await bcrypt.compare(password, adminPass);
