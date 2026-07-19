@@ -192,12 +192,20 @@ router.post('/change-own-password', async (req, res) => {
     const email = req.user.email;
 
     // Find user record in DB
-    const user = await db.prisma.user.findFirst({
-      where: { tenantId, email, deleted: false }
-    });
+    let user = null;
+    if (req.user.role === 'platform_admin') {
+      // Platform Admin can reset the Owner password of the current tenant they are inspecting
+      user = await db.prisma.user.findFirst({
+        where: { tenantId, role: 'owner', deleted: false }
+      });
+    } else {
+      user = await db.prisma.user.findFirst({
+        where: { tenantId, email, deleted: false }
+      });
+    }
 
     if (!user) {
-      return res.status(404).json({ error: 'User record not found' });
+      return res.status(404).json({ error: 'User record not found. Platform admin can only reset tenant owner passwords.' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
