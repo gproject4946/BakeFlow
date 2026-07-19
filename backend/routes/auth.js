@@ -61,22 +61,9 @@ router.post('/google', async (req, res) => {
     });
     const payload = ticket.getPayload();
 
-    // 2. Check Admin Password
-    const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
-    // Support either bcrypt or plaintext for admin password (in transition state)
-    let isMatch = false;
-    if (adminPass.startsWith('$2a$') || adminPass.startsWith('$2b$')) {
-      isMatch = await bcrypt.compare(password, adminPass);
-    } else {
-      isMatch = (password === adminPass);
-    }
 
-    if (!isMatch) {
-      return res.status(401).json({ success: false, error: 'Invalid admin password' });
-    }
 
-    // 3. Generate session JWT
-    // Find whitelisted tenant for this owner
+    // 3. Find tenant for this owner
     let tenantId = 'default-tenant-uuid';
     const tenant = await db.prisma.tenant.findFirst({
       where: {
@@ -90,32 +77,62 @@ router.post('/google', async (req, res) => {
       tenantId = tenant.id;
     }
 
-    // Determine role (check PlatformAdmin table or PLATFORM_ADMIN_EMAIL env)
+    // Determine platform admin status
     const adminUser = await db.prisma.platformAdmin.findUnique({
       where: { email: payload.email }
     });
+    const isPlatformAdmin = adminUser || (process.env.PLATFORM_ADMIN_EMAIL && payload.email === process.env.PLATFORM_ADMIN_EMAIL);
+    let role = isPlatformAdmin ? 'platform_admin' : 'owner';
 
-    let role = 'admin'; // Bakery owner role
-    if (adminUser || (process.env.PLATFORM_ADMIN_EMAIL && payload.email === process.env.PLATFORM_ADMIN_EMAIL)) {
-      role = 'platform_admin';
+    // Look up the database user
+    let dbUser = null;
+    if (tenant) {
+      dbUser = await db.prisma.user.findFirst({
+        where: { tenantId, email: payload.email, deleted: false }
+      });
+    }
+
+    // 2. Check Password
+    let isMatch = false;
+    if (isPlatformAdmin) {
+      // Platform admin always matches against the master ADMIN_PASSWORD
+      const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+      if (adminPass.startsWith('$2a$') || adminPass.startsWith('$2b$')) {
+        isMatch = await bcrypt.compare(password, adminPass);
+      } else {
+        isMatch = (password === adminPass);
+      }
+    } else if (dbUser && dbUser.password) {
+      // Bakery owner has their own password set in database
+      isMatch = await bcrypt.compare(password, dbUser.password);
+    } else {
+      // Fallback: If owner has no password set (just onboarded), allow master ADMIN_PASSWORD
+      const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+      if (adminPass.startsWith('$2a$') || adminPass.startsWith('$2b$')) {
+        isMatch = await bcrypt.compare(password, adminPass);
+      } else {
+        isMatch = (password === adminPass);
+      }
+    }
+
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: 'Invalid password' });
     }
 
     const userPayload = {
       role,
-      name: payload.name || process.env.OWNER_NAME || 'Admin',
+      name: dbUser ? dbUser.name : (payload.name || process.env.OWNER_NAME || 'Admin'),
       email: payload.email,
       picture: payload.picture || '',
-      tenantId: tenantId
+      tenantId: tenantId,
+      userId: dbUser ? dbUser.id : null
     };
     const jwtToken = generateToken(userPayload);
 
     // Record session for DB-backed owner users
     let sessionId = null;
-    if (tenant) {
-      const dbUser = await db.prisma.user.findFirst({
-        where: { tenantId, email: payload.email, deleted: false }
-      });
-      if (dbUser) sessionId = await recordSession(dbUser.id, tenantId, req);
+    if (dbUser) {
+      sessionId = await recordSession(dbUser.id, tenantId, req);
     }
 
     return res.json({

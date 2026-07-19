@@ -17,8 +17,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET - fetch audit log for Reports page (admin only enforced on frontend)
-router.get('/', requireRole('admin'), async (req, res) => {
+// GET - fetch audit log for Reports page (admin or owner)
+router.get('/', requireRole(['admin', 'owner']), async (req, res) => {
 
   try {
     const logs = await db.getAll('AuditLog');

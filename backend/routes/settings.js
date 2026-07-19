@@ -3,11 +3,8 @@ const router = express.Router();
 const db = require('../sheets/sheetsClient');
 const requireRole = require('../middleware/requireRole');
 
-router.use(requireRole('admin'));
-
-
-// GET all settings as a flat key→value object
-router.get('/', async (req, res) => {
+// GET all settings as a flat key→value object (accessible to employees, admins, owners for calculator/invoice functions)
+router.get('/', requireRole(['employee', 'admin', 'owner']), async (req, res) => {
   try {
     const rows = await db.getAll('Settings');
     const settings = {};
@@ -18,8 +15,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST - upsert a setting
-router.post('/', async (req, res) => {
+// POST - upsert a setting (restricted to admin and owner)
+router.post('/', requireRole(['admin', 'owner']), async (req, res) => {
   try {
     const { key, value } = req.body;
     const rows = await db.getAll('Settings');

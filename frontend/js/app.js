@@ -2494,6 +2494,7 @@ async function submitRole() {
       email: result.user.email || '',
       picture: result.user.picture || '',
       role: result.user.role,
+      userId: result.user.userId || null,
       employeeIndex: result.user.employeeIndex || null,
       loginTime: Date.now(),
     };
@@ -2528,20 +2529,24 @@ function applySession() {
   const suRole = document.getElementById('su-role');
   const suAvatar = document.getElementById('su-avatar');
   if (suName) suName.textContent = currentSession.name;
-  if (suRole) suRole.textContent = currentSession.role === 'admin' ? '🔑 Admin' : '👤 Employee';
+  const hasAdminPrivileges = currentSession.role === 'admin' || currentSession.role === 'owner';
+  if (suRole) {
+    if (currentSession.role === 'owner') suRole.textContent = '👑 Owner';
+    else if (currentSession.role === 'admin') suRole.textContent = '🔑 Admin';
+    else suRole.textContent = '👤 Employee';
+  }
   if (suAvatar && currentSession.picture) {
     suAvatar.innerHTML = `<img src="${currentSession.picture}" alt="">`;
   }
 
   // Apply admin/employee CSS class for visibility
-  const isAdmin = currentSession.role === 'admin';
-  document.body.classList.toggle('role-admin', isAdmin);
-  document.body.classList.toggle('role-employee', !isAdmin);
+  document.body.classList.toggle('role-admin', hasAdminPrivileges);
+  document.body.classList.toggle('role-employee', !hasAdminPrivileges);
 
   // Also imperatively show/hide admin-only elements (belt & suspenders)
   document.querySelectorAll('.admin-only').forEach(el => {
     const tag = el.tagName.toLowerCase();
-    if (isAdmin) {
+    if (hasAdminPrivileges) {
       if (tag === 'div' && el.classList.contains('stats-grid')) el.style.display = 'grid';
       else if (tag === 'div' && el.classList.contains('nav-section')) el.style.display = 'block';
       else el.style.display = '';

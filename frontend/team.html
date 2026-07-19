@@ -355,6 +355,19 @@
       <button class="btn btn-ghost" onclick="resetPassword()">Reset Password</button>
       <div class="form-msg" id="reset-msg"></div>
     </div>
+
+    <!-- Change My Password Card (for Owner / Admin themselves) -->
+    <div class="card" style="max-width:520px">
+      <div class="card-title"><i class="ti ti-shield-lock" style="color:var(--gold)"></i> Change My Password</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>New Password *</label>
+          <input type="password" id="my-new-password" placeholder="At least 8 characters">
+        </div>
+      </div>
+      <button class="btn btn-gold" onclick="changeMyPassword()">Update Password</button>
+      <div class="form-msg" id="my-msg"></div>
+    </div>
   </div>
 
   <script>
@@ -597,6 +610,47 @@
         } else {
           msgEl.style.color = 'var(--danger)';
           msgEl.textContent = data.error || 'Failed to reset password.';
+        }
+      } catch (err) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = err.message;
+      }
+    }
+
+    async function changeMyPassword() {
+      const password = document.getElementById('my-new-password').value;
+      const msgEl    = document.getElementById('my-msg');
+      msgEl.textContent = '';
+
+      if (!password) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = 'Please enter your new password.';
+        return;
+      }
+      if (password.length < 8) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = 'Password must be at least 8 characters.';
+        return;
+      }
+
+      const sess = JSON.parse(localStorage.getItem('bakeflow_session') || '{}');
+      const userId = sess.userId;
+      if (!userId) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = 'Unable to identify your user ID. Try logging out and back in.';
+        return;
+      }
+
+      try {
+        const res  = await api(`/api/team/${userId}`, { method: 'PUT', body: JSON.stringify({ password }) });
+        const data = await res.json();
+        if (res.ok) {
+          msgEl.style.color = 'var(--success)';
+          msgEl.textContent = '✓ Your password has been updated successfully.';
+          document.getElementById('my-new-password').value = '';
+        } else {
+          msgEl.style.color = 'var(--danger)';
+          msgEl.textContent = data.error || 'Failed to update password.';
         }
       } catch (err) {
         msgEl.style.color = 'var(--danger)';
