@@ -232,4 +232,102 @@ router.put('/tenants/:id/approve', async (req, res) => {
   }
 });
 
+// GET /api/admin/stats
+// Platform-wide usage stats for cost calculation
+router.get('/stats', async (req, res) => {
+  try {
+    const now        = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth  = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    // ── Platform totals ──────────────────────────────────────
+    const [
+      totalTenants,
+      activeTenants,
+      totalUsers,
+      totalSessions,
+      totalInvoices,
+      totalOrders,
+      totalProducts,
+      totalCustomers
+    ] = await Promise.all([
+      db.prisma.tenant.count(),
+      db.prisma.tenant.count({ where: { status: 'active' } }),
+      db.prisma.user.count({ where: { deleted: false } }),
+      db.prisma.userSession.count(),
+      db.prisma.salesInvoice.count({ where: { deleted: false } }),
+      db.prisma.order.count({ where: { deleted: false } }),
+      db.prisma.product.count({ where: { deleted: false } }),
+      db.prisma.customer.count({ where: { deleted: false } })
+    ]);
+
+    // ── API usage (all time) ──────────────────────────────────
+    const [totalScans, totalWhatsapp, thisMonthScans, thisMonthWhatsapp, lastMonthScans, lastMonthWhatsapp] =
+      await Promise.all([
+        db.prisma.auditLog.count({ where: { action: 'SCAN_INVOICE' } }),
+        db.prisma.auditLog.count({ where: { action: 'SEND_WHATSAPP' } }),
+        db.prisma.auditLog.count({ where: { action: 'SCAN_INVOICE',   date: { gte: monthStart.toISOString().slice(0,10) } } }),
+        db.prisma.auditLog.count({ where: { action: 'SEND_WHATSAPP',  date: { gte: monthStart.toISOString().slice(0,10) } } }),
+        db.prisma.auditLog.count({ where: { action: 'SCAN_INVOICE',   date: { gte: lastMonth.toISOString().slice(0,10), lte: lastMonthEnd.toISOString().slice(0,10) } } }),
+        db.prisma.auditLog.count({ where: { action: 'SEND_WHATSAPP',  date: { gte: lastMonth.toISOString().slice(0,10), lte: lastMonthEnd.toISOString().slice(0,10) } } })
+      ]);
+
+    // ── Per-bakery breakdown ──────────────────────────────────
+    const tenants = await db.prisma.tenant.findMany({
+      where: { status: { not: 'pending' } },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const perBakery = await Promise.all(tenants.map(async (t) => {
+      const [scansTotal, whatsappTotal, scansMo, whatsappMo, invoices, orders, users, sessions] =
+        await Promise.all([
+          db.prisma.auditLog.count({ where: { tenantId: t.id, action: 'SCAN_INVOICE' } }),
+          db.prisma.auditLog.count({ where: { tenantId: t.id, action: 'SEND_WHATSAPP' } }),
+          db.prisma.auditLog.count({ where: { tenantId: t.id, action: 'SCAN_INVOICE',  date: { gte: monthStart.toISOString().slice(0,10) } } }),
+          db.prisma.auditLog.count({ where: { tenantId: t.id, action: 'SEND_WHATSAPP', date: { gte: monthStart.toISOString().slice(0,10) } } }),
+          db.prisma.salesInvoice.count({ where: { tenantId: t.id, deleted: false } }),
+          db.prisma.order.count({ where: { tenantId: t.id, deleted: false } }),
+          db.prisma.user.count({ where: { tenantId: t.id, deleted: false } }),
+          db.prisma.userSession.count({ where: { tenantId: t.id } })
+        ]);
+
+      // Cost estimates (approximate API costs)
+      // Gemini Flash: ~$0.00025 per scan | Twilio WhatsApp: ~$0.005 per message
+      const estimatedCost = (scansTotal * 0.00025) + (whatsappTotal * 0.005);
+      const monthlyCost   = (scansMo    * 0.00025) + (whatsappMo    * 0.005);
+
+      return {
+        id: t.id, name: t.name, email: t.email,
+        plan: t.plan, status: t.status, createdAt: t.createdAt,
+        scansTotal, whatsappTotal, scansMo, whatsappMo,
+        invoices, orders, users, sessions,
+        estimatedCost: +estimatedCost.toFixed(4),
+        monthlyCost:   +monthlyCost.toFixed(4)
+      };
+    }));
+
+    // ── Platform cost totals ──────────────────────────────────
+    const totalEstimatedCost = +((totalScans * 0.00025) + (totalWhatsapp * 0.005)).toFixed(4);
+    const monthlyEstimatedCost = +((thisMonthScans * 0.00025) + (thisMonthWhatsapp * 0.005)).toFixed(4);
+
+    res.json({
+      platform: {
+        totalTenants, activeTenants,
+        totalUsers, totalSessions,
+        totalInvoices, totalOrders,
+        totalProducts, totalCustomers
+      },
+      usage: {
+        allTime:   { scans: totalScans,      whatsapp: totalWhatsapp,      cost: totalEstimatedCost },
+        thisMonth: { scans: thisMonthScans,  whatsapp: thisMonthWhatsapp,  cost: monthlyEstimatedCost },
+        lastMonth: { scans: lastMonthScans,  whatsapp: lastMonthWhatsapp }
+      },
+      perBakery
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

@@ -409,6 +409,9 @@
         <li class="nav-item active" onclick="switchTab('dashboard')" id="tab-nav-dashboard">
           <i class="ti ti-chart-pie"></i> Dashboard
         </li>
+        <li class="nav-item" onclick="switchTab('analytics')" id="tab-nav-analytics">
+          <i class="ti ti-chart-bar"></i> Usage &amp; Costs
+        </li>
         <li class="nav-item" onclick="switchTab('bakeries')" id="tab-nav-bakeries">
           <i class="ti ti-building-store"></i> Bakeries (Tenants)
         </li>
@@ -452,6 +455,104 @@
             <div>
               <div class="metric-label">Total Invoices</div>
               <div class="metric-value" id="metric-invoices">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS / USAGE TAB -->
+      <div id="tab-analytics" class="hidden">
+        <div class="page-header">
+          <h1 class="page-title">Usage &amp; Cost Analytics</h1>
+          <p style="color:var(--text-muted);font-size:13px;margin-top:6px">Real-time API usage across all bakeries — use this to calculate platform running costs and set future pricing.</p>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon" style="color:#a78bfa;background:rgba(167,139,250,0.1)"><i class="ti ti-brain"></i></div>
+            <div><div class="metric-label">AI Scans (All Time)</div><div class="metric-value" id="an-scans-total">—</div></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color:#34d399;background:rgba(52,211,153,0.1)"><i class="ti ti-brand-whatsapp"></i></div>
+            <div><div class="metric-label">WhatsApp Sent (All Time)</div><div class="metric-value" id="an-wa-total">—</div></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color:#f59e0b;background:rgba(245,158,11,0.1)"><i class="ti ti-brain"></i></div>
+            <div><div class="metric-label">AI Scans This Month</div><div class="metric-value" id="an-scans-month">—</div></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color:#f59e0b;background:rgba(245,158,11,0.1)"><i class="ti ti-brand-whatsapp"></i></div>
+            <div><div class="metric-label">WhatsApp This Month</div><div class="metric-value" id="an-wa-month">—</div></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color:var(--danger);background:rgba(239,68,68,0.1)"><i class="ti ti-cash"></i></div>
+            <div><div class="metric-label">Est. Cost This Month</div><div class="metric-value" id="an-cost-month">—</div></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="color:var(--gold);background:rgba(212,175,55,0.1)"><i class="ti ti-cash"></i></div>
+            <div><div class="metric-label">Est. Cost All Time</div><div class="metric-value" id="an-cost-total">—</div></div>
+          </div>
+        </div>
+
+        <!-- Pricing note -->
+        <div class="panel-card" style="margin-bottom:24px;padding:16px 24px;background:rgba(212,175,55,0.05);border-color:rgba(212,175,55,0.2)">
+          <div style="font-size:13px;color:var(--text-muted);line-height:2">
+            <strong style="color:var(--gold)">💡 Cost Calculation Basis</strong><br>
+            Gemini Flash Vision: <strong>~$0.00025 per invoice scan</strong> &nbsp;|&nbsp;
+            Twilio WhatsApp: <strong>~$0.005 per message</strong> &nbsp;|&nbsp;
+            Neon PostgreSQL Free: <strong>$0 (up to 0.5 GB)</strong><br>
+            <span style="font-size:11px;opacity:0.7">Estimates only — verify exact billing on Google AI Studio and Twilio Console dashboards.</span>
+          </div>
+        </div>
+
+        <!-- Per-bakery breakdown -->
+        <div class="panel-card" style="margin-bottom:24px">
+          <div class="panel-title"><i class="ti ti-table"></i> Per-Bakery Usage Breakdown</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bakery</th>
+                  <th>Plan</th>
+                  <th>Users</th>
+                  <th>Sessions</th>
+                  <th>Invoices</th>
+                  <th>AI Scans (Total)</th>
+                  <th>AI Scans (Mo)</th>
+                  <th>WhatsApp (Total)</th>
+                  <th>WhatsApp (Mo)</th>
+                  <th>Cost (Total)</th>
+                  <th>Cost (Mo)</th>
+                </tr>
+              </thead>
+              <tbody id="analytics-tbody">
+                <tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:20px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- MoM comparison -->
+        <div class="panel-card">
+          <div class="panel-title"><i class="ti ti-trending-up"></i> Month-over-Month Comparison</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:8px">
+            <div>
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px">AI Invoice Scans</div>
+              <div style="display:flex;gap:20px;align-items:flex-end">
+                <div><div style="font-size:11px;color:var(--text-muted)">Last Month</div><div style="font-size:32px;font-weight:700" id="an-scans-last">—</div></div>
+                <div style="font-size:22px;color:var(--text-muted);margin-bottom:6px">→</div>
+                <div><div style="font-size:11px;color:var(--text-muted)">This Month</div><div style="font-size:32px;font-weight:700;color:var(--gold)" id="an-scans-mo2">—</div></div>
+                <div style="font-size:14px;font-weight:700;margin-bottom:8px" id="an-scans-trend"></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px">WhatsApp Messages</div>
+              <div style="display:flex;gap:20px;align-items:flex-end">
+                <div><div style="font-size:11px;color:var(--text-muted)">Last Month</div><div style="font-size:32px;font-weight:700" id="an-wa-last">—</div></div>
+                <div style="font-size:22px;color:var(--text-muted);margin-bottom:6px">→</div>
+                <div><div style="font-size:11px;color:var(--text-muted)">This Month</div><div style="font-size:32px;font-weight:700;color:var(--gold)" id="an-wa-mo2">—</div></div>
+                <div style="font-size:14px;font-weight:700;margin-bottom:8px" id="an-wa-trend"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -641,10 +742,14 @@
     function switchTab(tabId) {
       currentTab = tabId;
       document.getElementById('tab-dashboard').classList.toggle('hidden', tabId !== 'dashboard');
+      document.getElementById('tab-analytics').classList.toggle('hidden', tabId !== 'analytics');
       document.getElementById('tab-bakeries').classList.toggle('hidden', tabId !== 'bakeries');
-      
+
       document.getElementById('tab-nav-dashboard').classList.toggle('active', tabId === 'dashboard');
+      document.getElementById('tab-nav-analytics').classList.toggle('active', tabId === 'analytics');
       document.getElementById('tab-nav-bakeries').classList.toggle('active', tabId === 'bakeries');
+
+      if (tabId === 'analytics') loadAnalytics();
     }
 
     async function loadData() {
@@ -668,6 +773,62 @@
         renderTenants(tenants);
       } catch (err) {
         console.error('Failed to load metrics/tenants:', err);
+      }
+    }
+
+    async function loadAnalytics() {
+      try {
+        const res  = await fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (!res.ok) { console.error('Stats error:', data); return; }
+
+        const { usage, perBakery } = data;
+
+        // Top metrics
+        document.getElementById('an-scans-total').textContent  = usage.allTime.scans;
+        document.getElementById('an-wa-total').textContent     = usage.allTime.whatsapp;
+        document.getElementById('an-scans-month').textContent  = usage.thisMonth.scans;
+        document.getElementById('an-wa-month').textContent     = usage.thisMonth.whatsapp;
+        document.getElementById('an-cost-month').textContent   = '$' + usage.thisMonth.cost.toFixed(4);
+        document.getElementById('an-cost-total').textContent   = '$' + usage.allTime.cost.toFixed(4);
+
+        // MoM
+        document.getElementById('an-scans-last').textContent  = usage.lastMonth.scans;
+        document.getElementById('an-scans-mo2').textContent   = usage.thisMonth.scans;
+        document.getElementById('an-wa-last').textContent     = usage.lastMonth.whatsapp;
+        document.getElementById('an-wa-mo2').textContent      = usage.thisMonth.whatsapp;
+
+        const scanDiff = usage.thisMonth.scans - usage.lastMonth.scans;
+        const waDiff   = usage.thisMonth.whatsapp - usage.lastMonth.whatsapp;
+        document.getElementById('an-scans-trend').textContent = scanDiff >= 0 ? `▲ ${scanDiff}` : `▼ ${Math.abs(scanDiff)}`;
+        document.getElementById('an-scans-trend').style.color = scanDiff >= 0 ? '#f59e0b' : '#10b981';
+        document.getElementById('an-wa-trend').textContent    = waDiff >= 0 ? `▲ ${waDiff}` : `▼ ${Math.abs(waDiff)}`;
+        document.getElementById('an-wa-trend').style.color    = waDiff >= 0 ? '#f59e0b' : '#10b981';
+
+        // Per-bakery table
+        const tbody = document.getElementById('analytics-tbody');
+        if (!perBakery.length) {
+          tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:20px">No bakeries yet.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = perBakery.map(b => {
+          const planClass = b.plan === 'pro' ? 'color:#a78bfa' : b.plan === 'starter' ? 'color:var(--info)' : 'color:var(--gold)';
+          return `<tr>
+            <td><strong>${b.name}</strong><br><span style="font-size:11px;color:var(--text-muted)">${b.email}</span></td>
+            <td><span style="font-weight:600;${planClass}">${b.plan.toUpperCase()}</span></td>
+            <td>${b.users}</td>
+            <td>${b.sessions}</td>
+            <td>${b.invoices}</td>
+            <td style="color:#a78bfa;font-weight:600">${b.scansTotal}</td>
+            <td>${b.scansMo}</td>
+            <td style="color:#34d399;font-weight:600">${b.whatsappTotal}</td>
+            <td>${b.whatsappMo}</td>
+            <td style="color:var(--danger);font-weight:600">$${b.estimatedCost}</td>
+            <td>$${b.monthlyCost}</td>
+          </tr>`;
+        }).join('');
+      } catch (err) {
+        console.error('Analytics load error:', err);
       }
     }
 
