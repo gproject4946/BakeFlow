@@ -2045,7 +2045,7 @@ async function saveOrder(){
     currentEditingOrderId=null;
     var banner=document.getElementById('calc-edit-banner');if(banner)banner.remove();
     renderSavedOrdersList();
-    showToast('Calculation saved successfully! ✓');
+    showToast('Calculation saved to database! ✓');
     navigate('orders');
   } catch(err){ showToast('Failed to save calculation!',true); }
 }
