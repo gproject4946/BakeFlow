@@ -2411,6 +2411,14 @@ function handleGoogleCredential(response) {
   try {
     const payload = JSON.parse(atob(response.credential.split('.')[1]));
     window._pendingGoogleProfile = { name: payload.name, email: payload.email, picture: payload.picture || '' };
+    window._pendingGoogleCredential = response.credential; // Store raw Google token
+    
+    // Auto-select Admin in the modal
+    const adminRadio = document.querySelector('input[name="role"][value="admin"]');
+    if (adminRadio) {
+      adminRadio.checked = true;
+      onRoleChange('admin');
+    }
     showRoleModal();
   } catch(e) { showToast('Google sign-in error', true); }
 }
@@ -2419,6 +2427,14 @@ function handleNameLogin() {
   const name = (document.getElementById('auth-name-input').value || '').trim();
   if (!name) { showToast('Please enter your name', true); return; }
   window._pendingGoogleProfile = { name, email: '', picture: '' };
+  window._pendingGoogleCredential = null; // Clear Google token
+  
+  // Auto-select Employee in the modal since Admin requires Google Sign-in
+  const employeeRadio = document.querySelector('input[name="role"][value="employee"]');
+  if (employeeRadio) {
+    employeeRadio.checked = true;
+    onRoleChange('employee');
+  }
   showRoleModal();
 }
 
@@ -2459,17 +2475,30 @@ async function submitRole() {
   const password = (document.getElementById('role-password').value || '').trim();
   const empIdx = role === 'employee' ? (document.getElementById('employee-select').value || null) : null;
   if (!password) { showRoleError('Please enter your password'); return; }
+
   try {
-    const result = await API.verifyRole(role, empIdx, password);
-    const profile = window._pendingGoogleProfile || {};
+    let result;
+    if (role === 'admin') {
+      const googleToken = window._pendingGoogleCredential;
+      if (!googleToken) {
+        showRoleError('Please sign in with Google first to verify your identity.');
+        return;
+      }
+      result = await API.loginGoogle(googleToken, password);
+    } else {
+      result = await API.loginEmployee(empIdx, password);
+    }
+
     const session = {
-      name: result.name || profile.name || 'User',
-      email: result.email || profile.email || '',
-      picture: profile.picture || '',
-      role: result.role,
-      employeeIndex: result.employeeIndex || null,
+      name: result.user.name || 'User',
+      email: result.user.email || '',
+      picture: result.user.picture || '',
+      role: result.user.role,
+      employeeIndex: result.user.employeeIndex || null,
       loginTime: Date.now(),
     };
+    
+    localStorage.setItem('bakeflow_token', result.token);
     localStorage.setItem('bakeflow_session', JSON.stringify(session));
     currentSession = session;
     document.getElementById('role-modal').style.display = 'none';
@@ -2477,9 +2506,10 @@ async function submitRole() {
     applySession();
     try { await API.log('LOGIN', 'Role: ' + session.role, 'Auth', ''); } catch(e) {}
   } catch(err) {
-    showRoleError('Incorrect password. Please try again.');
+    showRoleError(err.message || 'Incorrect password or authentication failed.');
   }
 }
+
 
 function showRoleError(msg) {
   const el = document.getElementById('role-error');
@@ -2528,6 +2558,7 @@ function signOut() {
     try { API.log('LOGOUT', 'Session ended', 'Auth', ''); } catch(e) {}
   }
   localStorage.removeItem('bakeflow_session');
+  localStorage.removeItem('bakeflow_token');
   currentSession = null;
   location.reload();
 }
@@ -3346,14 +3377,12 @@ async function depleteInventoryForSaleItems(items) {
         if (!ing.name) continue;
         const normName = cleanStr(ing.name);
         const masterIng = ingredientsMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
-
         if (masterIng) {
           const factor = getConversionFactorV2(ing.name, masterIng.unit, ing.unit);
           const totalUsed = ing.qty * factor * multiplier;
-          const newStock = Math.max(0, (Number(masterIng.stockQty) || 0) - totalUsed);
           try {
-            await API.updateIngredientStock(masterIng.id, newStock, Number(masterIng.minAlert) || 0);
-            masterIng.stockQty = newStock;
+            // Atomic: server does stockQty = stockQty - totalUsed — no race condition
+            await API.decrementIngredientStock(masterIng.id, totalUsed);
             depletedCount++;
           } catch (e) {
             console.warn('[Depletion] Failed for ingredient:', ing.name, e.message);
@@ -3368,14 +3397,11 @@ async function depleteInventoryForSaleItems(items) {
         if (!pack.name) continue;
         const normName = cleanStr(pack.name);
         const masterPack = packagingMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
-
         if (masterPack) {
           const factor = getConversionFactorV2(pack.name, masterPack.unit, pack.unit);
           const totalUsed = pack.qty * factor * multiplier;
-          const newStock = Math.max(0, (Number(masterPack.stockQty) || 0) - totalUsed);
           try {
-            await API.updatePackagingStock(masterPack.id, newStock, Number(masterPack.minAlert) || 0);
-            masterPack.stockQty = newStock;
+            await API.decrementPackagingStock(masterPack.id, totalUsed);
             depletedCount++;
           } catch (e) {
             console.warn('[Depletion] Failed for packaging:', pack.name, e.message);
@@ -3389,32 +3415,22 @@ async function depleteInventoryForSaleItems(items) {
       for (const deco of recipe.decorations) {
         if (!deco.name) continue;
         const normName = cleanStr(deco.name);
-
         const masterIng = ingredientsMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
         const masterPack = packagingMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
-
         if (masterIng) {
           const factor = getConversionFactorV2(deco.name, masterIng.unit, deco.unit);
           const totalUsed = deco.qty * factor * multiplier;
-          const newStock = Math.max(0, (Number(masterIng.stockQty) || 0) - totalUsed);
           try {
-            await API.updateIngredientStock(masterIng.id, newStock, Number(masterIng.minAlert) || 0);
-            masterIng.stockQty = newStock;
+            await API.decrementIngredientStock(masterIng.id, totalUsed);
             depletedCount++;
-          } catch (e) {
-            console.warn('[Depletion] Failed for deco ingredient:', deco.name, e.message);
-          }
+          } catch (e) { console.warn('[Depletion] Failed for deco ingredient:', deco.name, e.message); }
         } else if (masterPack) {
           const factor = getConversionFactorV2(deco.name, masterPack.unit, deco.unit);
           const totalUsed = deco.qty * factor * multiplier;
-          const newStock = Math.max(0, (Number(masterPack.stockQty) || 0) - totalUsed);
           try {
-            await API.updatePackagingStock(masterPack.id, newStock, Number(masterPack.minAlert) || 0);
-            masterPack.stockQty = newStock;
+            await API.decrementPackagingStock(masterPack.id, totalUsed);
             depletedCount++;
-          } catch (e) {
-            console.warn('[Depletion] Failed for deco packaging:', deco.name, e.message);
-          }
+          } catch (e) { console.warn('[Depletion] Failed for deco packaging:', deco.name, e.message); }
         }
       }
     }
@@ -3459,18 +3475,13 @@ async function restoreInventoryForSaleItems(items) {
         if (!ing.name) continue;
         const normName = cleanStr(ing.name);
         const masterIng = ingredientsMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
-
         if (masterIng) {
           const factor = getConversionFactorV2(ing.name, masterIng.unit, ing.unit);
           const totalUsed = ing.qty * factor * multiplier;
-          const newStock = (Number(masterIng.stockQty) || 0) + totalUsed;
           try {
-            await API.updateIngredientStock(masterIng.id, newStock, Number(masterIng.minAlert) || 0);
-            masterIng.stockQty = newStock;
+            await API.incrementIngredientStock(masterIng.id, totalUsed);
             restoredCount++;
-          } catch (e) {
-            console.warn('[Restoration] Failed for ingredient:', ing.name, e.message);
-          }
+          } catch (e) { console.warn('[Restoration] Failed for ingredient:', ing.name, e.message); }
         }
       }
     }
@@ -3481,18 +3492,13 @@ async function restoreInventoryForSaleItems(items) {
         if (!pack.name) continue;
         const normName = cleanStr(pack.name);
         const masterPack = packagingMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
-
         if (masterPack) {
           const factor = getConversionFactorV2(pack.name, masterPack.unit, pack.unit);
           const totalUsed = pack.qty * factor * multiplier;
-          const newStock = (Number(masterPack.stockQty) || 0) + totalUsed;
           try {
-            await API.updatePackagingStock(masterPack.id, newStock, Number(masterPack.minAlert) || 0);
-            masterPack.stockQty = newStock;
+            await API.incrementPackagingStock(masterPack.id, totalUsed);
             restoredCount++;
-          } catch (e) {
-            console.warn('[Restoration] Failed for packaging:', pack.name, e.message);
-          }
+          } catch (e) { console.warn('[Restoration] Failed for packaging:', pack.name, e.message); }
         }
       }
     }
@@ -3502,32 +3508,22 @@ async function restoreInventoryForSaleItems(items) {
       for (const deco of recipe.decorations) {
         if (!deco.name) continue;
         const normName = cleanStr(deco.name);
-
         const masterIng = ingredientsMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
         const masterPack = packagingMaster.find(m => !m.deleted && cleanStr(m.name) === normName);
-
         if (masterIng) {
           const factor = getConversionFactorV2(deco.name, masterIng.unit, deco.unit);
           const totalUsed = deco.qty * factor * multiplier;
-          const newStock = (Number(masterIng.stockQty) || 0) + totalUsed;
           try {
-            await API.updateIngredientStock(masterIng.id, newStock, Number(masterIng.minAlert) || 0);
-            masterIng.stockQty = newStock;
+            await API.incrementIngredientStock(masterIng.id, totalUsed);
             restoredCount++;
-          } catch (e) {
-            console.warn('[Restoration] Failed for deco ingredient:', deco.name, e.message);
-          }
+          } catch (e) { console.warn('[Restoration] Failed for deco ingredient:', deco.name, e.message); }
         } else if (masterPack) {
           const factor = getConversionFactorV2(deco.name, masterPack.unit, deco.unit);
           const totalUsed = deco.qty * factor * multiplier;
-          const newStock = (Number(masterPack.stockQty) || 0) + totalUsed;
           try {
-            await API.updatePackagingStock(masterPack.id, newStock, Number(masterPack.minAlert) || 0);
-            masterPack.stockQty = newStock;
+            await API.incrementPackagingStock(masterPack.id, totalUsed);
             restoredCount++;
-          } catch (e) {
-            console.warn('[Restoration] Failed for deco packaging:', deco.name, e.message);
-          }
+          } catch (e) { console.warn('[Restoration] Failed for deco packaging:', deco.name, e.message); }
         }
       }
     }

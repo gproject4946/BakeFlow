@@ -16,9 +16,11 @@ router.get('/models', async (req, res) => {
   }
 });
 
+const enforceQuota = require('../middleware/quotaEnforcer');
+
 // POST /api/invoice/scan - scan supplier invoice with Gemini Vision
 // Uses direct REST API call to v1 endpoint (bypasses npm package version issues)
-router.post('/scan', async (req, res) => {
+router.post('/scan', enforceQuota, async (req, res) => {
   try {
     const { image, mimeType } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided' });

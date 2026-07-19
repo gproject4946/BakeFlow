@@ -1,35 +1,21 @@
-// ============================================================
-// BlissOven Calculator — Google Sheets API Client
-// Handles all read/write operations to Google Sheets
-// ============================================================
+const { PrismaClient } = require('@prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
+const { Pool } = require('pg');
+const { tenantStorage } = require('../middleware/tenantContext');
 
-const { google } = require('googleapis');
 
-// ── Sheet Schema ─────────────────────────────────────────────
-const SHEETS = {
-  Ingredients:   ['id','name','cat','unit','rate','updated','deleted','deletedAt','rateHistory','stockQty','minAlert'],
-  Packaging:     ['id','name','type','size','rate','vendor','deleted','deletedAt','rateHistory','stockQty','minAlert'],
-  Products:      ['id','name','cat','emoji','cost','sell','margin','deleted','deletedAt'],
-  Orders:        ['id','name','category','date','timestamp','orderData','deleted','deletedAt'],
-  Settings:      ['key','value'],
-  AuditLog:      ['id','timestamp','date','time','employeeName','employeeEmail','action','details','entityType','entityId'],
-  Customers:     ['id','name','phone','email','city','address','notes','totalOrders','totalValue','lastOrderDate','addedBy','addedByEmail','createdAt','deleted','deletedAt'],
-  SalesInvoices: ['id','invoiceNumber','customerId','customerName','customerPhone','customerCity','items','subtotal','discountAmt','gstPct','gstAmt','totalAmount','paymentMethod','notes','date','timestamp','createdBy','createdByEmail','inventoryDeducted','inventoryDeductedAt','whatsappSent','whatsappSentAt','whatsappSentBy','deleted','deletedAt'],
-  Staff:         ['id','name','password','role','email','active','createdAt'],
+const MODEL_MAPPING = {
+  Ingredients:   'ingredient',
+  Packaging:     'packaging',
+  Products:      'product',
+  Orders:        'order',
+  Settings:      'setting',
+  AuditLog:      'auditLog',
+  Customers:     'customer',
+  SalesInvoices: 'salesInvoice',
+  Staff:         'user'
 };
 
-// ── JSON fields that need serialization ──────────────────────
-const JSON_FIELDS = new Set(['rateHistory', 'orderData', 'value', 'items']);
-
-// ── Numeric fields ───────────────────────────────────────────
-const NUMERIC_FIELDS = new Set([
-  'rate', 'cost', 'sell', 'margin', 'timestamp', 'deletedAt',
-  'stockQty', 'minAlert',
-  'totalOrders', 'totalValue',
-  'subtotal', 'discountAmt', 'gstPct', 'gstAmt', 'totalAmount',
-]);
-
-// ── Default seed data ─────────────────────────────────────────
 const DEFAULT_INGREDIENTS = [
   {id:'ing-1', name:'All-Purpose Flour',    cat:'Dry',       unit:'kg',          rate:48,   updated:'15/01/2024'},
   {id:'ing-2', name:'Maida',               cat:'Dry',       unit:'kg',          rate:40,   updated:'15/01/2024'},
@@ -103,228 +89,276 @@ const DEFAULT_OVERHEAD = {
   toggles: { elec: true, gas: true, water: true, rent: true, clean: true, depr: false, admin: false, gst: false }
 };
 
-// ── SheetsClient Class ────────────────────────────────────────
 class SheetsClient {
   constructor() {
-    this.spreadsheetId = null;
-    this.sheets = null;
-    this._sheetIdCache = {};
+    this.prisma = null;
+    this.pool = null;
+    this.adapter = null;
+    this.defaultTenantId = 'default-tenant-uuid';
   }
 
-  // ── Initialise auth & ensure schema ─────────────────────────
   async init() {
-    const spreadsheetId = process.env.SPREADSHEET_ID;
-    if (!spreadsheetId) throw new Error('SPREADSHEET_ID not set in .env');
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) throw new Error('DATABASE_URL not set in .env');
 
-    const rawCreds = process.env.GOOGLE_CREDENTIALS;
-    if (!rawCreds) throw new Error('GOOGLE_CREDENTIALS not set in .env');
+    this.pool = new Pool({ connectionString: databaseUrl });
+    this.adapter = new PrismaPg(this.pool);
+    const basePrisma = new PrismaClient({ adapter: this.adapter });
 
-    let credentials;
-    try {
-      credentials = JSON.parse(rawCreds);
-      if (credentials.private_key) {
-        // Safe non-sensitive debugging logs to find formatting issues
-        console.log('🔑  [Debug] Key length:', credentials.private_key.length);
-        console.log('🔑  [Debug] Key starts with header:', credentials.private_key.trim().startsWith('-----BEGIN PRIVATE KEY-----'));
-        console.log('🔑  [Debug] Key ends with header:', credentials.private_key.trim().endsWith('-----END PRIVATE KEY-----'));
-        console.log('🔑  [Debug] Key contains actual newlines:', credentials.private_key.includes('\n'));
-        console.log('🔑  [Debug] Key contains escaped newlines (\\n):', credentials.private_key.includes('\\n'));
-        
-        credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-      } else {
-        console.log('❌  [Debug] private_key field is missing or empty in JSON!');
-      }
-    } catch (e) {
-      console.error('❌  [Debug] JSON.parse failed:', e.message);
-      console.error('📋  [Debug] Value starts with:', rawCreds ? rawCreds.trim().substring(0, 40) : 'empty');
-      throw new Error('GOOGLE_CREDENTIALS is not valid JSON. Check your .env file.');
-    }
+    // Extend Prisma client to automatically inject tenantId on all scoped database queries
+    this.prisma = basePrisma.$extends({
+      query: {
+        $allModels: {
+          async $allOperations({ model, operation, args, query }) {
+            const bypassModels = ['Tenant', 'PlatformAdmin'];
+            if (bypassModels.includes(model)) {
+              return query(args);
+            }
 
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
+            const store = tenantStorage.getStore();
+            const tenantId = store?.tenantId;
 
-    const client = await auth.getClient();
-    this.sheets = google.sheets({ version: 'v4', auth: client });
-    this.spreadsheetId = spreadsheetId;
-
-    await this._ensureSchema();
-  }
-
-  // ── Schema & seed ─────────────────────────────────────────────
-  async _ensureSchema() {
-    const meta = await this.sheets.spreadsheets.get({ spreadsheetId: this.spreadsheetId });
-    const existing = new Set(meta.data.sheets.map(s => s.properties.title));
-
-    // Cache sheet IDs for deleteRow
-    meta.data.sheets.forEach(s => {
-      this._sheetIdCache[s.properties.title] = s.properties.sheetId;
-    });
-
-    const missing = Object.keys(SHEETS).filter(name => !existing.has(name));
-
-    if (missing.length > 0) {
-      // Create missing sheet tabs
-      const addReqs = missing.map(name => ({ addSheet: { properties: { title: name } } }));
-      const batchRes = await this.sheets.spreadsheets.batchUpdate({
-        spreadsheetId: this.spreadsheetId,
-        requestBody: { requests: addReqs },
-      });
-
-      // Cache new sheet IDs
-      batchRes.data.replies.forEach((reply, i) => {
-        if (reply.addSheet) {
-          const name = missing[i];
-          this._sheetIdCache[name] = reply.addSheet.properties.sheetId;
+            if (tenantId) {
+              // Scoping reads
+              if (['findMany', 'findFirst', 'findUnique', 'count', 'aggregate', 'groupBy'].includes(operation)) {
+                args.where = args.where || {};
+                args.where.tenantId = tenantId;
+              }
+              // Scoping creates
+              else if (operation === 'create') {
+                args.data = args.data || {};
+                args.data.tenantId = tenantId;
+              }
+              else if (operation === 'createMany') {
+                if (Array.isArray(args.data)) {
+                  args.data.forEach(item => {
+                    item.tenantId = tenantId;
+                  });
+                } else if (args.data) {
+                  args.data.tenantId = tenantId;
+                }
+              }
+              // Scoping updates/deletes/upserts
+              else if (['update', 'updateMany', 'delete', 'deleteMany', 'upsert'].includes(operation)) {
+                args.where = args.where || {};
+                args.where.tenantId = tenantId;
+                if (operation === 'upsert') {
+                  args.create = args.create || {};
+                  args.create.tenantId = tenantId;
+                  args.update = args.update || {};
+                  args.update.tenantId = tenantId;
+                }
+              }
+            }
+            return query(args);
+          }
         }
-      });
-
-      // Write headers to new sheets
-      for (const name of missing) {
-        await this.sheets.spreadsheets.values.update({
-          spreadsheetId: this.spreadsheetId,
-          range: `${name}!A1`,
-          valueInputOption: 'RAW',
-          requestBody: { values: [SHEETS[name]] },
-        });
       }
-    }
+    });
 
+    // Verify DB connection
+    await basePrisma.$connect();
+
+    // Create the default sequence for concurrent invoice numbering
+    await basePrisma.$executeRawUnsafe('CREATE SEQUENCE IF NOT EXISTS "SalesInvoice_invoiceNumber_seq" START 1000;');
+
+    // Ensure default tenant exists
+    await basePrisma.tenant.upsert({
+      where: { googleId: 'default-google-id' },
+      update: {},
+      create: {
+        id: this.defaultTenantId,
+        name: 'Default Bakery',
+        googleId: 'default-google-id',
+        email: 'default@bakeflow.com',
+        status: 'active',
+        plan: 'free'
+      }
+    });
+
+    // Seed defaults if tables are empty
     await this._seedDefaults();
   }
 
   async _seedDefaults() {
-    // Seed ingredients
-    const ings = await this.getAll('Ingredients');
-    if (ings.length === 0) {
+    const ingCount = await this.prisma.ingredient.count();
+    if (ingCount === 0) {
       console.log('  📋 Seeding default ingredients...');
       for (const item of DEFAULT_INGREDIENTS) {
-        item.rateHistory = [{ date: item.updated, timestamp: Date.now(), oldRate: 0, newRate: item.rate }];
-        await this.append('Ingredients', item);
+        const history = [{ date: item.updated || new Date().toLocaleDateString('en-IN'), timestamp: Date.now(), oldRate: 0, newRate: item.rate }];
+        await this.prisma.ingredient.create({
+          data: {
+            id: item.id,
+            tenantId: this.defaultTenantId,
+            name: item.name,
+            cat: item.cat,
+            unit: item.unit,
+            rate: item.rate,
+            updated: item.updated,
+            rateHistory: history,
+            stockQty: item.stockQty || 0,
+            minAlert: item.minAlert || 0
+          }
+        });
       }
     }
 
-    // Seed packaging
-    const packs = await this.getAll('Packaging');
-    if (packs.length === 0) {
+    const packCount = await this.prisma.packaging.count();
+    if (packCount === 0) {
       console.log('  📦 Seeding default packaging...');
       for (const item of DEFAULT_PACKAGING) {
-        item.rateHistory = [{ date: new Date().toLocaleDateString('en-IN'), timestamp: Date.now(), oldRate: 0, newRate: item.rate }];
-        await this.append('Packaging', item);
+        const history = [{ date: new Date().toLocaleDateString('en-IN'), timestamp: Date.now(), oldRate: 0, newRate: item.rate }];
+        await this.prisma.packaging.create({
+          data: {
+            id: item.id,
+            tenantId: this.defaultTenantId,
+            name: item.name,
+            type: item.type,
+            size: item.size,
+            rate: item.rate,
+            vendor: item.vendor,
+            rateHistory: history,
+            stockQty: item.stockQty || 0,
+            minAlert: item.minAlert || 0
+          }
+        });
       }
     }
 
-    // Seed products
-    const prods = await this.getAll('Products');
-    if (prods.length === 0) {
+    const prodCount = await this.prisma.product.count();
+    if (prodCount === 0) {
       console.log('  🛒 Seeding default products...');
       for (const item of DEFAULT_PRODUCTS) {
-        await this.append('Products', item);
+        await this.prisma.product.create({
+          data: {
+            id: item.id,
+            tenantId: this.defaultTenantId,
+            name: item.name,
+            cat: item.cat,
+            emoji: item.emoji,
+            cost: item.cost,
+            sell: item.sell,
+            margin: item.margin
+          }
+        });
       }
     }
 
-    // Seed settings
-    const settings = await this.getAll('Settings');
-    const hasLabour = settings.some(s => s.key === 'labour');
-    const hasOverhead = settings.some(s => s.key === 'overhead');
-    if (!hasLabour) await this.append('Settings', { key: 'labour', value: DEFAULT_LABOUR });
-    if (!hasOverhead) await this.append('Settings', { key: 'overhead', value: DEFAULT_OVERHEAD });
+    const setHasLabour = await this.prisma.setting.findUnique({
+      where: { key_tenantId: { key: 'labour', tenantId: this.defaultTenantId } }
+    });
+    if (!setHasLabour) {
+      await this.prisma.setting.create({
+        data: { key: 'labour', tenantId: this.defaultTenantId, value: DEFAULT_LABOUR }
+      });
+    }
+
+    const setHasOverhead = await this.prisma.setting.findUnique({
+      where: { key_tenantId: { key: 'overhead', tenantId: this.defaultTenantId } }
+    });
+    if (!setHasOverhead) {
+      await this.prisma.setting.create({
+        data: { key: 'overhead', tenantId: this.defaultTenantId, value: DEFAULT_OVERHEAD }
+      });
+    }
   }
 
-  // ── Core read ─────────────────────────────────────────────────
+  _formatForDb(sheetName, data) {
+    const NUMERIC_FIELDS = new Set([
+      'rate', 'cost', 'sell', 'margin', 'timestamp', 'deletedAt',
+      'stockQty', 'minAlert',
+      'totalOrders', 'totalValue',
+      'subtotal', 'discountAmt', 'gstPct', 'gstAmt', 'totalAmount',
+    ]);
+    const BOOLEAN_FIELDS = new Set(['deleted', 'active', 'inventoryDeducted', 'whatsappSent']);
+
+    const formatted = {};
+    for (const key in data) {
+      let val = data[key];
+      if (NUMERIC_FIELDS.has(key)) {
+        formatted[key] = val !== '' && val !== null && val !== undefined ? Number(val) : 0;
+      } else if (BOOLEAN_FIELDS.has(key)) {
+        formatted[key] = val === true || val === 'true';
+      } else {
+        formatted[key] = val;
+      }
+    }
+    return formatted;
+  }
+
   async getAll(sheetName) {
-    const res = await this.sheets.spreadsheets.values.get({
-      spreadsheetId: this.spreadsheetId,
-      range: `${sheetName}!A:Z`,
+    const modelName = MODEL_MAPPING[sheetName];
+    if (!modelName) throw new Error(`Model mapping not found for sheet ${sheetName}`);
+
+    const rows = await this.prisma[modelName].findMany({
+      where: { tenantId: this.defaultTenantId }
     });
 
-    const rows = res.data.values || [];
-    if (rows.length < 2) return [];
-
-    const headers = rows[0];
-    return rows.slice(1).map((row, i) => {
-      const obj = { _rowIndex: i + 2 }; // 2 = header(1) + 1-based
-      headers.forEach((h, j) => {
-        let val = row[j] !== undefined ? row[j] : '';
-        if (JSON_FIELDS.has(h)) {
-          try { val = JSON.parse(val); } catch { val = (h === 'value') ? val : []; }
-        } else if (NUMERIC_FIELDS.has(h) && val !== '') {
-          val = Number(val);
-        } else if (h === 'deleted') {
-          val = val === 'true';
-        }
-        obj[h] = val;
-      });
+    return rows.map(row => {
+      const obj = { ...row };
+      obj._rowIndex = row.id || row.key; // transparently maps rowIndex to actual string key/ID
       return obj;
     });
   }
 
-  // ── Core write — append new row ───────────────────────────────
   async append(sheetName, obj) {
-    const headers = SHEETS[sheetName];
-    const row = this._toRow(headers, obj);
-    await this.sheets.spreadsheets.values.append({
-      spreadsheetId: this.spreadsheetId,
-      range: `${sheetName}!A1`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values: [row] },
+    const modelName = MODEL_MAPPING[sheetName];
+    if (!modelName) throw new Error(`Model mapping not found for sheet ${sheetName}`);
+
+    const { _rowIndex, ...data } = obj;
+    data.tenantId = this.defaultTenantId;
+
+    const formattedData = this._formatForDb(sheetName, data);
+
+    await this.prisma[modelName].create({
+      data: formattedData
     });
   }
 
-  // ── Core write — update existing row ─────────────────────────
   async updateRow(sheetName, rowIndex, obj) {
-    const headers = SHEETS[sheetName];
-    const row = this._toRow(headers, obj);
-    await this.sheets.spreadsheets.values.update({
-      spreadsheetId: this.spreadsheetId,
-      range: `${sheetName}!A${rowIndex}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [row] },
-    });
-  }
+    const modelName = MODEL_MAPPING[sheetName];
+    if (!modelName) throw new Error(`Model mapping not found for sheet ${sheetName}`);
 
-  // ── Core write — delete row (hard) ───────────────────────────
-  async deleteRow(sheetName, rowIndex) {
-    let sheetId = this._sheetIdCache[sheetName];
-    if (sheetId === undefined) {
-      // refresh cache
-      const meta = await this.sheets.spreadsheets.get({ spreadsheetId: this.spreadsheetId });
-      meta.data.sheets.forEach(s => { this._sheetIdCache[s.properties.title] = s.properties.sheetId; });
-      sheetId = this._sheetIdCache[sheetName];
+    const { _rowIndex, id, key, ...data } = obj;
+    data.tenantId = this.defaultTenantId;
+
+    const formattedData = this._formatForDb(sheetName, data);
+
+    if (sheetName === 'Settings') {
+      await this.prisma.setting.update({
+        where: { key_tenantId: { key: rowIndex, tenantId: this.defaultTenantId } },
+        data: formattedData
+      });
+    } else {
+      await this.prisma[modelName].update({
+        where: { id: rowIndex },
+        data: formattedData
+      });
     }
-    if (sheetId === undefined) throw new Error(`Sheet "${sheetName}" not found`);
-
-    await this.sheets.spreadsheets.batchUpdate({
-      spreadsheetId: this.spreadsheetId,
-      requestBody: {
-        requests: [{
-          deleteDimension: {
-            range: {
-              sheetId,
-              dimension: 'ROWS',
-              startIndex: rowIndex - 1, // 0-based
-              endIndex: rowIndex,
-            },
-          },
-        }],
-      },
-    });
   }
 
-  // ── Helper: object → row array ────────────────────────────────
-  _toRow(headers, obj) {
-    return headers.map(h => {
-      const val = obj[h];
-      if (val === null || val === undefined) return '';
-      if (typeof val === 'boolean') return val ? 'true' : '';
-      if (typeof val === 'object') return JSON.stringify(val);
-      return String(val);
-    });
+  async deleteRow(sheetName, rowIndex) {
+    const modelName = MODEL_MAPPING[sheetName];
+    if (!modelName) throw new Error(`Model mapping not found for sheet ${sheetName}`);
+
+    if (sheetName === 'Settings') {
+      await this.prisma.setting.delete({
+        where: { key_tenantId: { key: rowIndex, tenantId: this.defaultTenantId } }
+      });
+    } else {
+      await this.prisma[modelName].delete({
+        where: { id: rowIndex }
+      });
+    }
   }
 
-  // ── Audit log helper ─────────────────────────────────────────
+  async nextInvoiceNumber() {
+    const year = new Date().getFullYear();
+    const [result] = await this.prisma.$queryRawUnsafe('SELECT nextval(\'"SalesInvoice_invoiceNumber_seq"\')');
+    const num = String(result.nextval).padStart(4, '0');
+    return `INV-${year}-${num}`;
+  }
+
   async addLog(action, details, employeeName = '', employeeEmail = '', entityType = '', entityId = '') {
     await this.append('AuditLog', {
       id: `log-${Date.now()}-${Math.random().toString(36).slice(2)}`,

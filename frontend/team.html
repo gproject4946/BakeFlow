@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Access — BakeFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+  <style>
+    :root {
+      --bg: #121214;
+      --card: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.07);
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --gold: #d4af37;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      padding: 32px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 28px;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+
+    /* ── Tabs ───────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      padding: 10px 18px;
+      border: none;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.15s;
+    }
+    .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    /* ── Cards & Tables ────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding: 0 12px 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 12px 12px 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.015); }
+
+    /* ── Badges ─────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-green  { background: rgba(16,185,129,.15); color: var(--success); }
+    .badge-red    { background: rgba(239,68,68,.15);  color: var(--danger); }
+    .badge-gold   { background: rgba(212,175,55,.15); color: var(--gold); }
+    .badge-blue   { background: rgba(59,130,246,.15); color: var(--info); }
+    .badge-gray   { background: rgba(156,163,175,.12); color: var(--muted); }
+
+    /* ── Buttons ─────────────────────────────────────────── */
+    .btn {
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.82; }
+    .btn-gold  { background: var(--gold); color: #000; }
+    .btn-ghost { background: rgba(255,255,255,0.07); color: var(--text); }
+    .btn-red   { background: rgba(239,68,68,.2); color: var(--danger); }
+    .btn-sm    { padding: 4px 10px; font-size: 11px; }
+
+    /* ── Add Employee Form ────────────────────────────────── */
+    .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .form-group { flex: 1; min-width: 140px; }
+    label { display: block; font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+    input, select {
+      width: 100%;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--gold); }
+    .form-msg { font-size: 12px; font-weight: 500; margin-top: 8px; }
+
+    /* ── Stats row ───────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .stat-icon {
+      width: 38px; height: 38px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .stat-val { font-size: 22px; font-weight: 700; }
+    .stat-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* ── Session timeline chip ───────────────────────────── */
+    .duration-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── Filter bar ──────────────────────────────────────── */
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-bar input, .filter-bar select {
+      width: auto;
+      flex: 1;
+      min-width: 120px;
+      max-width: 220px;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 32px;
+      font-style: italic;
+    }
+    #tab-members { display: block; }
+    #tab-sessions { display: none; }
+  </style>
+</head>
+<body>
+
+  <h1><i class="ti ti-users"></i> Team Access</h1>
+  <p class="subtitle">Manage employees, monitor logins, and review access history for your bakery.</p>
+
+  <!-- Summary Stats -->
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(212,175,55,.12);color:var(--gold)"><i class="ti ti-users"></i></div>
+      <div><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Total Members</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(16,185,129,.12);color:var(--success)"><i class="ti ti-user-check"></i></div>
+      <div><div class="stat-val" id="stat-active">—</div><div class="stat-lbl">Active</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(239,68,68,.12);color:var(--danger)"><i class="ti ti-user-off"></i></div>
+      <div><div class="stat-val" id="stat-inactive">—</div><div class="stat-lbl">Inactive</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(59,130,246,.12);color:var(--info)"><i class="ti ti-clock"></i></div>
+      <div><div class="stat-val" id="stat-sessions">—</div><div class="stat-lbl">Sessions (90d)</div></div>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('members')" id="tabnav-members">
+      <i class="ti ti-id-badge"></i> Team Members
+    </button>
+    <button class="tab-btn" onclick="switchTab('sessions')" id="tabnav-sessions">
+      <i class="ti ti-history"></i> Login History
+    </button>
+    <button class="tab-btn" onclick="switchTab('add')" id="tabnav-add">
+      <i class="ti ti-user-plus"></i> Add Employee
+    </button>
+  </div>
+
+  <!-- ── TAB: Members ────────────────────────────────────── -->
+  <div id="tab-members">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-id-badge" style="color:var(--gold)"></i> All Team Members</div>
+      <div class="filter-bar">
+        <input type="text" id="member-search" placeholder="Search name or username…" oninput="filterMembers()">
+        <select id="member-role-filter" onchange="filterMembers()">
+          <option value="">All roles</option>
+          <option value="owner">Owner</option>
+          <option value="admin">Admin</option>
+          <option value="employee">Employee</option>
+        </select>
+        <select id="member-status-filter" onchange="filterMembers()">
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Auth</th>
+            <th>Status</th>
+            <th>Last Login</th>
+            <th>Total Logins</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="members-tbody">
+          <tr><td colspan="8" class="empty-state">Loading team members…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── TAB: Login History ──────────────────────────────── -->
+  <div id="tab-sessions" style="display:none">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-history" style="color:var(--gold)"></i> Login History (Last 90 Days)</div>
+      <div class="filter-bar">
+        <input type="text" id="session-search" placeholder="Search by name…" oninput="filterSessions()">
+        <input type="date" id="session-date-from" onchange="filterSessions()" title="From date">
+        <input type="date" id="session-date-to" onchange="filterSessions()" title="To date">
+        <button class="btn btn-ghost btn-sm" onclick="clearSessionFilters()">Clear</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Role</th>
+            <th>Login Time</th>
+            <th>Logout Time</th>
+            <th>Duration</th>
+            <th>IP Address</th>
+            <th>Device / Browser</th>
+          </tr>
+        </thead>
+        <tbody id="sessions-tbody">
+          <tr><td colspan="7" class="empty-state">Loading sessions…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── TAB: Add Employee ───────────────────────────────── -->
+  <div id="tab-add" style="display:none">
+    <div class="card" style="max-width:520px">
+      <div class="card-title"><i class="ti ti-user-plus" style="color:var(--gold)"></i> Add New Employee</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="emp-name" placeholder="e.g. Priya Sharma">
+        </div>
+        <div class="form-group">
+          <label>Username *</label>
+          <input type="text" id="emp-username" placeholder="e.g. priya">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Password *</label>
+          <input type="password" id="emp-password" placeholder="At least 8 characters">
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select id="emp-role">
+            <option value="employee">Employee</option>
+            <option value="admin">Admin (Manager)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-gold" onclick="addEmployee()">Create Account</button>
+      <div class="form-msg" id="add-msg"></div>
+    </div>
+
+    <!-- Reset Password Card -->
+    <div class="card" style="max-width:520px">
+      <div class="card-title"><i class="ti ti-lock-open" style="color:var(--warning)"></i> Reset Employee Password</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Select Employee</label>
+          <select id="reset-emp-select"><option value="">— choose —</option></select>
+        </div>
+        <div class="form-group">
+          <label>New Password *</label>
+          <input type="password" id="reset-password" placeholder="New password">
+        </div>
+      </div>
+      <button class="btn btn-ghost" onclick="resetPassword()">Reset Password</button>
+      <div class="form-msg" id="reset-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    // ── Auth helpers ─────────────────────────────────────
+    const token = localStorage.getItem('authToken');
+    if (!token) { window.location.href = '/'; }
+
+    const api = (path, opts = {}) =>
+      fetch(path, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers }, ...opts });
+
+    // ── State ────────────────────────────────────────────
+    let allMembers   = [];
+    let allSessions  = [];
+
+    // ── Tab switching ────────────────────────────────────
+    function switchTab(tab) {
+      ['members', 'sessions', 'add'].forEach(t => {
+        document.getElementById(`tab-${t}`).style.display  = t === tab ? 'block' : 'none';
+        document.getElementById(`tabnav-${t}`).classList.toggle('active', t === tab);
+      });
+    }
+
+    // ── Load data ────────────────────────────────────────
+    async function loadAll() {
+      try {
+        const [membersRes, sessionsRes] = await Promise.all([
+          api('/api/team'),
+          api('/api/team/sessions')
+        ]);
+        allMembers  = await membersRes.json();
+        allSessions = await sessionsRes.json();
+        renderStats();
+        renderMembers(allMembers);
+        renderSessions(allSessions);
+        populateResetSelect();
+      } catch (err) {
+        console.error('Load error:', err);
+      }
+    }
+
+    // ── Stats ────────────────────────────────────────────
+    function renderStats() {
+      const active   = allMembers.filter(m => m.active).length;
+      const inactive = allMembers.filter(m => !m.active).length;
+      document.getElementById('stat-total').textContent    = allMembers.length;
+      document.getElementById('stat-active').textContent   = active;
+      document.getElementById('stat-inactive').textContent = inactive;
+      document.getElementById('stat-sessions').textContent = allSessions.length;
+    }
+
+    // ── Members table ────────────────────────────────────
+    function filterMembers() {
+      const q    = document.getElementById('member-search').value.toLowerCase();
+      const role = document.getElementById('member-role-filter').value;
+      const st   = document.getElementById('member-status-filter').value;
+      renderMembers(allMembers.filter(m =>
+        (m.name?.toLowerCase().includes(q) || m.username?.toLowerCase().includes(q)) &&
+        (role === '' || m.role === role) &&
+        (st === '' || (st === 'active' ? m.active : !m.active))
+      ));
+    }
+
+    function renderMembers(members) {
+      const tbody = document.getElementById('members-tbody');
+      if (!members.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No members found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = members.map(m => {
+        const lastLogin   = m.lastLoginAt ? fmtDate(m.lastLoginAt) : '—';
+        const loginCount  = m.loginCount  ?? '—';
+        const roleBadge   = m.role === 'owner' ? 'badge-gold' : m.role === 'admin' ? 'badge-blue' : 'badge-gray';
+        const statusBadge = m.active ? 'badge-green' : 'badge-red';
+        const authBadge   = m.authMethod === 'google' ? 'badge-blue' : 'badge-gray';
+        const canToggle   = m.role !== 'owner';
+
+        return `
+          <tr>
+            <td style="font-weight:500">${esc(m.name)}</td>
+            <td style="color:var(--muted)">${m.username ? esc(m.username) : '—'}</td>
+            <td><span class="badge ${roleBadge}">${m.role}</span></td>
+            <td><span class="badge ${authBadge}">${m.authMethod}</span></td>
+            <td><span class="badge ${statusBadge}">${m.active ? 'Active' : 'Inactive'}</span></td>
+            <td style="font-size:12px;color:var(--muted)">${lastLogin}</td>
+            <td style="text-align:center">${loginCount}</td>
+            <td>
+              ${canToggle ? `
+                <button class="btn btn-sm ${m.active ? 'btn-red' : 'btn-ghost'}" onclick="toggleActive('${m.id}', ${!m.active})">
+                  ${m.active ? 'Deactivate' : 'Reactivate'}
+                </button>
+                <button class="btn btn-sm btn-ghost" style="margin-left:4px" onclick="viewUserSessions('${m.id}', '${esc(m.name)}')">
+                  <i class="ti ti-history"></i>
+                </button>
+              ` : ''}
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    // ── Toggle active ─────────────────────────────────────
+    async function toggleActive(userId, newState) {
+      try {
+        const res  = await api(`/api/team/${userId}`, { method: 'PUT', body: JSON.stringify({ active: newState }) });
+        const data = await res.json();
+        if (res.ok) {
+          allMembers = allMembers.map(m => m.id === userId ? { ...m, active: newState } : m);
+          renderStats();
+          filterMembers();
+        } else {
+          alert(data.error || 'Failed to update');
+        }
+      } catch (err) { alert(err.message); }
+    }
+
+    // ── Sessions table ───────────────────────────────────
+    function filterSessions() {
+      const q    = document.getElementById('session-search').value.toLowerCase();
+      const from = document.getElementById('session-date-from').value;
+      const to   = document.getElementById('session-date-to').value;
+      renderSessions(allSessions.filter(s => {
+        const name = s.user?.name?.toLowerCase() || '';
+        if (q && !name.includes(q)) return false;
+        if (from && new Date(s.loginAt) < new Date(from)) return false;
+        if (to   && new Date(s.loginAt) > new Date(to + 'T23:59:59')) return false;
+        return true;
+      }));
+    }
+
+    function clearSessionFilters() {
+      document.getElementById('session-search').value    = '';
+      document.getElementById('session-date-from').value = '';
+      document.getElementById('session-date-to').value   = '';
+      renderSessions(allSessions);
+    }
+
+    function renderSessions(sessions) {
+      const tbody = document.getElementById('sessions-tbody');
+      if (!sessions.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No sessions found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = sessions.map(s => {
+        const user     = s.user || {};
+        const roleBadge = user.role === 'owner' ? 'badge-gold' : user.role === 'admin' ? 'badge-blue' : 'badge-gray';
+        const duration = s.logoutAt ? calcDuration(s.loginAt, s.logoutAt) : '—';
+        const logoutTxt = s.logoutAt ? fmtDate(s.logoutAt) : '<span style="color:var(--muted);font-style:italic">Active / not recorded</span>';
+        const ua       = parseUA(s.userAgent);
+        const ip       = s.ipAddress || '—';
+
+        return `
+          <tr>
+            <td style="font-weight:500">${esc(user.name || '—')}</td>
+            <td><span class="badge ${roleBadge}">${user.role || '—'}</span></td>
+            <td style="font-size:12px">${fmtDate(s.loginAt)}</td>
+            <td style="font-size:12px">${logoutTxt}</td>
+            <td><span class="duration-chip"><i class="ti ti-clock-hour-3"></i>${duration}</span></td>
+            <td style="font-family:monospace;font-size:11px;color:var(--muted)">${ip}</td>
+            <td style="font-size:11px;color:var(--muted);max-width:200px;word-break:break-word">${ua}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    // ── View single user sessions ─────────────────────────
+    async function viewUserSessions(userId, name) {
+      switchTab('sessions');
+      document.getElementById('session-search').value = name;
+      filterSessions();
+    }
+
+    // ── Add employee ──────────────────────────────────────
+    async function addEmployee() {
+      const name     = document.getElementById('emp-name').value.trim();
+      const username = document.getElementById('emp-username').value.trim();
+      const password = document.getElementById('emp-password').value;
+      const role     = document.getElementById('emp-role').value;
+      const msgEl    = document.getElementById('add-msg');
+      msgEl.textContent = '';
+
+      if (!name || !username || !password) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = 'All fields are required.';
+        return;
+      }
+      if (password.length < 8) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = 'Password must be at least 8 characters.';
+        return;
+      }
+
+      try {
+        const res  = await api('/api/team', { method: 'POST', body: JSON.stringify({ name, username, password, role }) });
+        const data = await res.json();
+        if (res.ok) {
+          msgEl.style.color = 'var(--success)';
+          msgEl.textContent = `✓ Account created for ${data.name}`;
+          document.getElementById('emp-name').value     = '';
+          document.getElementById('emp-username').value = '';
+          document.getElementById('emp-password').value = '';
+          await loadAll();
+          setTimeout(() => switchTab('members'), 800);
+        } else {
+          msgEl.style.color = 'var(--danger)';
+          msgEl.textContent = data.error || 'Failed to create account.';
+        }
+      } catch (err) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = err.message;
+      }
+    }
+
+    // ── Reset password ────────────────────────────────────
+    function populateResetSelect() {
+      const sel = document.getElementById('reset-emp-select');
+      const employees = allMembers.filter(m => m.role !== 'owner');
+      sel.innerHTML = '<option value="">— choose —</option>' +
+        employees.map(e => `<option value="${e.id}">${esc(e.name)} (${e.username || e.email || e.role})</option>`).join('');
+    }
+
+    async function resetPassword() {
+      const userId   = document.getElementById('reset-emp-select').value;
+      const password = document.getElementById('reset-password').value;
+      const msgEl    = document.getElementById('reset-msg');
+      msgEl.textContent = '';
+
+      if (!userId || !password) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = 'Please select an employee and enter a new password.';
+        return;
+      }
+
+      try {
+        const res  = await api(`/api/team/${userId}`, { method: 'PUT', body: JSON.stringify({ password }) });
+        const data = await res.json();
+        if (res.ok) {
+          msgEl.style.color = 'var(--success)';
+          msgEl.textContent = `✓ Password reset for ${data.name}`;
+          document.getElementById('reset-password').value = '';
+        } else {
+          msgEl.style.color = 'var(--danger)';
+          msgEl.textContent = data.error || 'Failed to reset password.';
+        }
+      } catch (err) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = err.message;
+      }
+    }
+
+    // ── Utilities ──────────────────────────────────────────
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      });
+    }
+
+    function calcDuration(from, to) {
+      const ms = new Date(to) - new Date(from);
+      if (ms < 0) return '—';
+      const m = Math.floor(ms / 60000);
+      const h = Math.floor(m / 60);
+      if (h > 0) return `${h}h ${m % 60}m`;
+      return `${m}m`;
+    }
+
+    function parseUA(ua) {
+      if (!ua) return '—';
+      if (ua.includes('iPhone') || ua.includes('Android'))
+        return '📱 ' + ua.slice(0, 60);
+      if (ua.includes('Chrome')) return '🌐 Chrome';
+      if (ua.includes('Firefox')) return '🦊 Firefox';
+      if (ua.includes('Safari')) return '🧭 Safari';
+      return ua.slice(0, 60);
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    loadAll();
+  </script>
+</body>
+</html>

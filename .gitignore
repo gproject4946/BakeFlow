@@ -1,22 +1,29 @@
-# ── Environment ──────────────────────────────────────────────
+# ── Environment & Secrets ─────────────────────────────────────
 .env
 *.env.local
+.env.production
 
-# ── Google credentials key file (if using file path method) ──
+# ── Google OAuth credential files ──────────────────────────────
 credentials.json
 service-account.json
 *.json.key
+client_secret_*.json
 
-# ── Node ─────────────────────────────────────────────────────
+# ── Node ───────────────────────────────────────────────────────
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# ── OS ───────────────────────────────────────────────────────
+# ── OS ─────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 
-# ── Logs ─────────────────────────────────────────────────────
+# ── Logs ───────────────────────────────────────────────────────
 logs/
 *.log
+
+# ── Backup & scratch files ──────────────────────────────────────
+demo_backup_index.html
+*.backup.*
+/tmp

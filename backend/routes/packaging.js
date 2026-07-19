@@ -124,5 +124,32 @@ router.delete('/:id/hard', async (req, res) => {
   }
 });
 
+// POST - atomic decrement stock
+router.post('/:id/decrement', async (req, res) => {
+  try {
+    const amount = Number(req.body.amount) || 0;
+    const updated = await db.prisma.packaging.update({
+      where: { id: req.params.id },
+      data: { stockQty: { decrement: amount } }
+    });
+    await db.addLog('DECREMENT_STOCK', `${updated.name}: -${amount} (New: ${updated.stockQty})`, req.user?.name||'', req.user?.email||'', 'Packaging', updated.id);
+    res.json(strip(updated));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST - atomic increment stock
+router.post('/:id/increment', async (req, res) => {
+  try {
+    const amount = Number(req.body.amount) || 0;
+    const updated = await db.prisma.packaging.update({
+      where: { id: req.params.id },
+      data: { stockQty: { increment: amount } }
+    });
+    await db.addLog('INCREMENT_STOCK', `${updated.name}: +${amount} (New: ${updated.stockQty})`, req.user?.name||'', req.user?.email||'', 'Packaging', updated.id);
+    res.json(strip(updated));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 function strip(row) { const { _rowIndex, ...rest } = row; return rest; }
 module.exports = router;
+

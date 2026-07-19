@@ -1,0 +1,216 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  googleId  String   @unique
+  email     String
+  status    String   @default("active") // active | suspended | trial
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+
+  users          User[]
+  ingredients    Ingredient[]
+  packaging      Packaging[]
+  products       Product[]
+  orders         Order[]
+  salesInvoices  SalesInvoice[]
+  customers      Customer[]
+  auditLogs      AuditLog[]
+  settings       Setting[]
+  apiKeys        ApiKey[]
+  sessions       UserSession[]
+}
+
+model User {
+  id            String        @id @default(uuid())
+  tenantId      String
+  name          String
+  username      String?
+  email         String?
+  role          String        // owner | admin | employee
+  authMethod    String        // google | password
+  googleId      String?
+  password      String?       // bcrypt-hashed
+  active        Boolean       @default(true)
+  deleted       Boolean       @default(false)
+  deletedAt     DateTime?
+  lastLoginAt   DateTime?     // updated on every successful login
+  loginCount    Int           @default(0)
+  createdAt     DateTime      @default(now())
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  sessions      UserSession[]
+
+  @@unique([username, tenantId])
+}
+
+model PlatformAdmin {
+  id        String   @id @default(uuid())
+  googleId  String   @unique
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model Ingredient {
+  id          String    @id @default(uuid())
+  tenantId    String
+  name        String
+  cat         String
+  unit        String
+  rate        Float     @default(0)
+  updated     String?
+  deleted     Boolean   @default(false)
+  deletedAt   Float?
+  rateHistory Json      @default("[]")
+  stockQty    Float     @default(0)
+  minAlert    Float     @default(0)
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+}
+
+model Packaging {
+  id          String    @id @default(uuid())
+  tenantId    String
+  name        String
+  type        String
+  size        String
+  rate        Float     @default(0)
+  vendor      String?
+  deleted     Boolean   @default(false)
+  deletedAt   Float?
+  rateHistory Json      @default("[]")
+  stockQty    Float     @default(0)
+  minAlert    Float     @default(0)
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+}
+
+model Product {
+  id        String    @id @default(uuid())
+  tenantId  String
+  name      String
+  cat       String
+  emoji     String?
+  cost      Float     @default(0)
+  sell      Float     @default(0)
+  margin    Float     @default(0)
+  deleted   Boolean   @default(false)
+  deletedAt Float?
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+}
+
+model Order {
+  id        String    @id @default(uuid())
+  tenantId  String
+  name      String
+  category  String
+  date      String
+  timestamp Float
+  orderData Json
+  deleted   Boolean   @default(false)
+  deletedAt Float?
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+}
+
+model Setting {
+  key      String
+  tenantId String
+  value    Json
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  @@id([key, tenantId])
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  tenantId      String
+  timestamp     Float
+  date          String
+  time          String
+  employeeName  String
+  employeeEmail String
+  action        String
+  details       String
+  entityType    String
+  entityId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Customer {
+  id            String    @id @default(uuid())
+  tenantId      String
+  name          String
+  phone         String
+  email         String?
+  city          String
+  address       String?
+  notes         String?
+  totalOrders   Float     @default(0)
+  totalValue    Float     @default(0)
+  lastOrderDate String?
+  addedBy       String?
+  addedByEmail  String?
+  createdAt     String
+  deleted       Boolean   @default(false)
+  deletedAt     Float?
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+}
+
+model SalesInvoice {
+  id                  String    @id @default(uuid())
+  tenantId            String
+  invoiceNumber       String
+  customerId          String?
+  customerName        String
+  customerPhone       String
+  customerCity        String
+  items               Json
+  subtotal            Float     @default(0)
+  discountAmt         Float     @default(0)
+  gstPct              Float     @default(0)
+  gstAmt              Float     @default(0)
+  totalAmount         Float     @default(0)
+  paymentMethod       String    @default("Cash")
+  notes               String?
+  date                String
+  timestamp           Float
+  createdBy           String
+  createdByEmail      String
+  inventoryDeducted   Boolean   @default(false)
+  inventoryDeductedAt String?
+  whatsappSent        Boolean   @default(false)
+  whatsappSentAt      String?
+  whatsappSentBy      String?
+  deleted             Boolean   @default(false)
+  deletedAt           Float?
+  tenant              Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@unique([invoiceNumber, tenantId])
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  tenantId  String
+  keyHash   String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+// ── Employee Session Log ──────────────────────────────────────
+model UserSession {
+  id          String    @id @default(uuid())
+  userId      String
+  tenantId    String
+  loginAt     DateTime  @default(now())
+  logoutAt    DateTime?
+  ipAddress   String?   // client IP at login
+  userAgent   String?   // browser/device info
+  user        User      @relation(fields: [userId], references: [id])
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+}

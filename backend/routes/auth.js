@@ -1,57 +1,261 @@
 const express = require('express');
 const router = express.Router();
+const { OAuth2Client } = require('google-auth-library');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const db = require('../sheets/sheetsClient');
 
-// POST /api/auth/verify-role
-// Verifies role + password combo against env vars
-router.post('/verify-role', (req, res) => {
-  const { role, employeeIndex, password } = req.body;
 
-  if (role === 'admin') {
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || '');
+
+// Helper to issue JWT
+function generateToken(payload) {
+  const secret = process.env.JWT_SECRET || 'super-secure-bakeflow-default-secret-key-999';
+  const expiry = process.env.JWT_EXPIRY || '7d';
+  return jwt.sign(payload, secret, { expiresIn: expiry });
+}
+
+// Helper to record a login session (non-blocking — failures don't break login)
+async function recordSession(userId, tenantId, req) {
+  try {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+            || req.socket?.remoteAddress
+            || null;
+    const ua = req.headers['user-agent']?.slice(0, 255) || null;
+
+    const session = await db.prisma.userSession.create({
+      data: { userId, tenantId, ipAddress: ip, userAgent: ua }
+    });
+
+    await db.prisma.user.update({
+      where: { id: userId },
+      data: {
+        lastLoginAt: new Date(),
+        loginCount: { increment: 1 }
+      }
+    });
+
+    return session.id; // Return sessionId so frontend can store it
+  } catch (err) {
+    console.warn('[Session Record] Failed:', err.message);
+    return null;
+  }
+}
+
+// POST /api/auth/google
+// Verifies Google ID token + admin password combo
+router.post('/google', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) {
+    return res.status(400).json({ success: false, error: 'Google token and password are required' });
+  }
+
+  try {
+    // 1. Verify Google ID token
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(500).json({ success: false, error: 'Google client ID is not configured on the server' });
+    }
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    // 2. Check Admin Password
     const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
-    if (password === adminPass) {
-      return res.json({
-        success: true,
-        role: 'admin',
-        name: process.env.OWNER_NAME || 'Admin',
-        email: '',
-      });
+    // Support either bcrypt or plaintext for admin password (in transition state)
+    let isMatch = false;
+    if (adminPass.startsWith('$2a$') || adminPass.startsWith('$2b$')) {
+      isMatch = await bcrypt.compare(password, adminPass);
     } else {
+      isMatch = (password === adminPass);
+    }
+
+    if (!isMatch) {
       return res.status(401).json({ success: false, error: 'Invalid admin password' });
     }
+
+    // 3. Generate session JWT
+    // Find whitelisted tenant for this owner
+    let tenantId = 'default-tenant-uuid';
+    const tenant = await db.prisma.tenant.findFirst({
+      where: {
+        OR: [
+          { googleId: payload.sub },
+          { email: payload.email }
+        ]
+      }
+    });
+    if (tenant) {
+      tenantId = tenant.id;
+    }
+
+    // Determine role (check PlatformAdmin table or PLATFORM_ADMIN_EMAIL env)
+    const adminUser = await db.prisma.platformAdmin.findUnique({
+      where: { email: payload.email }
+    });
+
+    let role = 'admin'; // Bakery owner role
+    if (adminUser || (process.env.PLATFORM_ADMIN_EMAIL && payload.email === process.env.PLATFORM_ADMIN_EMAIL)) {
+      role = 'platform_admin';
+    }
+
+    const userPayload = {
+      role,
+      name: payload.name || process.env.OWNER_NAME || 'Admin',
+      email: payload.email,
+      picture: payload.picture || '',
+      tenantId: tenantId
+    };
+    const jwtToken = generateToken(userPayload);
+
+    // Record session for DB-backed owner users
+    let sessionId = null;
+    if (tenant) {
+      const dbUser = await db.prisma.user.findFirst({
+        where: { tenantId, email: payload.email, deleted: false }
+      });
+      if (dbUser) sessionId = await recordSession(dbUser.id, tenantId, req);
+    }
+
+    return res.json({
+      success: true,
+      token: jwtToken,
+      user: userPayload,
+      sessionId
+    });
+  } catch (err) {
+    console.error('Google verification error:', err.message);
+    return res.status(401).json({ success: false, error: 'Google sign-in verification failed: ' + err.message });
+  }
+});
+
+// POST /api/auth/employee
+// Supports BOTH legacy .env index login AND new DB-backed username/password login
+router.post('/employee', async (req, res) => {
+  const { employeeIndex, username, password } = req.body;
+  const tenantId = req.body.tenantId || 'default-tenant-uuid';
+
+  if (!password) {
+    return res.status(400).json({ success: false, error: 'Password is required' });
   }
 
-  if (role === 'employee') {
-    const idx = parseInt(employeeIndex);
-    if (!idx || idx < 1 || idx > 5) {
-      return res.status(400).json({ success: false, error: 'Invalid employee selection' });
-    }
-    const empPass = process.env[`EMPLOYEE_${idx}_PASSWORD`] || `emp${idx}pass`;
-    const empName = process.env[`EMPLOYEE_${idx}_NAME`] || `Employee ${idx}`;
-    if (password === empPass) {
+  try {
+    // --- Path A: New database-backed employee login (username + password) ---
+    if (username) {
+      const user = await db.prisma.user.findUnique({
+        where: { username_tenantId: { username, tenantId } }
+      });
+
+      if (!user || !user.active || user.deleted) {
+        return res.status(401).json({ success: false, error: 'Invalid credentials or account inactive' });
+      }
+
+      const isMatch = await bcrypt.compare(password, user.password || '');
+      if (!isMatch) {
+        return res.status(401).json({ success: false, error: 'Invalid credentials' });
+      }
+
+      const userPayload = {
+        role: user.role,
+        name: user.name,
+        email: user.email || '',
+        userId: user.id,
+        tenantId: user.tenantId
+      };
+
+      const sessionId = await recordSession(user.id, user.tenantId, req);
       return res.json({
         success: true,
-        role: 'employee',
-        name: empName,
-        email: '',
-        employeeIndex: idx,
+        token: generateToken(userPayload),
+        user: userPayload,
+        sessionId
       });
-    } else {
+    }
+
+    // --- Path B: Legacy .env index-based employee login (backward compatible) ---
+    const idx = parseInt(employeeIndex);
+    if (!idx || idx < 1 || idx > 5) {
+      return res.status(400).json({ success: false, error: 'Employee username or index is required' });
+    }
+
+    // Check DB first for employees created via Team Management
+    const dbEmployees = await db.prisma.user.findMany({
+      where: { tenantId, role: 'employee', active: true, deleted: false },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    if (dbEmployees.length >= idx) {
+      const user = dbEmployees[idx - 1];
+      const isMatch = await bcrypt.compare(password, user.password || '');
+      if (!isMatch) {
+        return res.status(401).json({ success: false, error: 'Invalid employee password' });
+      }
+      const userPayload = {
+        role: user.role,
+        name: user.name,
+        email: user.email || '',
+        userId: user.id,
+        tenantId: user.tenantId
+      };
+      const sessionId = await recordSession(user.id, user.tenantId, req);
+      return res.json({
+        success: true,
+        token: generateToken(userPayload),
+        user: userPayload,
+        sessionId
+      });
+    }
+
+    // Fallback: .env-based legacy credentials
+    const empPass = process.env[`EMPLOYEE_${idx}_PASSWORD`] || `emp${idx}pass`;
+    const empName = process.env[`EMPLOYEE_${idx}_NAME`] || `Employee ${idx}`;
+    let isMatch = empPass.startsWith('$2') ? await bcrypt.compare(password, empPass) : (password === empPass);
+    if (!isMatch) {
       return res.status(401).json({ success: false, error: 'Invalid employee password' });
     }
+    const userPayload = {
+      role: 'employee',
+      name: empName,
+      email: '',
+      employeeIndex: idx,
+      tenantId
+    };
+    return res.json({
+      success: true,
+      token: generateToken(userPayload),
+      user: userPayload
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Authentication error: ' + err.message });
   }
-
-  return res.status(400).json({ success: false, error: 'Invalid role' });
 });
 
 // GET /api/auth/employees
-// Returns list of configured employee names (no passwords)
-router.get('/employees', (req, res) => {
-  const employees = [];
-  for (let i = 1; i <= 5; i++) {
-    const name = process.env[`EMPLOYEE_${i}_NAME`] || `Employee ${i}`;
-    employees.push({ index: i, name });
+// Returns list of employee names (DB-first, .env fallback)
+router.get('/employees', async (req, res) => {
+  try {
+    const tenantId = 'default-tenant-uuid'; // Fallback for pre-login page context
+    const dbEmployees = await db.prisma.user.findMany({
+      where: { tenantId, role: 'employee', active: true, deleted: false },
+      select: { id: true, name: true, username: true },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    if (dbEmployees.length > 0) {
+      return res.json(dbEmployees.map((e, i) => ({ index: i + 1, name: e.name, username: e.username })));
+    }
+
+    // .env fallback
+    const employees = [];
+    for (let i = 1; i <= 5; i++) {
+      const name = process.env[`EMPLOYEE_${i}_NAME`] || `Employee ${i}`;
+      employees.push({ index: i, name });
+    }
+    res.json(employees);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  res.json(employees);
 });
 
 // GET /api/auth/config
@@ -62,6 +266,46 @@ router.get('/config', (req, res) => {
     businessName: process.env.BUSINESS_NAME || 'BakeFlow',
     businessPhone: process.env.BUSINESS_PHONE || '',
   });
+});
+
+// POST /api/auth/request-access
+// Public self-serve onboarding request
+router.post('/request-access', async (req, res) => {
+  const { name, email, googleId } = req.body;
+  if (!name || !email || !googleId) {
+    return res.status(400).json({ success: false, error: 'Bakery name, owner email, and Google ID are required' });
+  }
+
+  try {
+    // Check if tenant already exists
+    const existing = await db.prisma.tenant.findFirst({
+      where: {
+        OR: [
+          { googleId },
+          { email }
+        ]
+      }
+    });
+
+    if (existing) {
+      return res.status(409).json({ success: false, error: 'A bakery with this email or Google ID already exists or is pending approval.' });
+    }
+
+    // Create a pending tenant record
+    const request = await db.prisma.tenant.create({
+      data: {
+        name,
+        email,
+        googleId,
+        status: 'pending',
+        plan: 'free'
+      }
+    });
+
+    res.json({ success: true, message: 'Your onboarding request has been submitted successfully and is awaiting review.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 module.exports = router;

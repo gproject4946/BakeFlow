@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../sheets/sheetsClient');
+const requireRole = require('../middleware/requireRole');
 
 // POST - add audit log entry (enhanced with employee attribution)
 router.post('/', async (req, res) => {
@@ -17,7 +18,8 @@ router.post('/', async (req, res) => {
 });
 
 // GET - fetch audit log for Reports page (admin only enforced on frontend)
-router.get('/', async (req, res) => {
+router.get('/', requireRole('admin'), async (req, res) => {
+
   try {
     const logs = await db.getAll('AuditLog');
     res.json(logs.reverse());

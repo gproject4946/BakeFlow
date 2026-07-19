@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BakeFlow — Request Platform Access</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      --bg-dark: #121214;
+      --bg-card: rgba(26, 26, 30, 0.85);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --gold: #d4af37;
+      --gold-dark: #b8901c;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.05) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.03) 0%, transparent 40%);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .signup-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      width: 100%;
+      max-width: 480px;
+      padding: 40px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 44px;
+      margin-bottom: 12px;
+    }
+
+    .title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      text-align: left;
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      color: #000;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: opacity 0.2s;
+      margin-top: 10px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .msg {
+      margin-top: 15px;
+      font-size: 13px;
+      font-weight: 500;
+      display: none;
+    }
+
+    .success-msg {
+      color: var(--success);
+    }
+
+    .error-msg {
+      color: var(--danger);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="signup-card">
+    <div class="logo">🎂</div>
+    <h1 class="title">BakeFlow ERP</h1>
+    <p class="subtitle">Apply for Beta Platform Access</p>
+    
+    <!-- Google Button to auto-fill Owner Google ID and Email -->
+    <div style="margin-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Step 1: Sign in to capture your Owner Google ID</span>
+      <div id="g-signup-btn"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Bakery Name</label>
+      <input type="text" id="bakery-name" placeholder="e.g. Grandma's Delights">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Owner Email</label>
+      <input type="email" id="owner-email" placeholder="Auto-fills from Google sign-in..." readonly>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Owner Google ID (sub)</label>
+      <input type="text" id="owner-google-id" placeholder="Auto-fills from Google sign-in..." readonly>
+    </div>
+
+    <button class="btn" onclick="submitRequest()">Submit Access Request</button>
+    <div id="response-msg" class="msg"></div>
+
+    <p style="margin-top:20px;font-size:12px;color:var(--text-muted);">
+      Already approved? <a href="/" style="color:var(--gold);text-decoration:none;font-weight:500;">Login here</a>
+    </p>
+  </div>
+
+  <script>
+    let googleId = '';
+    let email = '';
+
+    // Fetch config for Google client ID
+    window.addEventListener('load', async () => {
+      try {
+        const res = await fetch('/api/auth/config');
+        const config = await res.json();
+        if (config.googleClientId && window.google) {
+          google.accounts.id.initialize({
+            client_id: config.googleClientId,
+            callback: handleGoogleCredential,
+            auto_select: false
+          });
+          google.accounts.id.renderButton(
+            document.getElementById('g-signup-btn'),
+            { theme: 'dark', size: 'medium', text: 'signup_with', width: 240 }
+          );
+        }
+      } catch (err) {
+        console.error('Config load error:', err);
+      }
+    });
+
+    function handleGoogleCredential(response) {
+      const payload = JSON.parse(atob(response.credential.split('.')[1]));
+      googleId = payload.sub;
+      email = payload.email;
+      
+      document.getElementById('owner-email').value = email;
+      document.getElementById('owner-google-id').value = googleId;
+    }
+
+    async function submitRequest() {
+      const name = document.getElementById('bakery-name').value.trim();
+      const msgEl = document.getElementById('response-msg');
+      
+      msgEl.style.display = 'none';
+      msgEl.className = 'msg';
+
+      if (!googleId || !email) {
+        msgEl.textContent = 'Please complete Step 1 (Sign in with Google) first.';
+        msgEl.classList.add('error-msg');
+        msgEl.style.display = 'block';
+        return;
+      }
+
+      if (!name) {
+        msgEl.textContent = 'Please enter your bakery name.';
+        msgEl.classList.add('error-msg');
+        msgEl.style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/request-access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, googleId })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          msgEl.textContent = data.message || 'Request submitted successfully!';
+          msgEl.classList.add('success-msg');
+          document.getElementById('bakery-name').value = '';
+          document.getElementById('owner-email').value = '';
+          document.getElementById('owner-google-id').value = '';
+          googleId = '';
+          email = '';
+        } else {
+          msgEl.textContent = data.error || 'Submission failed.';
+          msgEl.classList.add('error-msg');
+        }
+        msgEl.style.display = 'block';
+      } catch (err) {
+        msgEl.textContent = 'Network error: ' + err.message;
+        msgEl.classList.add('error-msg');
+        msgEl.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>

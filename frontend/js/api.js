@@ -10,9 +10,14 @@ const API = {
   _base: '/api',
 
   async _req(path, opts = {}) {
-    // Always attach employee identity headers for audit log
-    const sess = JSON.parse(localStorage.getItem('bakeflow_session') || '{}');
+    const token = localStorage.getItem('bakeflow_token');
     const headers = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Keep session headers as fallback (requireAuth will overwrite/ignore them on server if authenticated)
+    const sess = JSON.parse(localStorage.getItem('bakeflow_session') || '{}');
     if (sess.name)  headers['X-Employee-Name']  = sess.name;
     if (sess.email) headers['X-Employee-Email'] = sess.email;
 
@@ -21,21 +26,34 @@ const API = {
       ...opts,
     });
     if (!res.ok) {
+      if (res.status === 401) {
+        localStorage.removeItem('bakeflow_token');
+        localStorage.removeItem('bakeflow_session');
+        window.location.reload();
+      }
       const msg = await res.text();
       throw new Error(msg || `HTTP ${res.status}`);
     }
     return res.json();
+
   },
 
   // ── Auth ──────────────────────────────────────────────────────
-  verifyRole(role, employeeIndex, password) {
-    return this._req('/auth/verify-role', {
+  loginGoogle(token, password) {
+    return this._req('/auth/google', {
       method: 'POST',
-      body: JSON.stringify({ role, employeeIndex, password }),
+      body: JSON.stringify({ token, password }),
+    });
+  },
+  loginEmployee(employeeIndex, password) {
+    return this._req('/auth/employee', {
+      method: 'POST',
+      body: JSON.stringify({ employeeIndex, password }),
     });
   },
   getEmployees() { return this._req('/auth/employees'); },
   getConfig()    { return this._req('/auth/config'); },
+
 
   // ── Ingredients ───────────────────────────────────────────────
   getIngredients() { return this._req('/ingredients'); },
@@ -53,6 +71,18 @@ const API = {
   updateIngredientStock(id, stockQty, minAlert) {
     return this._req(`/ingredients/${id}/stock`, {
       method: 'PUT', body: JSON.stringify({ stockQty, minAlert }),
+    });
+  },
+
+  decrementIngredientStock(id, amount) {
+    return this._req(`/ingredients/${id}/decrement`, {
+      method: 'POST', body: JSON.stringify({ amount }),
+    });
+  },
+
+  incrementIngredientStock(id, amount) {
+    return this._req(`/ingredients/${id}/increment`, {
+      method: 'POST', body: JSON.stringify({ amount }),
     });
   },
 
@@ -76,6 +106,18 @@ const API = {
   updatePackagingStock(id, stockQty, minAlert) {
     return this._req(`/packaging/${id}/stock`, {
       method: 'PUT', body: JSON.stringify({ stockQty, minAlert }),
+    });
+  },
+
+  decrementPackagingStock(id, amount) {
+    return this._req(`/packaging/${id}/decrement`, {
+      method: 'POST', body: JSON.stringify({ amount }),
+    });
+  },
+
+  incrementPackagingStock(id, amount) {
+    return this._req(`/packaging/${id}/increment`, {
+      method: 'POST', body: JSON.stringify({ amount }),
     });
   },
 

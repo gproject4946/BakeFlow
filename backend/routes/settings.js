@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../sheets/sheetsClient');
+const requireRole = require('../middleware/requireRole');
+
+router.use(requireRole('admin'));
+
 
 // GET all settings as a flat key→value object
 router.get('/', async (req, res) => {

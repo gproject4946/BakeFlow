@@ -1,16 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../sheets/sheetsClient');
+const enforceQuota = require('../middleware/quotaEnforcer');
 
 function strip(row) { const { _rowIndex, ...rest } = row; return rest; }
 function emp(req) { return { name: req.headers['x-employee-name']||'Unknown', email: req.headers['x-employee-email']||'' }; }
 
 async function nextInvoiceNumber() {
-  const year = new Date().getFullYear();
-  const all = await db.getAll('SalesInvoices');
-  const yearSales = all.filter(s => (s.invoiceNumber||'').startsWith(`INV-${year}`));
-  const num = String(yearSales.length + 1).padStart(4, '0');
-  return `INV-${year}-${num}`;
+  return db.nextInvoiceNumber();
 }
 
 // GET all invoices
@@ -114,7 +111,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // POST - send WhatsApp invoice via Twilio
-router.post('/:id/send-whatsapp', async (req, res) => {
+router.post('/:id/send-whatsapp', enforceQuota, async (req, res) => {
   try {
     const rows = await db.getAll('SalesInvoices');
     const row = rows.find(r => r.id === req.params.id);
