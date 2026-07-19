@@ -372,8 +372,10 @@
 
   <script>
     // ── Auth helpers ─────────────────────────────────────
-    const token = localStorage.getItem('authToken');
-    if (!token) { window.location.href = '/'; }
+    const token = localStorage.getItem('bakeflow_token');
+    const sess = JSON.parse(localStorage.getItem('bakeflow_session') || '{}');
+    const hasAccess = token && (sess.role === 'admin' || sess.role === 'owner' || sess.role === 'platform_admin');
+    if (!hasAccess) { window.location.href = '/'; }
 
     const api = (path, opts = {}) =>
       fetch(path, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers }, ...opts });

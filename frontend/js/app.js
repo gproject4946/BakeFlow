@@ -476,9 +476,12 @@ function navigate(page) {
 
   // Admin-only page guard
   const adminOnlyPages = ['labour', 'overheads', 'reports', 'salesreports', 'auditlog'];
-  if (adminOnlyPages.includes(page) && currentSession && currentSession.role !== 'admin') {
-    showToast('⛔ Admin access required', true);
-    return;
+  if (adminOnlyPages.includes(page) && currentSession) {
+    const r = currentSession.role;
+    if (r !== 'admin' && r !== 'owner' && r !== 'platform_admin') {
+      showToast('⛔ Admin access required', true);
+      return;
+    }
   }
 
   currentPage = page;
