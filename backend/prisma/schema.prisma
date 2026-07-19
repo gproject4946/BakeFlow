@@ -11,7 +11,9 @@ model Tenant {
   name      String
   googleId  String   @unique
   email     String
-  status    String   @default("active") // active | suspended | trial
+  phone     String?
+  password  String?   // Temporarily stores hashed password for onboarding requests
+  status    String   @default("active") // active | suspended | pending
   plan      String   @default("free")
   createdAt DateTime @default(now())
 
@@ -34,10 +36,13 @@ model User {
   name          String
   username      String?
   email         String?
+  phone         String?
   role          String        // owner | admin | employee
   authMethod    String        // google | password
   googleId      String?
   password      String?       // bcrypt-hashed
+  otpCode       String?       // 6-digit WhatsApp verification OTP
+  otpExpires    DateTime?     // Expiration timestamp for OTP
   active        Boolean       @default(true)
   deleted       Boolean       @default(false)
   deletedAt     DateTime?

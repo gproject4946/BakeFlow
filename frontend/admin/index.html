@@ -581,6 +581,14 @@
               <input type="text" id="ob-googleid" placeholder="Copy from sign-in payload">
             </div>
             <div class="form-group">
+              <label class="form-label">Owner Phone (WhatsApp) *</label>
+              <input type="text" id="ob-phone" placeholder="e.g. +91 99999 88888">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Initial Password *</label>
+              <input type="password" id="ob-password" placeholder="Minimum 8 characters">
+            </div>
+            <div class="form-group">
               <label class="form-label">Tier / Subscription Plan</label>
               <select id="ob-plan">
                 <option value="free">Free Beta (2 months)</option>
@@ -941,14 +949,21 @@
       const name = document.getElementById('ob-name').value.trim();
       const email = document.getElementById('ob-email').value.trim();
       const googleId = document.getElementById('ob-googleid').value.trim();
+      const phone = document.getElementById('ob-phone').value.trim();
+      const password = document.getElementById('ob-password').value.trim();
       const plan = document.getElementById('ob-plan').value;
 
       const msgEl = document.getElementById('onboard-msg');
       msgEl.textContent = '';
 
-      if (!name || !email || !googleId) {
+      if (!name || !email || !googleId || !phone || !password) {
         msgEl.style.color = 'var(--danger)';
-        msgEl.textContent = 'All fields are required.';
+        msgEl.textContent = 'All fields including phone and initial password are required.';
+        return;
+      }
+      if (password.length < 8) {
+        msgEl.style.color = 'var(--danger)';
+        msgEl.textContent = 'Initial password must be at least 8 characters.';
         return;
       }
 
@@ -959,7 +974,7 @@
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ name, email, googleId, plan })
+          body: JSON.stringify({ name, email, googleId, phone, password, plan })
         });
         const data = await res.json();
 
@@ -969,6 +984,8 @@
           document.getElementById('ob-name').value = '';
           document.getElementById('ob-email').value = '';
           document.getElementById('ob-googleid').value = '';
+          document.getElementById('ob-phone').value = '';
+          document.getElementById('ob-password').value = '';
           loadData();
         } else {
           msgEl.style.color = 'var(--danger)';

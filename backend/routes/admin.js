@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../sheets/sheetsClient');
+const bcrypt = require('bcryptjs');
 
 // Middleware to require role: 'platform_admin'
 const requirePlatformAdmin = async (req, res, next) => {
@@ -49,7 +50,7 @@ router.get('/tenants', async (req, res) => {
 // POST /api/admin/tenants
 // Onboard a new bakery
 router.post('/tenants', async (req, res) => {
-  const { name, email, googleId, plan } = req.body;
+  const { name, email, googleId, plan, phone, password } = req.body;
   if (!name || !email || !googleId) {
     return res.status(400).json({ error: 'Bakery name, owner email, and Google ID are required' });
   }
@@ -70,10 +71,17 @@ router.post('/tenants', async (req, res) => {
         name,
         email,
         googleId,
+        phone: phone || null,
         plan: targetPlan,
         status: 'active'
       }
     });
+
+    // Hash the password if provided, otherwise leave empty (owner can reset/verify via WhatsApp later)
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 12);
+    }
 
     // Automatically create the owner user account for this tenant
     await db.prisma.user.create({
@@ -81,9 +89,11 @@ router.post('/tenants', async (req, res) => {
         tenantId: tenant.id,
         name: name + ' Owner',
         email: email,
+        phone: phone || null,
         googleId: googleId,
         role: 'owner',
         authMethod: 'google',
+        password: hashedPassword,
         active: true
       }
     });
@@ -190,17 +200,25 @@ router.put('/tenants/:id/approve', async (req, res) => {
       data: { status: 'active' }
     });
 
-    // Create the Owner account
+    // Create the Owner account (copies phone and password from the request record)
     await db.prisma.user.create({
       data: {
         tenantId: tenant.id,
         name: tenant.name + ' Owner',
         email: tenant.email,
+        phone: tenant.phone,
         googleId: tenant.googleId,
         role: 'owner',
         authMethod: 'google',
+        password: tenant.password,
         active: true
       }
+    });
+
+    // Clear password on tenant record for safety
+    await db.prisma.tenant.update({
+      where: { id: tenant.id },
+      data: { password: null }
     });
 
     // Seed defaults

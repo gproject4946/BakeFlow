@@ -2444,6 +2444,113 @@ function onRoleChange(role) {
   if (wrap) wrap.classList.toggle('hidden', role !== 'employee');
 }
 
+function openOTPModal() {
+  document.getElementById('role-modal').style.display = 'none';
+  document.getElementById('role-modal').classList.add('hidden');
+  
+  document.getElementById('otp-modal').classList.remove('hidden');
+  document.getElementById('otp-modal').style.display = 'flex';
+  
+  document.getElementById('otp-step-request').classList.remove('hidden');
+  document.getElementById('otp-step-request').style.display = 'block';
+  document.getElementById('otp-step-verify').classList.add('hidden');
+  document.getElementById('otp-step-verify').style.display = 'none';
+  
+  document.getElementById('otp-email').value = '';
+  document.getElementById('otp-code').value = '';
+  document.getElementById('otp-password').value = '';
+  document.getElementById('otp-confirm-password').value = '';
+  
+  document.getElementById('otp-error').style.display = 'none';
+  document.getElementById('otp-success').style.display = 'none';
+}
+
+function closeOTPModal() {
+  document.getElementById('otp-modal').style.display = 'none';
+  document.getElementById('otp-modal').classList.add('hidden');
+  
+  document.getElementById('role-modal').classList.remove('hidden');
+  document.getElementById('role-modal').style.display = 'flex';
+}
+
+async function requestOTP() {
+  const email = (document.getElementById('otp-email').value || '').trim();
+  const errEl = document.getElementById('otp-error');
+  const succEl = document.getElementById('otp-success');
+  errEl.style.display = 'none';
+  succEl.style.display = 'none';
+
+  if (!email) {
+    errEl.textContent = 'Please enter your registered owner email.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  showLoading('Generating WhatsApp verification code…');
+  try {
+    const res = await API.requestOTP(email);
+    hideLoading();
+    
+    succEl.textContent = res.message || 'Verification code sent successfully!';
+    succEl.style.display = 'block';
+    
+    document.getElementById('otp-step-request').classList.add('hidden');
+    document.getElementById('otp-step-request').style.display = 'none';
+    document.getElementById('otp-step-verify').classList.remove('hidden');
+    document.getElementById('otp-step-verify').style.display = 'block';
+  } catch (err) {
+    hideLoading();
+    errEl.textContent = err.message || 'Failed to request OTP code.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function verifyOTP() {
+  const email = (document.getElementById('otp-email').value || '').trim();
+  const otp = (document.getElementById('otp-code').value || '').trim();
+  const password = document.getElementById('otp-password').value;
+  const confirmPassword = document.getElementById('otp-confirm-password').value;
+
+  const errEl = document.getElementById('otp-error');
+  const succEl = document.getElementById('otp-success');
+  errEl.style.display = 'none';
+  succEl.style.display = 'none';
+
+  if (!otp || !password || !confirmPassword) {
+    errEl.textContent = 'All fields are required.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (password.length < 8) {
+    errEl.textContent = 'Password must be at least 8 characters long.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (password !== confirmPassword) {
+    errEl.textContent = 'Passwords do not match.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  showLoading('Verifying code and resetting password…');
+  try {
+    const res = await API.verifyOTP(email, otp, password);
+    hideLoading();
+    
+    succEl.textContent = '✓ Password reset successfully! Redirecting you to login…';
+    succEl.style.display = 'block';
+    
+    setTimeout(() => {
+      closeOTPModal();
+      document.getElementById('role-password').value = password;
+    }, 2000);
+  } catch (err) {
+    hideLoading();
+    errEl.textContent = err.message || 'Verification failed.';
+    errEl.style.display = 'block';
+  }
+}
+
 function togglePassVis() {
   const inp = document.getElementById('role-password');
   const icon = document.getElementById('pass-eye-icon');

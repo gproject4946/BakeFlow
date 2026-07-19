@@ -200,4 +200,19 @@ const API = {
       body: JSON.stringify({ image: base64Image, mimeType }),
     });
   },
+
+  // ── OTP Reset Password ─────────────────────────────────────────
+  requestOTP(email) {
+    return this._req('/auth/otp-request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  verifyOTP(email, otp, password) {
+    return this._req('/auth/otp-verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, password }),
+    });
+  },
 };

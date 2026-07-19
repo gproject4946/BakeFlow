@@ -6,7 +6,9 @@ function tenantMiddleware(req, res, next) {
   // Fall back to default-tenant-uuid if not present (for compatibility/development)
   const tenantId = req.user?.tenantId || 'default-tenant-uuid';
 
-  tenantStorage.run({ tenantId }, () => {
+  const role = req.user?.role || null;
+
+  tenantStorage.run({ tenantId, role }, () => {
     next();
   });
 }

@@ -288,7 +288,7 @@ router.get('/config', (req, res) => {
 // POST /api/auth/request-access
 // Public self-serve onboarding request
 router.post('/request-access', async (req, res) => {
-  const { name, email, googleId } = req.body;
+  const { name, email, googleId, phone, password } = req.body;
   if (!name || !email || !googleId) {
     return res.status(400).json({ success: false, error: 'Bakery name, owner email, and Google ID are required' });
   }
@@ -308,20 +308,123 @@ router.post('/request-access', async (req, res) => {
       return res.status(409).json({ success: false, error: 'A bakery with this email or Google ID already exists or is pending approval.' });
     }
 
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 12);
+    }
+
     // Create a pending tenant record
     const request = await db.prisma.tenant.create({
       data: {
         name,
         email,
         googleId,
+        phone: phone || null,
+        password: hashedPassword,
         status: 'pending',
         plan: 'free'
       }
     });
 
     res.json({ success: true, message: 'Your onboarding request has been submitted successfully and is awaiting review.' });
+// POST /api/auth/otp-request
+// Generates a 6-digit WhatsApp OTP and sends it to the owner's phone number
+router.post('/otp-request', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, error: 'Owner email is required' });
+  }
+
+  try {
+    // Find the owner user across all tenants (owners have unique emails)
+    const user = await db.prisma.user.findFirst({
+      where: { email, role: 'owner', deleted: false }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'No active bakery owner account found with this email.' });
+    }
+
+    if (!user.phone) {
+      return res.status(400).json({ success: false, error: 'Owner phone number is not configured in the system. Please contact the platform administrator to set your phone number.' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+    // Save to database
+    await db.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otpCode: otp,
+        otpExpires: expires
+      }
+    });
+
+    // Format phone number for Twilio Routing
+    let targetPhone = user.phone.trim().replace(/[^0-9+]/g, '');
+    if (!targetPhone.startsWith('+')) {
+      if (targetPhone.length === 10) targetPhone = '+91' + targetPhone;
+      else targetPhone = '+' + targetPhone;
+    }
+
+    // Send via Twilio WhatsApp
+    const twilio = require('twilio');
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await client.messages.create({
+      from: process.env.TWILIO_WHATSAPP_FROM,
+      to: `whatsapp:${targetPhone}`,
+      body: `🎂 *BakeFlow Verification Code*\n\nYour 6-digit verification code is: *${otp}*\n\nThis code expires in 10 minutes. Use this code to authorize your password update.`,
+    });
+
+    res.json({ success: true, message: `OTP sent successfully to WhatsApp ending in ...${user.phone.slice(-4)}` });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error('[OTP Request] Failed:', err.message);
+    res.status(500).json({ success: false, error: 'Failed to send WhatsApp verification code: ' + err.message });
+  }
+});
+
+// POST /api/auth/otp-verify
+// Verifies WhatsApp OTP and sets new owner password
+router.post('/otp-verify', async (req, res) => {
+  const { email, otp, password } = req.body;
+  if (!email || !otp || !password) {
+    return res.status(400).json({ success: false, error: 'Email, OTP code, and new password are required' });
+  }
+
+  try {
+    const user = await db.prisma.user.findFirst({
+      where: { email, role: 'owner', deleted: false }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'No active bakery owner account found.' });
+    }
+
+    if (!user.otpCode || user.otpCode !== otp.trim()) {
+      return res.status(400).json({ success: false, error: 'Invalid verification code.' });
+    }
+
+    if (!user.otpExpires || new Date() > user.otpExpires) {
+      return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new code.' });
+    }
+
+    // Code is valid! Hash the new password and clear the OTP fields
+    const hashedPassword = await bcrypt.hash(password, 12);
+    await db.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        otpCode: null,
+        otpExpires: null
+      }
+    });
+
+    res.json({ success: true, message: 'Password updated successfully! You can now log in using your new password.' });
+  } catch (err) {
+    console.error('[OTP Verify] Failed:', err.message);
+    res.status(500).json({ success: false, error: 'Failed to verify OTP or update password: ' + err.message });
   }
 });
 

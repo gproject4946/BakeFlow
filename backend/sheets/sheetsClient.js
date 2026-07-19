@@ -110,14 +110,20 @@ class SheetsClient {
       query: {
         $allModels: {
           async $allOperations({ model, operation, args, query }) {
+            const store = tenantStorage.getStore();
+            const role = store?.role;
+
+            // Platform administrators bypass all tenant scoping to allow global operations
+            if (role === 'platform_admin') {
+              return query(args);
+            }
+
             const bypassModels = ['Tenant', 'PlatformAdmin'];
             if (bypassModels.includes(model)) {
               return query(args);
             }
 
-            const store = tenantStorage.getStore();
             const tenantId = store?.tenantId;
-
             if (tenantId) {
               // Scoping reads
               if (['findMany', 'findFirst', 'findUnique', 'count', 'aggregate', 'groupBy'].includes(operation)) {

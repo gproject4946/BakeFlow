@@ -67,8 +67,47 @@
       </div>
     </div>
     <div id="role-error" style="color:var(--bo-danger);font-size:12px;margin-bottom:8px;display:none;"></div>
+    <div style="text-align:right;margin:-10px 0 16px;"><a href="#" onclick="openOTPModal();return false;" style="font-size:12px;color:var(--bo-gold);text-decoration:none;">Forgot password? (Reset via WhatsApp)</a></div>
     <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="submitRole()">Confirm &amp; Enter →</button>
     <button class="btn btn-sm" style="width:100%;justify-content:center;margin-top:8px;" onclick="backToSignin()">← Back</button>
+  </div>
+</div>
+
+<!-- ── Reset Password Modal (WhatsApp OTP) ── -->
+<div id="otp-modal" class="auth-overlay hidden">
+  <div class="auth-card" style="max-width:400px;text-align:left;">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:6px;color:var(--bo-gold);">Reset Owner Password</div>
+    <div style="font-size:13px;color:var(--bo-muted);margin-bottom:20px;">Verification code will be sent to your registered WhatsApp number.</div>
+
+    <!-- Step 1: Request OTP -->
+    <div id="otp-step-request">
+      <div class="form-group">
+        <label class="form-label">Registered Owner Email</label>
+        <input type="email" id="otp-email" placeholder="owner@example.com">
+      </div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;margin-top:12px;" onclick="requestOTP()">Send OTP to WhatsApp →</button>
+    </div>
+
+    <!-- Step 2: Verify & Reset -->
+    <div id="otp-step-verify" class="hidden">
+      <div class="form-group">
+        <label class="form-label">Enter 6-Digit OTP</label>
+        <input type="text" id="otp-code" placeholder="e.g. 123456" maxlength="6" style="letter-spacing:4px;text-align:center;font-size:18px;font-weight:700;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input type="password" id="otp-password" placeholder="At least 8 characters">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm New Password</label>
+        <input type="password" id="otp-confirm-password" placeholder="Re-type new password">
+      </div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;margin-top:12px;" onclick="verifyOTP()">Reset Password &amp; Log In →</button>
+    </div>
+
+    <div id="otp-error" style="color:var(--bo-danger);font-size:12px;margin-top:8px;display:none;"></div>
+    <div id="otp-success" style="color:var(--bo-success);font-size:12px;margin-top:8px;display:none;"></div>
+    <button class="btn btn-sm" style="width:100%;justify-content:center;margin-top:12px;" onclick="closeOTPModal()">← Cancel</button>
   </div>
 </div>
 
