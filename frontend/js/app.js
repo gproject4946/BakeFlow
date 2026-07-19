@@ -158,7 +158,11 @@ async function initApp() {
   } catch (err) {
     console.error('initApp failed:', err);
     hideLoading();
-    showToast('⚠ Could not connect to server. Is it running?', true);
+    if (err.message && (err.message.toLowerCase().includes('suspended') || err.message.toLowerCase().includes('access denied'))) {
+      showSuspensionBlock(err.message);
+    } else {
+      showToast('⚠ Could not connect to server. Is it running?', true);
+    }
   }
 }
 
@@ -2654,6 +2658,38 @@ function applySession() {
 
   updateGreeting();
   initApp();
+}
+
+function showSuspensionBlock(message) {
+  // Hide main app content
+  const mainApp = document.getElementById('main-app');
+  if (mainApp) mainApp.style.display = 'none';
+
+  // Create block overlay if it doesn't exist
+  let overlay = document.getElementById('suspension-block-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'suspension-block-overlay';
+    overlay.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(18,18,18,0.96);display:flex;align-items:center;justify-content:center;z-index:99999;font-family:"Outfit",sans-serif;color:#fff;padding:24px;text-align:center;';
+    document.body.appendChild(overlay);
+  }
+
+  const isPlatformAdmin = currentSession && currentSession.role === 'platform_admin';
+  const adminBtn = isPlatformAdmin ? `<button class="btn btn-gold" style="margin-top:20px;padding:12px 24px;width:100%" onclick="window.location.href='/admin/'">Go to Platform Admin Console →</button>` : '';
+
+  overlay.innerHTML = `
+    <div class="auth-card" style="max-width:450px;background:#1e1e1e;border:1px solid rgba(239,68,68,0.3);box-shadow:0 8px 32px rgba(239,68,68,0.15);padding:40px 24px;border-radius:12px;text-align:center;">
+      <div style="width:64px;height:64px;background:rgba(239,68,68,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#ef4444;font-size:32px;">
+        <i class="ti ti-shield-x"></i>
+      </div>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;margin-bottom:12px;color:#ef4444;">Bakery Account Suspended</h2>
+      <p style="color:#a3a3a3;font-size:14px;line-height:1.6;margin-bottom:20px;">${message || 'This bakery account has been suspended by the platform administrator. Access to calculations and settings is currently blocked.'}</p>
+      <div style="display:flex;flex-direction:column;gap:12px;align-items:center;width:100%">
+        ${adminBtn}
+        <button class="btn" style="background:#2e2e2e;color:#fff;border:none;padding:10px 20px;width:100%" onclick="signOut()">Log Out &amp; Return</button>
+      </div>
+    </div>
+  `;
 }
 
 function signOut() {

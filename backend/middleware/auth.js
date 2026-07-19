@@ -19,13 +19,14 @@ module.exports = async (req, res, next) => {
     const secret = process.env.JWT_SECRET || 'super-secure-bakeflow-default-secret-key-999';
     const decoded = jwt.verify(token, secret);
 
-    // If the user belongs to a bakery tenant (not platform admin), verify tenant is active and trial hasn't expired
-    if (decoded.role !== 'platform_admin' && decoded.tenantId) {
+    // Verify tenant status for ERP routes (exclude platform admin API routes)
+    const isApiAdminRoute = req.path.startsWith('/admin') || req.path.startsWith('/api/admin');
+    if (!isApiAdminRoute && decoded.tenantId) {
       const tenant = await db.prisma.tenant.findUnique({
         where: { id: decoded.tenantId }
       });
       if (!tenant || tenant.status === 'suspended') {
-        return res.status(403).json({ success: false, error: 'Access Denied: Your bakery account is suspended. Please contact platform support.' });
+        return res.status(403).json({ success: false, error: 'Access Denied: This bakery account is suspended. Please contact platform support.' });
       }
 
       // Enforce 2-month trial limit on Free Beta plan
