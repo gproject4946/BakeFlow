@@ -94,7 +94,7 @@ router.post('/google', async (req, res) => {
 
     // 2. Check Password
     let isMatch = false;
-    if (dbUser && dbUser.password) {
+    if (dbUser && dbUser.password && dbUser.password.startsWith('$2')) {
       // If a database password is set for this account, they MUST log in using it ONLY (no ADMIN_PASSWORD fallback allowed)
       isMatch = await bcrypt.compare(password, dbUser.password);
     } else {
