@@ -82,7 +82,7 @@ router.post('/google', async (req, res) => {
       where: { email: payload.email }
     });
     const isPlatformAdmin = adminUser || (process.env.PLATFORM_ADMIN_EMAIL && payload.email === process.env.PLATFORM_ADMIN_EMAIL);
-    let role = isPlatformAdmin ? 'platform_admin' : 'owner';
+    let role = 'owner'; // Default to owner role
 
     // Look up the database user
     let dbUser = null;
@@ -94,16 +94,40 @@ router.post('/google', async (req, res) => {
 
     // 2. Check Password
     let isMatch = false;
-    if (dbUser && dbUser.password && dbUser.password.startsWith('$2')) {
-      // If a database password is set for this account, they MUST log in using it ONLY (no ADMIN_PASSWORD fallback allowed)
-      isMatch = await bcrypt.compare(password, dbUser.password);
-    } else {
-      // Fallback: If no password is set in DB yet, or if they are a platform-only admin without a tenant-bound user record, check against ADMIN_PASSWORD env variable
+
+    // Check platform admin password first (if they are a platform admin)
+    if (isPlatformAdmin) {
       const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+      let matchesAdmin = false;
       if (adminPass.startsWith('$2a$') || adminPass.startsWith('$2b$')) {
-        isMatch = await bcrypt.compare(password, adminPass);
+        matchesAdmin = await bcrypt.compare(password, adminPass);
       } else {
-        isMatch = (password === adminPass);
+        matchesAdmin = (password === adminPass);
+      }
+      if (matchesAdmin) {
+        isMatch = true;
+        role = 'platform_admin';
+      }
+    }
+
+    // If platform password didn't match (or they aren't a platform admin), check bakery owner password
+    if (!isMatch) {
+      if (dbUser && dbUser.password && dbUser.password.startsWith('$2')) {
+        isMatch = await bcrypt.compare(password, dbUser.password);
+        if (isMatch) {
+          role = 'owner';
+        }
+      } else {
+        // Fallback: If no password is set in DB yet, check against ADMIN_PASSWORD env variable to claim owner account
+        const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+        if (adminPass.startsWith('$2a$') || adminPass.startsWith('$2b$')) {
+          isMatch = await bcrypt.compare(password, adminPass);
+        } else {
+          isMatch = (password === adminPass);
+        }
+        if (isMatch) {
+          role = 'owner';
+        }
       }
     }
 

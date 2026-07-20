@@ -386,7 +386,12 @@
       
       <div class="form-group" style="margin-top:20px;">
         <label class="form-label">Platform Password</label>
-        <input type="password" id="admin-password" placeholder="Enter administrative password...">
+        <div style="position:relative;">
+          <input type="password" id="admin-password" placeholder="Enter administrative password..." onkeydown="if(event.key==='Enter')handleAdminLogin();" style="padding-right:40px;width:100%;box-sizing:border-box;">
+          <button type="button" onclick="togglePassVis()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#888;display:flex;align-items:center;justify-content:center;padding:0;">
+            <i class="ti ti-eye" id="pass-eye-icon" style="font-size:18px;"></i>
+          </button>
+        </div>
       </div>
 
       <button class="btn" onclick="handleAdminLogin()">Log In to Platform</button>
@@ -725,6 +730,19 @@
         }
       } catch (err) {
         showError('Login request failed: ' + err.message);
+      }
+    }
+
+    function togglePassVis() {
+      const inp = document.getElementById('admin-password');
+      const icon = document.getElementById('pass-eye-icon');
+      if (!inp) return;
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        if (icon) icon.className = 'ti ti-eye-off';
+      } else {
+        inp.type = 'password';
+        if (icon) icon.className = 'ti ti-eye';
       }
     }
 
